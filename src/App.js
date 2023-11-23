@@ -23,14 +23,33 @@ class App {
         this.engine = new BABYLON.Engine(canvas, true);
         this.scene = new BABYLON.Scene(this.engine);
 
-        this.camera = new BABYLON.ArcRotateCamera("Camera", Math.PI / 2, Math.PI / 2, 2, BABYLON.Vector3.Zero(), this.scene);
+        this.camera = new BABYLON.ArcRotateCamera("Camera", 0-Math.PI / 3, Math.PI / 3, 20, BABYLON.Vector3.Zero(), this.scene);
         this.camera.attachControl(canvas, true);
-        var light1 = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(1, 1, 0), this.scene);
-        var sphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 1 }, this.scene);
 
+        /*
+        this.camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 10, -10), this.scene);
+        // The goal distance of camera from target
+        this.camera.radius = 30;
+        // The goal height of camera above local origin (centre) of target
+        this.camera.heightOffset = 10;
+        // The goal rotation of camera around local origin (centre) of target in x y plane
+        this.camera.rotationOffset = 0;
+        // Acceleration of camera in moving from current to goal position
+        this.camera.cameraAcceleration = 0.005;
+        // The speed at which acceleration is halted
+        this.camera.maxCameraSpeed = 10;
+        this.camera.attachControl(canvas, true);
+        */
+
+        var light1 = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(1, 1, 0), this.scene);
+        this.defaultSphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 1 }, this.scene);
+
+        // Temporary camera target during loading
+        this.camera.lockedTarget = this.defaultSphere;
 
         // Create a full-screen UI layer
         this.gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+        //this.gui.parseFromURLAsync('./assets/gui/main.json');
 
         // Create a text block
         this.modeName = this.TextBlock({
@@ -50,6 +69,7 @@ class App {
             paddingTop: 40,
         });
 
+
         this.activeMode = new BuildMode(app);
 
         // Load WorldObjects -- these are objects that can be built or are used by
@@ -59,7 +79,10 @@ class App {
         this.loadAsset(Assets.meshes.wallArch_glb);
         this.loadAsset(Assets.meshes.wallCorner_glb);
         this.loadAsset(Assets.meshes.rocks1_glb);
-
+        const modelsBaseUrl = './assets/models/';
+        //this.loadAsset({rootUrl: modelsBaseUrl, filename: 'pirates/Characters_Anne.gltf'});
+        this.loadAsset({rootUrl: modelsBaseUrl, filename: 'cyberpunk/Platforms/Platform_2x2.gltf'});
+        
         // Toggle the Babylon debug inspector
         window.addEventListener("keydown", (ev) => {
             if (ev.key === '`') {
@@ -115,12 +138,17 @@ class App {
         // assetProps: { rootUrl: '', filename: '' }
         BABYLON.SceneLoader.ImportMeshAsync("", assetProps.rootUrl, assetProps.filename).then((result) => {
             let parent = result.meshes[0];              // The __root__ node
-            let object = parent.getChildMeshes()[0];    // The real mesh
-            object.setParent(null);                     // Removes parent while preserving rotation, scale, position, etc.
-            parent.dispose();                           // Get rid of the __root__ node
-            object.isVisible = false;
-            //console.log(object);
-            let wo = new WorldObject('Wall', object);
+            if(result.meshes.length == 2 && parent.name == '__root__') {
+                var object = parent.getChildMeshes()[0];    // The real mesh
+                object.setParent(null);                     // Removes parent while preserving rotation, scale, position, etc.
+                parent.dispose();                           // Get rid of the __root__ node
+                object.isVisible = false;
+                //console.log(object);
+            } else {
+                var object = result.meshes[0];
+                object.isVisible = false;
+            }
+            let wo = new WorldObject(assetProps.filename, object);
             //console.log(wo);
             this.BuildableObjectList.push(wo);  // Create the WorldObject with our actual mesh, this will use Thin Instances
         });

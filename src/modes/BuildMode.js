@@ -19,8 +19,11 @@ class BuildMode {
     }
 
     disposeCurrentInstance() {
+        this.app.camera.lockedTarget = this.app.defaultSphere;
         this.currentInstance?.dispose();
+        this.guideMesh?.dispose();
         this.currentInstance = null;
+        this.guideMesh = null;
     }
 
     update() {
@@ -47,10 +50,33 @@ class BuildMode {
         }
 
         if (objectChanged) {
+            let position = false;
+            if (this.currentInstance) {
+                position = this.currentInstance.position;
+            }
             this.currentInstance?.dispose();
             const worldObject = this.app.BuildableObjectList[this.selectedObjectIndex];
             console.log(worldObject);
-            this.currentInstance = worldObject.createInstance(-2,0,0);
+            this.currentInstance = worldObject.createInstance(-2, 0, 0);
+            if (position) {
+                this.currentInstance.position = position;
+            }
+            this.app.camera.lockedTarget = this.currentInstance;
+
+            this.guideMesh?.dispose();
+            this.guideMesh = BABYLON.MeshBuilder.CreateBox("guideBox", {}, this.app.scene);
+            let guideMaterial = new BABYLON.StandardMaterial("guideMaterial", this.app.scene);
+            guideMaterial.alpha = 0.5; // Translucent
+            guideMaterial.diffuseColor = new BABYLON.Color3(0.0, 0.5, 0.0); // Grey color, adjust as needed
+            this.guideMesh.material = guideMaterial;
+            this.guideMeshBoundingInfo = this.currentInstance.getBoundingInfo();
+            this.guideMeshHeight = this.guideMeshBoundingInfo.boundingBox.extendSize.y * 2;
+            this.guideMesh.position = this.currentInstance.position.clone();
+
+            // Match the guide mesh size to the current instance
+            let boundingInfo = this.currentInstance.getBoundingInfo();
+            let size = boundingInfo.boundingBox.extendSize.scale(2); // Get size of the bounding box
+            this.guideMesh.scaling.copyFrom(size);
         }
 
         // Handling Esc key to clear currentInstance
@@ -66,16 +92,114 @@ class BuildMode {
 
         // Movement control for currentInstance
         if (this.currentInstance) {
-            const moveSpeed = 1;
-            if (this.app.keyPressed('W')) this.currentInstance.position.z -= moveSpeed;
-            if (this.app.keyPressed('S')) this.currentInstance.position.z += moveSpeed;
-            if (this.app.keyPressed('A')) this.currentInstance.position.x -= moveSpeed;
-            if (this.app.keyPressed('D')) this.currentInstance.position.x += moveSpeed;
-            if (this.app.keyPressed('R')) this.currentInstance.position.y += moveSpeed;
-            if (this.app.keyPressed('V')) this.currentInstance.position.y -= moveSpeed;
+            const moveSpeed = 0.1;
+            const gridSize = 2;
+            const marginOfError = 0.05; // Define a small margin of error
+            const lerpRate = 0.1; // Rate of interpolation
+            const lerpStopThreshold = 0.19; // Threshold to consider movement as stopped
+            const rotationAngle = Math.PI / 4; // 45 degrees in radians
 
-            // Ensure the object stays on the ground plane
-            this.currentInstance.position.y = Math.max(this.currentInstance.position.y, 0);
+            let moved = false;
+
+            // Initialize this.targetPosition if not already done
+            if (!this.targetPosition) {
+                this.targetPosition = this.currentInstance.position.clone();
+            }
+
+            // Get the forward vector of the camera and project it onto the ground plane
+            let forward = this.app.camera.getForwardRay().direction;
+            forward.y = 0;
+            forward.normalize();
+
+            // Calculate the right vector based on the forward vector
+            let right = BABYLON.Vector3.Cross(forward, BABYLON.Vector3.Up());
+            right.y = 0;
+            right.normalize();
+
+            if (this.app.keyDown('W')) {
+                // Move forward along the ground plane
+                this.targetPosition.addInPlace(forward.scale(moveSpeed));
+                moved = true;
+            }
+            if (this.app.keyDown('S')) {
+                // Move backward along the ground plane
+                this.targetPosition.subtractInPlace(forward.scale(moveSpeed));
+                moved = true;
+            }
+            if (this.app.keyDown('A')) {
+                // Move left along the ground plane
+                this.targetPosition.addInPlace(right.scale(moveSpeed));
+                moved = true;
+            }
+            if (this.app.keyDown('D')) {
+                // Move right along the ground plane
+                this.targetPosition.subtractInPlace(right.scale(moveSpeed));
+                moved = true;
+            }
+
+            if (this.app.keyDown('R')) {
+                this.targetPosition.y += moveSpeed;
+                moved = true;
+            }
+            if (this.app.keyDown('V')) {
+                this.targetPosition.y -= moveSpeed;
+                moved = true;
+            }
+
+            if (this.app.keyPressed('Z')) {
+                // Rotate 45 degrees to the left (counter-clockwise)
+                this.currentInstance.rotationQuaternion 
+                    = this.currentInstance.rotationQuaternion.multiply(BABYLON.Quaternion.RotationYawPitchRoll(-rotationAngle, 0, 0));
+                this.guideMesh.rotationQuaternion = this.currentInstance.rotationQuaternion.clone();
+            }
+            if (this.app.keyPressed('C')) {
+                // Rotate 45 degrees to the right (clockwise)
+                this.currentInstance.rotationQuaternion 
+                    = this.currentInstance.rotationQuaternion.multiply(BABYLON.Quaternion.RotationYawPitchRoll(rotationAngle, 0, 0));
+                this.guideMesh.rotationQuaternion = this.currentInstance.rotationQuaternion.clone();
+            }
+
+            if (moved) {
+                // Update the guide mesh to match the target position and the size of the current instance
+
+                
+
+                // Update the guide mesh position
+                this.guideMesh.position.copyFrom(this.targetPosition);
+                this.guideMesh.position.y -= this.guideMeshHeight / 2;
+
+                // Show the guide mesh
+                this.guideMesh.setEnabled(true);
+
+                this.app.camera.lockedTarget = this.guideMesh;
+
+            } else {
+                // User has stopped moving, start drifting towards the nearest snapped position
+                let snappedPosition = new BABYLON.Vector3(
+                    Math.round((this.targetPosition.x + Number.EPSILON) / gridSize) * gridSize,
+                    Math.round((this.targetPosition.y + Number.EPSILON) / gridSize) * gridSize,
+                    Math.round((this.targetPosition.z + Number.EPSILON) / gridSize) * gridSize
+                );
+                snappedPosition.y -= this.guideMeshHeight / 2;
+                //snappedPosition.y = Math.max(snappedPosition.y, 0); // Ensure the object stays on the ground plane
+                
+                // Gradually move the guide mesh towards the snapped position
+                this.guideMesh.position = BABYLON.Vector3.Lerp(this.guideMesh.position, snappedPosition, lerpRate);
+
+                // Check if the movement has effectively stopped
+                let distanceToTarget = BABYLON.Vector3.Distance(this.guideMesh.position, snappedPosition);
+                if (distanceToTarget < lerpStopThreshold) {
+                    //this.currentInstance.position.copyFrom(snappedPosition);
+                    //this.currentInstance.position.y -= this.guideMeshHeight / 2;
+                    this.currentInstance.position = BABYLON.Vector3.Lerp(this.currentInstance.position, snappedPosition, lerpRate);
+
+                    // Check if the movement has effectively stopped
+                    let distanceToTarget = BABYLON.Vector3.Distance(this.currentInstance.position, this.guideMesh.position);
+                    if (distanceToTarget < lerpStopThreshold) {
+
+                    }
+                }
+            }
         }
     }
 
