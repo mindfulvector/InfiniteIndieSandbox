@@ -1,4 +1,6 @@
 class BuildMode {
+    // The mode class' constructor is called when entering a mode, and
+    // the dispose method when exiting a mode.
     constructor(app) {
         this.app = app;
         this.selectedObjectIndex = 0; // Index of the selected object in BuildableObjectList
@@ -6,7 +8,19 @@ class BuildMode {
         this.gridSize = 10;
         this.lastUndoInstanceIndex = -1;
         this.lockMenuButtons = false;
+
+        // Set static UI strings once on mode load
         this.app.modeName.text = "BuildMode";
+    }
+
+    dispose() {
+        this.app.modeName.text = "Exiting BuildMode...";
+        this.disposeCurrentInstance();
+    }
+
+    disposeCurrentInstance() {
+        this.currentInstance?.dispose();
+        this.currentInstance = null;
     }
 
     update() {
@@ -40,9 +54,8 @@ class BuildMode {
         }
 
         // Handling Esc key to clear currentInstance
-        if (this.app.keyPressed('Escape')) {
-            this.currentInstance?.dispose();
-            this.currentInstance = null;
+        if (this.app.keyPressed('BACKSPACE')) {
+            this.disposeCurrentInstance();
         }
 
         // Handling Space key to clone currentInstance
@@ -66,18 +79,7 @@ class BuildMode {
         }
     }
 
-
-
     renderUI() {
-        // Use HTML/CSS to create UI elements
-        // Handle UI interactions with JavaScript
-    }
 
-    placeObject() {
-        // Logic to place an object in the scene
-    }
-
-    undoPlaceObject() {
-        // Logic to undo the placement of an object
     }
 }

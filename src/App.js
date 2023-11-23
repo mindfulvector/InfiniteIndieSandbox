@@ -1,6 +1,7 @@
 class App {
     constructor() {
         const app = this;
+        this.toastyTimer = 0;
 
         // Keyboard bindings
         this.keysPressed = {};
@@ -32,16 +33,22 @@ class App {
         this.gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
 
         // Create a text block
-        this.modeName = new BABYLON.GUI.TextBlock();
-        this.modeName.text = "[Loading...]";
-        this.modeName.color = "white";
-        this.modeName.fontSize = 15;
-        this.modeName.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
-        this.modeName.textVerticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
-        this.modeName.paddingTop = 20;
-
-        // Add the text block to the UI layer
-        this.gui.addControl(this.modeName);
+        this.modeName = this.TextBlock({
+            text: "[Loading...]",
+            color: "white",
+            fontSize: 15,
+            textHorizontalAlignment: BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER,
+            textVerticalAlignment: BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP,
+            paddingTop: 20,
+        });
+        this.message = this.TextBlock({
+            text: "",
+            color: "white",
+            fontSize: 15,
+            textHorizontalAlignment: BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER,
+            textVerticalAlignment: BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP,
+            paddingTop: 40,
+        });
 
         this.activeMode = new BuildMode(app);
 
@@ -64,12 +71,44 @@ class App {
             }
         });
 
-        // run the main render loop
+        // Run the main render loop
         app.engine.runRenderLoop(() => {
             this.scene.render();
-            this.activeMode.update();
-            this.activeMode.renderUI();
+            this.update();
+            if(null != this.activeMode) {
+                this.activeMode.update();
+            }
+
+            this.renderUI();
+            if(null != this.activeMode) {
+                this.activeMode.renderUI();
+            }
         });
+    }
+
+    // System-wide updates such as starting and existing particular modes
+    update() {
+        if(this.keyPressed('ESCAPE')) {
+            if(null != this.activeMode) {
+                this.activeMode.dispose();
+                this.activeMode = null;
+                this.modeName.text = "[NullMode]";
+            } else {
+                this.toasty('No active mode to exit!');
+            }
+        }
+
+        if(this.keyPressed('1')) {
+            if(null == this.activeMode) {
+                this.activeMode = new BuildMode(this);
+            } else {
+                this.toasty('Please exit the active mode first!');
+            }
+        }
+    }
+
+    renderUI() {
+
     }
 
     loadAsset(assetProps) {
@@ -80,13 +119,11 @@ class App {
             object.setParent(null);                     // Removes parent while preserving rotation, scale, position, etc.
             parent.dispose();                           // Get rid of the __root__ node
             object.isVisible = false;
-            console.log(object);
+            //console.log(object);
             let wo = new WorldObject('Wall', object);
-            console.log(wo);
+            //console.log(wo);
             this.BuildableObjectList.push(wo);  // Create the WorldObject with our actual mesh, this will use Thin Instances
         });
-    
-        
     }
 
     keyPressed(key) {
@@ -103,6 +140,30 @@ class App {
         if(typeof this.keysPressed[key.toUpperCase()] != 'undefined') {
             return this.keysPressed[key.toUpperCase()];
         }
+    }
+
+    toasty(message) {
+        let app = this;
+        this.message.text = message;
+        if(this.toastyTimer) {
+            clearTimeout(this.toastyTimer);
+        }
+        this.toastyTimer = setTimeout(() => {
+            app.toastyTimer = 0;
+            app.message.text = '';
+        }, 2000);
+    }
+
+    TextBlock(opts) {
+        let result = new BABYLON.GUI.TextBlock();
+        result.text = opts.text;
+        result.color = opts.color;
+        result.fontSize = opts.fontSize;
+        result.textHorizontalAlignment = opts.textHorizontalAlignment;
+        result.textVerticalAlignment = opts.textVerticalAlignment;
+        result.paddingTop = opts.paddingTop;
+        this.gui.addControl(result);
+        return result;
     }
 }
 new App();
