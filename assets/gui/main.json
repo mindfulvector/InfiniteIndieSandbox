@@ -1,0 +1,242 @@
+{
+    "root":
+    {
+        "tags": null,
+        "renderToIntermediateTexture": false,
+        "maxLayoutCycle": 3,
+        "adaptHeightToChildren": false,
+        "adaptWidthToChildren": false,
+        "background": "",
+        "metadata":
+        {
+            "_previousCenter":
+            {
+                "x": 1,
+                "y": 1
+            }
+        },
+        "isHitTestVisible": true,
+        "isPointerBlocker": false,
+        "isFocusInvisible": false,
+        "clipChildren": true,
+        "clipContent": true,
+        "useBitmapCache": false,
+        "shadowOffsetX": 0,
+        "shadowOffsetY": 0,
+        "shadowBlur": 0,
+        "shadowColor": "black",
+        "hoverCursor": "",
+        "alpha": 1,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "transformCenterY": 0.5,
+        "transformCenterX": 0.5,
+        "horizontalAlignment": 2,
+        "verticalAlignment": 2,
+        "fixedRatio": 0,
+        "fixedRatioMasterIsWidth": true,
+        "width": "100%",
+        "height": "100%",
+        "color": "",
+        "zIndex": 0,
+        "notRenderable": false,
+        "isVisible": true,
+        "descendantsOnlyPadding": false,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "paddingTop": "0px",
+        "paddingBottom": "0px",
+        "left": "0px",
+        "top": "0px",
+        "linkOffsetX": "0px",
+        "linkOffsetY": "0px",
+        "isEnabled": true,
+        "disabledColor": "#9a9a9a",
+        "disabledColorItem": "#6a6a6a",
+        "name": "root",
+        "className": "Container",
+        "children":
+        [
+            {
+                "tags": null,
+                "promptMessage": "Please enter text:",
+                "disableMobilePrompt": false,
+                "maxWidth": "60%",
+                "highligherOpacity": 0.4,
+                "onFocusSelectAll": false,
+                "textHighlightColor": "#d5e0ff",
+                "margin": "10px",
+                "autoStretchWidth": false,
+                "thickness": 1,
+                "focusedBackground": "#000000",
+                "focusedColor": "white",
+                "background": "#333333",
+                "placeholderColor": "gray",
+                "placeholderText": "",
+                "deadKey": false,
+                "text": "Input Text",
+                "width": "741.01px",
+                "metadata":
+                {
+                    "_previousCenter":
+                    {
+                        "x": -122.13500213623047,
+                        "y": -479.8550109863281
+                    },
+                    "localBounds":
+                    {
+                        "left": -370.505,
+                        "top": -13.035,
+                        "right": 370.505,
+                        "bottom": 19.43
+                    },
+                    "storedValues":
+                    {
+                        "left": 18.363455497473126,
+                        "top": 14.90565410304336,
+                        "right": 759.3734554974731,
+                        "bottom": 40.97565410304336
+                    }
+                },
+                "isHitTestVisible": true,
+                "isPointerBlocker": true,
+                "isFocusInvisible": false,
+                "clipChildren": true,
+                "clipContent": true,
+                "useBitmapCache": false,
+                "shadowOffsetX": 0,
+                "shadowOffsetY": 0,
+                "shadowBlur": 0,
+                "shadowColor": "black",
+                "hoverCursor": "",
+                "fontOffset":
+                {
+                    "ascent": 9,
+                    "height": 13,
+                    "descent": 4
+                },
+                "alpha": 1,
+                "scaleX": 1,
+                "scaleY": 1,
+                "rotation": 0,
+                "transformCenterY": 0.5,
+                "transformCenterX": 0.5,
+                "horizontalAlignment": 0,
+                "verticalAlignment": 0,
+                "fixedRatio": 0,
+                "fixedRatioMasterIsWidth": false,
+                "height": "32.47px",
+                "color": "#ffffff",
+                "zIndex": 0,
+                "notRenderable": false,
+                "isVisible": true,
+                "descendantsOnlyPadding": false,
+                "paddingLeft": "0px",
+                "paddingRight": "0px",
+                "paddingTop": "0px",
+                "paddingBottom": "0px",
+                "left": "18.36px",
+                "top": "14.91px",
+                "linkOffsetX": "0px",
+                "linkOffsetY": "0px",
+                "isEnabled": true,
+                "disabledColor": "#9a9a9a",
+                "disabledColorItem": "#6a6a6a",
+                "name": "InputText",
+                "className": "InputText"
+            },
+            {
+                "tags": null,
+                "resizeToFit": false,
+                "textWrapping": 1,
+                "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam sed.",
+                "textHorizontalAlignment": 0,
+                "textVerticalAlignment": 0,
+                "lineSpacing": "0px",
+                "outlineWidth": 0,
+                "underline": false,
+                "lineThrough": false,
+                "applyOutlineToUnderline": false,
+                "outlineColor": "white",
+                "wordDivider": " ",
+                "forceResizeWidth": false,
+                "metadata":
+                {
+                    "_previousCenter":
+                    {
+                        "x": -15.668973922729492,
+                        "y": -146.40731811523438
+                    },
+                    "localBounds":
+                    {
+                        "left": -289.5,
+                        "top": -307.12,
+                        "right": 663.84,
+                        "bottom": 307.12
+                    },
+                    "storedValues":
+                    {
+                        "left": 13.16,
+                        "top": 46.56,
+                        "right": 592.16,
+                        "bottom": 660.8
+                    }
+                },
+                "isHitTestVisible": true,
+                "isPointerBlocker": true,
+                "isFocusInvisible": false,
+                "clipChildren": true,
+                "clipContent": true,
+                "useBitmapCache": false,
+                "shadowOffsetX": 0,
+                "shadowOffsetY": 0,
+                "shadowBlur": 0,
+                "shadowColor": "black",
+                "hoverCursor": "",
+                "fontOffset":
+                {
+                    "ascent": 18,
+                    "height": 23,
+                    "descent": 5
+                },
+                "alpha": 1,
+                "scaleX": 1,
+                "scaleY": 1,
+                "rotation": 0,
+                "transformCenterY": 0.5,
+                "transformCenterX": 0.5,
+                "horizontalAlignment": 0,
+                "verticalAlignment": 0,
+                "fixedRatio": 0,
+                "fixedRatioMasterIsWidth": false,
+                "width": "953.34px",
+                "height": "614.24px",
+                "color": "#000000",
+                "zIndex": 0,
+                "notRenderable": false,
+                "isVisible": true,
+                "descendantsOnlyPadding": false,
+                "paddingLeft": "0px",
+                "paddingRight": "0px",
+                "paddingTop": "0px",
+                "paddingBottom": "0px",
+                "left": "18.661025684725274px",
+                "top": "57.472678786959435px",
+                "linkOffsetX": "0px",
+                "linkOffsetY": "0px",
+                "isEnabled": true,
+                "disabledColor": "#9a9a9a",
+                "disabledColorItem": "#6a6a6a",
+                "name": "Textblock",
+                "className": "TextBlock",
+                "fontFamily": "",
+                "fontSize": "20px",
+                "fontWeight": "",
+                "fontStyle": ""
+            }
+        ]
+    },
+    "width": 1024,
+    "height": 1024
+}
