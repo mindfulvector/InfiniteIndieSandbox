@@ -75,13 +75,16 @@ class App {
         // Load WorldObjects -- these are objects that can be built or are used by
         // built-in levels, etc. Basically, everything!
         this.BuildableObjectList = [];
+        //this.loadAsset({rootUrl: modelsBaseUrl, filename: 'pirates/Characters_Anne.gltf'});
+        //this.loadAsset({rootUrl: modelsBaseUrl, filename: 'cyberpunk/Platforms/Platform_2x2.gltf'});
         this.loadAsset(Assets.meshes.wall_glb);
         this.loadAsset(Assets.meshes.wallArch_glb);
         this.loadAsset(Assets.meshes.wallCorner_glb);
         this.loadAsset(Assets.meshes.rocks1_glb);
-        const modelsBaseUrl = './assets/models/';
-        //this.loadAsset({rootUrl: modelsBaseUrl, filename: 'pirates/Characters_Anne.gltf'});
-        this.loadAsset({rootUrl: modelsBaseUrl, filename: 'cyberpunk/Platforms/Platform_2x2.gltf'});
+        const modelsBaseUrl = './assets/';
+        this.loadAsset({rootUrl: modelsBaseUrl, filename: 'models/terrain/cube_floor1.gltf'});
+        this.loadAsset({rootUrl: modelsBaseUrl, filename: 'models/terrain/cube_with_top4.gltf'});
+        
         
         // Toggle the Babylon debug inspector
         window.addEventListener("keydown", (ev) => {
@@ -136,21 +139,49 @@ class App {
 
     loadAsset(assetProps) {
         // assetProps: { rootUrl: '', filename: '' }
-        BABYLON.SceneLoader.ImportMeshAsync("", assetProps.rootUrl, assetProps.filename).then((result) => {
-            let parent = result.meshes[0];              // The __root__ node
-            if(result.meshes.length == 2 && parent.name == '__root__') {
+        let app = this;
+        BABYLON.SceneLoader.ImportMeshAsync("", assetProps.rootUrl, assetProps.filename, this.scene).then((result) => {
+            // Check if the model is a single empty __root__ node with a single mesh under it
+            let parent = result.meshes[0];
+            if(result.meshes.length == 1) {
+                object = parent;
+                var nestedMeshes = false;
+            } else if(result.meshes.length == 2 && parent.name == '__root__') {
+                // If so, remove the root node and just save the child mesh so we can easily
+                // have instances instead of needing deep clones and cluttering up the scene
+                // graph.
                 var object = parent.getChildMeshes()[0];    // The real mesh
+                var nestedMeshes = false;
                 object.setParent(null);                     // Removes parent while preserving rotation, scale, position, etc.
                 parent.dispose();                           // Get rid of the __root__ node
                 object.isVisible = false;
-                //console.log(object);
             } else {
+                // Otherwise the model is more complex so we keep the root node and mark
+                // the world object as having nested meshes, this means it will be deep cloned
+                // wheen an instance is needed instead of a true instance being used (this
+                // still shared geometry though).
                 var object = result.meshes[0];
-                object.isVisible = false;
+                
+                let childMeshes = parent.getChildMeshes();
+                let min = childMeshes[0].getBoundingInfo().boundingBox.minimumWorld;
+                let max = childMeshes[0].getBoundingInfo().boundingBox.maximumWorld;
+                for(let i=0; i<childMeshes.length; i++){
+
+                    let meshMin = childMeshes[i].getBoundingInfo().boundingBox.minimumWorld;
+                    let meshMax = childMeshes[i].getBoundingInfo().boundingBox.maximumWorld;
+
+                    min = BABYLON.Vector3.Minimize(min, meshMin);
+                    max = BABYLON.Vector3.Maximize(max, meshMax);
+                    childMeshes[i].isVisible = false;
+
+                    console.log('i', [childMeshes[i], min, max]);
+                }
+                object.setBoundingInfo(new BABYLON.BoundingInfo(min, max));
+                //object.showBoundingBox = true;
+                var nestedMeshes = true;
             }
-            let wo = new WorldObject(assetProps.filename, object);
-            //console.log(wo);
-            this.BuildableObjectList.push(wo);  // Create the WorldObject with our actual mesh, this will use Thin Instances
+            let woNewAsset = new WorldObject(app, assetProps.filename, object, nestedMeshes);
+            this.BuildableObjectList.push(woNewAsset);
         });
     }
 
@@ -180,6 +211,14 @@ class App {
             app.toastyTimer = 0;
             app.message.text = '';
         }, 2000);
+    }
+
+    showAll(node) {
+        let app = this;
+        node.getChildren().forEach((mesh) => {
+            mesh.isVisible = true;
+            app.showAll(mesh);
+        })
     }
 
     TextBlock(opts) {

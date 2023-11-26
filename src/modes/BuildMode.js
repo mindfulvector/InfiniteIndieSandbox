@@ -27,6 +27,8 @@ class BuildMode {
     }
 
     update() {
+        let buildMode = this;
+
         if (this.app.BuildableObjectList.length === 0) {
             return; // No objects to place
         }
@@ -64,19 +66,29 @@ class BuildMode {
             this.app.camera.lockedTarget = this.currentInstance;
 
             this.guideMesh?.dispose();
-            this.guideMesh = BABYLON.MeshBuilder.CreateBox("guideBox", {}, this.app.scene);
+            
+            let parentDimensions = (this.currentInstance.getBoundingInfo().boundingBox.extendSizeWorld).scale(2);
+            this.guideMesh = BABYLON.MeshBuilder.CreateBox("bounding", { 
+                width: parentDimensions.x, 
+                height: parentDimensions.y, 
+                depth: parentDimensions.z}, this.scene);
+            //this.guideMesh = BABYLON.MeshBuilder.CreateBox("guideBox", {}, this.app.scene);
             let guideMaterial = new BABYLON.StandardMaterial("guideMaterial", this.app.scene);
             guideMaterial.alpha = 0.5; // Translucent
             guideMaterial.diffuseColor = new BABYLON.Color3(0.0, 0.5, 0.0); // Grey color, adjust as needed
             this.guideMesh.material = guideMaterial;
             this.guideMeshBoundingInfo = this.currentInstance.getBoundingInfo();
+            console.log('this.guideMeshBoundingInfo', this.guideMeshBoundingInfo);
             this.guideMeshHeight = this.guideMeshBoundingInfo.boundingBox.extendSize.y * 2;
             this.guideMesh.position = this.currentInstance.position.clone();
 
             // Match the guide mesh size to the current instance
-            let boundingInfo = this.currentInstance.getBoundingInfo();
-            let size = boundingInfo.boundingBox.extendSize.scale(2); // Get size of the bounding box
-            this.guideMesh.scaling.copyFrom(size);
+            //let boundingInfo = this.currentInstance.getBoundingInfo();
+            //let size = boundingInfo.boundingBox.extendSize.scale(2); // Get size of the bounding box
+            //this.guideMesh.scaling.copyFrom(size);
+
+
+            
         }
 
         // Handling Esc key to clear currentInstance

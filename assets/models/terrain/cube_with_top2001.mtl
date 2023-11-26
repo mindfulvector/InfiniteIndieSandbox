@@ -1,0 +1,38 @@
+# Wavefront MTL
+# Created by fragMOTION 1.3.7
+# http://www.fragmosoft.com
+
+newmtl Materialgras
+illum 2
+d 1
+ka 0.8 0.8 0.8
+kd 0.8 0.8 0.8
+ks 1 1 1
+ke 0 0 0
+ns 40
+newmtl Materialclay
+illum 2
+d 1
+ka 0.8 0.8 0.8
+kd 0.8 0.8 0.8
+ks 1 1 1
+ke 0 0 0
+ns 40
+newmtl Clay
+illum 2
+d 1
+ka 0.74902 0.74902 0.74902
+kd 0.74902 0.74902 0.74902
+ks 0 0 0
+ke 0 0 0
+ns 40
+map_kd D:\Dev\blitz3d\assets\textures\clay1_albedo.bmp
+newmtl Grass3
+illum 2
+d 1
+ka 0.74902 0.74902 0.74902
+kd 0.74902 0.74902 0.74902
+ks 0 0 0
+ke 0 0 0
+ns 40
+map_kd D:\Dev\blitz3d\assets\textures\grass3_albedo.bmp
