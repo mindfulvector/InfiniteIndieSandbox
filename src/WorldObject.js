@@ -9,8 +9,7 @@ class WorldObject {
     }
 
     // Create an instance or clone of this world object's meshes.
-    createInstance(x,y,z) {
-        let t = BABYLON.Matrix.Translation(x,y,z);
+    createInstance() {
         this.lastInstanceId += 1;
         if(this.nestedMeshes) {
             var inst = this.mesh.clone(this.name + '[' + this.lastInstanceId + ']');

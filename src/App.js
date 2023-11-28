@@ -229,6 +229,7 @@ class App {
         let app = this;
         node.getChildren().forEach((mesh) => {
             mesh.isVisible = true;
+            mesh.checkCollisions = true;
             app.showAll(mesh);
         })
     }

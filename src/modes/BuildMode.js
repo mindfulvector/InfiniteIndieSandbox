@@ -51,17 +51,30 @@ class BuildMode {
             objectChanged = true;
         }
 
+        // Handling Esc key to clear currentInstance
+        if (this.app.keyPressed('BACKSPACE')) {
+            this.disposeCurrentInstance();
+        }
+
+        let placementPosition = false;
+
+        // Handling Space key to clone currentInstance
+        if (this.currentInstance && this.app.keyPressed(' ')) {
+            //const clone = this.currentInstance.clone();
+            //clone.checkCollisions = true;
+            //this.app.scene.addMesh(clone);
+            placementPosition = this.currentInstance.position;
+            this.currentInstance = null;
+            objectChanged = true;
+        }
+
         if (objectChanged) {
-            let position = false;
-            if (this.currentInstance) {
-                position = this.currentInstance.position;
-            }
             this.currentInstance?.dispose();
             const worldObject = this.app.BuildableObjectList[this.selectedObjectIndex];
             console.log(worldObject);
-            this.currentInstance = worldObject.createInstance(-2, 0, 0);
-            if (position) {
-                this.currentInstance.position = position;
+            this.currentInstance = worldObject.createInstance();
+            if (placementPosition) {
+                this.currentInstance.position = placementPosition;
             }
             this.app.camera.lockedTarget = this.currentInstance;
 
@@ -86,21 +99,6 @@ class BuildMode {
             //let boundingInfo = this.currentInstance.getBoundingInfo();
             //let size = boundingInfo.boundingBox.extendSize.scale(2); // Get size of the bounding box
             //this.guideMesh.scaling.copyFrom(size);
-
-
-            
-        }
-
-        // Handling Esc key to clear currentInstance
-        if (this.app.keyPressed('BACKSPACE')) {
-            this.disposeCurrentInstance();
-        }
-
-        // Handling Space key to clone currentInstance
-        if (this.app.keyPressed(' ')) {
-            const clone = this.currentInstance.clone();
-            clone.checkCollisions = true;
-            this.app.scene.addMesh(clone);
         }
 
         // Movement control for currentInstance
