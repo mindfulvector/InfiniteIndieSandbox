@@ -2,6 +2,11 @@ class App {
     constructor() {
         const app = this;
         this.toastyTimer = 0;
+        this.menu = {
+            state: 0,               // no menu displayed
+            renderedState: 0,       // if the two numbers are different we need to update the menu
+            controls: [],
+        };
 
         // Keyboard bindings
         this.keysPressed = {};
@@ -72,7 +77,15 @@ class App {
             textVerticalAlignment: BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP,
             paddingTop: 40,
         });
-
+        
+        this.tips = this.TextBlock({
+            text: "Press Esc for menu. W/A/S/D to move object/avatar. R/V to raise/lower object. Z/C to rotate object. Space to place object/jump.",
+            color: "white",
+            fontSize: 15,
+            textHorizontalAlignment: BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER,
+            textVerticalAlignment: BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP,
+            paddingTop: 60,
+        });
 
         this.activeMode = new BuildMode(app);
 
@@ -116,13 +129,25 @@ class App {
         });
     }
 
+    goto_buildMode() {
+        this.activeMode?.dispose();
+        this.activeMode = new BuildMode(this);
+        this.menu.state = 0;             // none, close menu
+    }
+    goto_playMode() {
+        this.activeMode?.dispose();
+        this.activeMode = new PlayMode(this);
+        this.menu.state = 0;             // none, close menu
+    }
+
     // System-wide updates such as starting and existing particular modes
     update() {
         if(this.keyPressed('ESCAPE')) {
             if(null != this.activeMode) {
-                this.activeMode.dispose();
+                this.activeMode?.dispose();
                 this.activeMode = null;
                 this.modeName.text = "[NullMode]";
+                this.menu.state = 1;             // main pause menu
             } else {
                 this.toasty('No active mode to exit!');
             }
@@ -130,23 +155,96 @@ class App {
 
         if(this.keyPressed('1')) {
             if(null == this.activeMode) {
-                this.activeMode = new BuildMode(this);
+                this.goto_buildMode();
             } else {
-                this.toasty('Please exit the active mode first!');
+                this.toasty('Please exit the active mode first! (press Esc)');
             }
         }
 
         if(this.keyPressed('2')) {
             if(null == this.activeMode) {
-                this.activeMode = new PlayMode(this);
+                this.goto_playMode();
             } else {
-                this.toasty('Please exit the active mode first!');
+                this.toasty('Please exit the active mode first! (press Esc)');
             }
         }
     }
 
     renderUI() {
+        const app = this;
 
+        if(this.menu.renderedState != this.menu.state) {
+            
+            switch(this.menu.state) {
+            case 0:                                     // remove any menu that is visible
+                this.menu.controls.forEach((button) => {
+                    button?.dispose();
+                });
+                break;
+            case 1:                                     // pause menu
+                const gradient = new BABYLON.GUI.LinearGradient(500, 900, 500, 600);
+                gradient.addColorStop(0, "blue");
+                gradient.addColorStop(1, "darkBlue");
+
+                const rectangle = new BABYLON.GUI.Rectangle("pauseMenu");
+                rectangle.left = "0%";
+                rectangle.top = "0%";
+                rectangle.width = "50%";
+                rectangle.height = "50%";
+                rectangle.color = "#FFFFFF";
+                rectangle.fontSize = 16;
+                rectangle.backgroundGradient = gradient;
+                rectangle.thickness = 2;
+                this.gui.addControl(rectangle);
+                this.menu.controls.push(rectangle);
+
+                const button1 = new BABYLON.GUI.TextBlock();
+                button1.left = "0%";
+                button1.top = "-23%";
+                button1.width = "48%";
+                button1.height = "30px";
+                button1.color = "#FFFFFF";
+                button1.backgroundGradient = gradient;
+                button1.thickness = 2;
+                button1.text = "Pause Menu";
+                
+                this.gui.addControl(button1);
+                this.menu.controls.push(button1);
+
+                const button2 = BABYLON.GUI.Button.CreateSimpleButton("button1", "1. Build Mode");
+                button2.left = "0%";
+                button2.top = "-20%";
+                button2.width = "48%";
+                button2.height = "30px";
+                button2.color = "#FFFFFF";
+                button2.backgroundGradient = gradient;
+                button2.thickness = 2;
+                button2.onPointerUpObservable.add(() => {
+                    app.goto_buildMode();
+                });
+                this.gui.addControl(button2);
+                this.menu.controls.push(button2);
+
+                const button3 = BABYLON.GUI.Button.CreateSimpleButton("button1", "2. Play Mode");
+                button3.left = "0%";
+                button3.top = "-17%";
+                button3.width = "48%";
+                button3.height = "30px";
+                button3.color = "#FFFFFF";
+                button3.backgroundGradient = gradient;
+                button3.thickness = 2;
+                button3.onPointerUpObservable.add(() => {
+                    app.goto_playMode();
+                });
+                this.gui.addControl(button3);
+                this.menu.controls.push(button3);
+
+                break;
+            }
+
+            // so we don't try to render again, remember which state we last rendered
+            this.menu.renderedState = this.menu.state;
+        }
     }
 
     loadAsset(assetProps) {
