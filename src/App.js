@@ -44,6 +44,10 @@ class App {
         var light1 = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(1, 1, 0), this.scene);
         this.defaultSphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 1 }, this.scene);
 
+        var box2 = BABYLON.Mesh.CreateBox("box2", 2, this.scene);
+        box2.checkCollisions = true;
+        //box2.position = new BABYLON.Vector3(0, 8, 7);
+
         // Temporary camera target during loading
         this.camera.lockedTarget = this.defaultSphere;
 
@@ -82,8 +86,8 @@ class App {
         this.loadAsset(Assets.meshes.wallCorner_glb);
         this.loadAsset(Assets.meshes.rocks1_glb);
         const modelsBaseUrl = './assets/';
-        this.loadAsset({rootUrl: modelsBaseUrl, filename: 'models/terrain/cube_floor1.gltf'});
-        this.loadAsset({rootUrl: modelsBaseUrl, filename: 'models/terrain/cube_with_top4.gltf'});
+        this.loadAsset({rootUrl: modelsBaseUrl, filename: 'models/terrain/cube_terrains_floor_1x1.gltf'});
+        this.loadAsset({rootUrl: modelsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf'});
         
         
         // Toggle the Babylon debug inspector
@@ -127,6 +131,14 @@ class App {
         if(this.keyPressed('1')) {
             if(null == this.activeMode) {
                 this.activeMode = new BuildMode(this);
+            } else {
+                this.toasty('Please exit the active mode first!');
+            }
+        }
+
+        if(this.keyPressed('2')) {
+            if(null == this.activeMode) {
+                this.activeMode = new PlayMode(this);
             } else {
                 this.toasty('Please exit the active mode first!');
             }

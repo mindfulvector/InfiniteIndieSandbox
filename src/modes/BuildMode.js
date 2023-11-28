@@ -99,6 +99,7 @@ class BuildMode {
         // Handling Space key to clone currentInstance
         if (this.app.keyPressed(' ')) {
             const clone = this.currentInstance.clone();
+            clone.checkCollisions = true;
             this.app.scene.addMesh(clone);
         }
 
