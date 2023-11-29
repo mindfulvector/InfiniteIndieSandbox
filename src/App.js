@@ -1,7 +1,13 @@
+const MENU_HUD = 0;
+const MENU_MAIN = 1;
+const MENU_PAUSE = 2;
+const MENU_NEW_GAME_FAKE = 3;
+
 class App {
     constructor() {
         const app = this;
         this.toastyTimer = 0;
+        app.world = null;
         this.menu = {
             state: 0,               // no menu displayed
             renderedState: 0,       // if the two numbers are different we need to update the menu
@@ -62,7 +68,7 @@ class App {
 
         // Create a text block
         this.modeName = this.TextBlock({
-            text: "[Loading...]",
+            text: "Welcome to the Infinite Indie Sandbox!",
             color: "white",
             fontSize: 15,
             textHorizontalAlignment: BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER,
@@ -87,21 +93,13 @@ class App {
             paddingTop: 60,
         });
 
-        this.activeMode = new BuildMode(app);
+        //this.activeMode = new BuildMode(app);
 
         // Load WorldObjects -- these are objects that can be built or are used by
         // built-in levels, etc. Basically, everything!
         this.BuildableObjectList = [];
-        //this.loadAsset({rootUrl: modelsBaseUrl, filename: 'pirates/Characters_Anne.gltf'});
-        //this.loadAsset({rootUrl: modelsBaseUrl, filename: 'cyberpunk/Platforms/Platform_2x2.gltf'});
-        this.loadAsset(Assets.meshes.wall_glb);
-        this.loadAsset(Assets.meshes.wallArch_glb);
-        this.loadAsset(Assets.meshes.wallCorner_glb);
-        this.loadAsset(Assets.meshes.rocks1_glb);
-        const modelsBaseUrl = './assets/';
-        this.loadAsset({rootUrl: modelsBaseUrl, filename: 'models/terrain/cube_terrains_floor_1x1.gltf'});
-        this.loadAsset({rootUrl: modelsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf'});
-        
+
+        new Manifest(this);
         
         // Toggle the Babylon debug inspector
         window.addEventListener("keydown", (ev) => {
@@ -114,17 +112,25 @@ class App {
             }
         });
 
+        this.menu.state = MENU_MAIN;
+
         // Run the main render loop
         app.engine.runRenderLoop(() => {
             this.scene.render();
             this.update();
-            if(null != this.activeMode) {
-                this.activeMode.update();
+
+            if(this.menu.state == MENU_HUD) {
+                if(null != this.activeMode) {
+                    this.activeMode.update();
+                }
             }
 
             this.renderUI();
-            if(null != this.activeMode) {
-                this.activeMode.renderUI();
+
+            if(this.menu.state == MENU_HUD) {
+                if(null != this.activeMode) {
+                    this.activeMode.renderUI();
+                }
             }
         });
     }
@@ -142,30 +148,32 @@ class App {
 
     // System-wide updates such as starting and existing particular modes
     update() {
-        if(this.keyPressed('ESCAPE')) {
-            if(null != this.activeMode) {
-                this.activeMode?.dispose();
-                this.activeMode = null;
-                this.modeName.text = "[NullMode]";
-                this.menu.state = 1;             // main pause menu
-            } else {
-                this.toasty('No active mode to exit!');
+        if(this.menu.state != MENU_MAIN) {
+            if(this.keyPressed('ESCAPE')) {
+                if(null != this.activeMode) {
+                    this.activeMode?.dispose();
+                    this.activeMode = null;
+                    this.modeName.text = "[NullMode]";
+                    this.menu.state = MENU_PAUSE;
+                } else {
+                    this.toasty('No active mode to exit!');
+                }
             }
-        }
 
-        if(this.keyPressed('1')) {
-            if(null == this.activeMode) {
-                this.goto_buildMode();
-            } else {
-                this.toasty('Please exit the active mode first! (press Esc)');
+            if(this.keyPressed('1')) {
+                if(null == this.activeMode) {
+                    this.goto_buildMode();
+                } else {
+                    this.toasty('Please exit the active mode first! (press Esc)');
+                }
             }
-        }
 
-        if(this.keyPressed('2')) {
-            if(null == this.activeMode) {
-                this.goto_playMode();
-            } else {
-                this.toasty('Please exit the active mode first! (press Esc)');
+            if(this.keyPressed('2')) {
+                if(null == this.activeMode) {
+                    this.goto_playMode();
+                } else {
+                    this.toasty('Please exit the active mode first! (press Esc)');
+                }
             }
         }
     }
@@ -174,76 +182,167 @@ class App {
         const app = this;
 
         if(this.menu.renderedState != this.menu.state) {
-            
+            const activeMenuState = this.menu.state;
+
+            // Remove any menu that is visible before building new menu
+            this.menu.controls.forEach((button) => {
+                button?.dispose();
+            });
+
             switch(this.menu.state) {
-            case 0:                                     // remove any menu that is visible
-                this.menu.controls.forEach((button) => {
-                    button?.dispose();
-                });
-                break;
-            case 1:                                     // pause menu
-                const gradient = new BABYLON.GUI.LinearGradient(500, 900, 500, 600);
-                gradient.addColorStop(0, "blue");
-                gradient.addColorStop(1, "darkBlue");
-
-                const rectangle = new BABYLON.GUI.Rectangle("pauseMenu");
-                rectangle.left = "0%";
-                rectangle.top = "0%";
-                rectangle.width = "50%";
-                rectangle.height = "50%";
-                rectangle.color = "#FFFFFF";
-                rectangle.fontSize = 16;
-                rectangle.backgroundGradient = gradient;
-                rectangle.thickness = 2;
-                this.gui.addControl(rectangle);
-                this.menu.controls.push(rectangle);
-
-                const button1 = new BABYLON.GUI.TextBlock();
-                button1.left = "0%";
-                button1.top = "-23%";
-                button1.width = "48%";
-                button1.height = "30px";
-                button1.color = "#FFFFFF";
-                button1.backgroundGradient = gradient;
-                button1.thickness = 2;
-                button1.text = "Pause Menu";
+            case MENU_HUD:                                      // Not really a "menu", just the HUD GUI
                 
-                this.gui.addControl(button1);
-                this.menu.controls.push(button1);
+                break;
+            case MENU_MAIN:                                     // Menu before loading a world
+                this.MenuRect();
 
-                const button2 = BABYLON.GUI.Button.CreateSimpleButton("button1", "1. Build Mode");
-                button2.left = "0%";
-                button2.top = "-20%";
-                button2.width = "48%";
-                button2.height = "30px";
-                button2.color = "#FFFFFF";
-                button2.backgroundGradient = gradient;
-                button2.thickness = 2;
-                button2.onPointerUpObservable.add(() => {
-                    app.goto_buildMode();
+                this.MenuItem({
+                    type: 'text',
+                    name: 'menuLabel',
+                    text: 'Welcome to...',
                 });
-                this.gui.addControl(button2);
-                this.menu.controls.push(button2);
+                
+                this.MenuItem({
+                    type: 'text',
+                    name: 'menuLabel',
+                    text: '',
+                });
+                
+                this.MenuItem({
+                    type: 'text',
+                    name: 'menuLabel',
+                    text: 'the',
+                });
+                
 
-                const button3 = BABYLON.GUI.Button.CreateSimpleButton("button1", "2. Play Mode");
-                button3.left = "0%";
-                button3.top = "-17%";
-                button3.width = "48%";
-                button3.height = "30px";
-                button3.color = "#FFFFFF";
-                button3.backgroundGradient = gradient;
-                button3.thickness = 2;
-                button3.onPointerUpObservable.add(() => {
-                    app.goto_playMode();
+                this.MenuItem({
+                    type: 'text',
+                    name: 'menuLabel',
+                    text: 'INFINITE',
                 });
-                this.gui.addControl(button3);
-                this.menu.controls.push(button3);
+                this.MenuItem({
+                    type: 'text',
+                    name: 'menuLabel',
+                    text: 'I N D I E',
+                });
+                this.MenuItem({
+                    type: 'text',
+                    name: 'menuLabel',
+                    text: 'S  A  N  D  B  O  X !',
+                });
+                
+                this.MenuItem({
+                    type: 'text',
+                    name: 'menuLabel',
+                    text: '',
+                });
+                
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnNew',
+                    text: '1. New Game',
+                    handler: () => {
+                        app.menu.state = MENU_HUD;
+                        app.world = new SandboxWorld(app);
+                        app.world.clearWorld();
+                        app.goto_playMode();
+                    }
+                });
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnLoad',
+                    text: '2. Load Game',
+                    handler: () => {
+                        app.world = new SandboxWorld(app);
+                        app.world.loadFromSlot(1);
+                        app.goto_playMode();
+                        app.menu.state = MENU_HUD;
+                    }
+                });
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnAbout',
+                    text: '3. About',
+                    handler: () => {
+                        
+                    }
+                });
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnAbout',
+                    text: '4. Quit',
+                    handler: () => {
+                        
+                    }
+                });
+                break;
+            case MENU_PAUSE:                                    // Esc menu when playing
+                this.MenuRect();
+
+                this.MenuItem({
+                    type: 'text',
+                    name: 'menuLabel',
+                    text: '-- Pause Menu --',
+                });
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnBuild',
+                    text: '1. Build Mode',
+                    handler: () => {
+                        app.goto_buildMode();
+                    }
+                });
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnResume',
+                    text: '2. Play Mode',
+                    handler: () => {
+                        app.goto_playMode();
+                    }
+                });
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnSave',
+                    text: '3. Save Game',
+                    handler: () => {
+                        app.world.saveToSlot(1);
+                    }
+                });
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnLoad',
+                    text: '4. Load Game',
+                    handler: () => {
+                        app.world = new SandboxWorld(app);
+                        app.world.loadFromSlot(1);
+                        app.goto_playMode();
+                        app.menu.state = MENU_HUD;
+                    }
+                });
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnLoad',
+                    text: '5. Quit to Main Menu',
+                    handler: () => {
+                        app.menu.state = MENU_MAIN;
+                    }
+                });
+
 
                 break;
+            
             }
 
             // so we don't try to render again, remember which state we last rendered
-            this.menu.renderedState = this.menu.state;
+            this.menu.renderedState = activeMenuState;
         }
     }
 
@@ -284,7 +383,7 @@ class App {
                     max = BABYLON.Vector3.Maximize(max, meshMax);
                     childMeshes[i].isVisible = false;
 
-                    console.log('i', [childMeshes[i], min, max]);
+                    //console.log('i', [childMeshes[i], min, max]);
                 }
                 object.setBoundingInfo(new BABYLON.BoundingInfo(min, max));
                 //object.showBoundingBox = true;
@@ -342,6 +441,66 @@ class App {
         result.paddingTop = opts.paddingTop;
         this.gui.addControl(result);
         return result;
+    }
+
+    // Background and frame of popup menu
+    MenuRect(opts) {
+        const gradient = new BABYLON.GUI.LinearGradient(500, 900, 500, 600);
+        gradient.addColorStop(0, "blue");
+        gradient.addColorStop(1, "darkBlue");
+
+        const rectangle = new BABYLON.GUI.Rectangle("menuRect");
+        rectangle.left = "0%";
+        rectangle.top = "0%";
+        rectangle.width = "50%";
+        rectangle.height = "50%";
+        rectangle.color = "#FFFFFF";
+        rectangle.fontSize = 16;
+        rectangle.backgroundGradient = gradient;
+        rectangle.thickness = 2;
+        this.gui.addControl(rectangle);
+        this.menu.controls.push(rectangle);
+
+        // Reset top of menu items created with this.MenuItem
+        this.menu.nextTop = -23;
+    }
+
+    // Item within popup menu
+    MenuItem(opts) {
+        const gradient = new BABYLON.GUI.LinearGradient(500, 900, 500, 600);
+        gradient.addColorStop(0, "blue");
+        gradient.addColorStop(1, "darkBlue");
+
+        switch(opts.type) {
+        case 'text':    
+            const textItem = new BABYLON.GUI.TextBlock();
+            textItem.left = "0%";
+            textItem.top = this.menu.nextTop+"%";
+            textItem.width = "48%";
+            textItem.height = "30px";
+            textItem.color = "#FFFFFF";
+            textItem.backgroundGradient = gradient;
+            textItem.thickness = 2;
+            textItem.text = opts.text;
+            this.gui.addControl(textItem);
+            this.menu.controls.push(textItem);
+            this.menu.nextTop += 3;
+            break;
+        case 'button':
+            const buttonItem = BABYLON.GUI.Button.CreateSimpleButton(opts.name, opts.text);
+            buttonItem.left = "0%";
+            buttonItem.top = this.menu.nextTop+"%";
+            buttonItem.width = "48%";
+            buttonItem.height = "30px";
+            buttonItem.color = "#FFFFFF";
+            buttonItem.backgroundGradient = gradient;
+            buttonItem.thickness = 2;
+            buttonItem.onPointerUpObservable.add(opts.handler);
+            this.gui.addControl(buttonItem);
+            this.menu.controls.push(buttonItem);
+            this.menu.nextTop += 3;
+            break;
+        }
     }
 }
 new App();

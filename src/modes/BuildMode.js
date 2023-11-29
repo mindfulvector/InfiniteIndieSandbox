@@ -63,7 +63,7 @@ class BuildMode {
             //const clone = this.currentInstance.clone();
             //clone.checkCollisions = true;
             //this.app.scene.addMesh(clone);
-            placementPosition = this.currentInstance.position;
+            placementPosition = this.currentInstance.position.clone();
             this.currentInstance = null;
             objectChanged = true;
         }

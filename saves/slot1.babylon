@@ -1,0 +1,380 @@
+{
+    "autoClear": true,
+    "clearColor":
+    [
+        0.2,
+        0.2,
+        0.3,
+        1
+    ],
+    "ambientColor":
+    [
+        0,
+        0,
+        0
+    ],
+    "gravity":
+    [
+        0,
+        -9.807,
+        0
+    ],
+    "collisionsEnabled": true,
+    "useRightHandedSystem": false,
+    "morphTargetManagers":
+    [],
+    "lights":
+    [],
+    "cameras":
+    [],
+    "activeCameraID": "Camera",
+    "animations":
+    [],
+    "materials":
+    [],
+    "multiMaterials":
+    [],
+    "environmentIntensity": 1,
+    "skeletons":
+    [],
+    "transformNodes":
+    [
+        {
+            "tags": null,
+            "position":
+            [
+                0.000005564026650972664,
+                -0.2041395604610443,
+                -0.01269543170928955
+            ],
+            "rotation":
+            [
+                0,
+                0,
+                0
+            ],
+            "rotationQuaternion":
+            [
+                0,
+                0,
+                0,
+                1
+            ],
+            "scaling":
+            [
+                5,
+                5,
+                5
+            ],
+            "billboardMode": 0,
+            "scalingDeterminant": 1,
+            "infiniteDistance": false,
+            "ignoreNonUniformScaling": false,
+            "reIntegrateRotationIntoRotationQuaternion": false,
+            "name": "world.models/terrain/cube_terrains_cube_1x1.gltf[1].Grass.Dirt.Cube.1x1.001",
+            "id": "world.models/terrain/cube_terrains_cube_1x1.gltf[1].Grass.Dirt.Cube.1x1.001",
+            "state": "",
+            "metadata":
+            {},
+            "type": "TransformNode",
+            "uniqueId": 147,
+            "parentId": 146,
+            "localMatrix":
+            {
+                "0": 1,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 1,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 1,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 1
+            },
+            "isEnabled": true
+        }
+    ],
+    "geometries":
+    {
+        "boxes":
+        [],
+        "spheres":
+        [],
+        "cylinders":
+        [],
+        "toruses":
+        [],
+        "grounds":
+        [],
+        "planes":
+        [],
+        "torusKnots":
+        [],
+        "vertexData":
+        []
+    },
+    "meshes":
+    [
+        {
+            "name": "world.models/terrain/cube_terrains_cube_1x1.gltf[1]",
+            "id": "world.models/terrain/cube_terrains_cube_1x1.gltf[1].__root__",
+            "uniqueId": 146,
+            "type": "Mesh",
+            "position":
+            [
+                0,
+                0,
+                0
+            ],
+            "rotationQuaternion":
+            [
+                0,
+                1,
+                0,
+                0
+            ],
+            "scaling":
+            [
+                1,
+                1,
+                -1
+            ],
+            "pivotMatrix":
+            {
+                "0": 1,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 1,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 1,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 1
+            },
+            "isEnabled": true,
+            "isVisible": true,
+            "infiniteDistance": false,
+            "pickable": true,
+            "receiveShadows": false,
+            "billboardMode": 0,
+            "visibility": 1,
+            "checkCollisions": false,
+            "isBlocker": false,
+            "overrideMaterialSideOrientation": null,
+            "isUnIndexed": false,
+            "materialUniqueId": 12,
+            "materialId": "default material",
+            "instances":
+            [],
+            "animations":
+            [],
+            "ranges":
+            [],
+            "layerMask": 268435455,
+            "alphaIndex": 1.7976931348623157E+308,
+            "hasVertexAlpha": false,
+            "overlayAlpha": 0.5,
+            "overlayColor":
+            [
+                1,
+                0,
+                0
+            ],
+            "applyFog": true
+        },
+        {
+            "name": "world.models/terrain/cube_terrains_cube_1x1.gltf[1].Grass.Dirt.Cube.1x1.001.Grass.Dirt.Cube.1x1.001_primitive0",
+            "id": "world.models/terrain/cube_terrains_cube_1x1.gltf[1].Grass.Dirt.Cube.1x1.001.Grass.Dirt.Cube.1x1.001_primitive0.Grass.Dirt.Cube.1x1.001_primitive0",
+            "uniqueId": 148,
+            "type": "Mesh",
+            "position":
+            [
+                0,
+                0,
+                0
+            ],
+            "rotation":
+            [
+                0,
+                0,
+                0
+            ],
+            "scaling":
+            [
+                1,
+                1,
+                1
+            ],
+            "pivotMatrix":
+            {
+                "0": 1,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 1,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 1,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 1
+            },
+            "isEnabled": true,
+            "isVisible": true,
+            "infiniteDistance": false,
+            "pickable": true,
+            "receiveShadows": false,
+            "billboardMode": 0,
+            "visibility": 1,
+            "checkCollisions": true,
+            "isBlocker": false,
+            "overrideMaterialSideOrientation": 0,
+            "parentId": 147,
+            "isUnIndexed": false,
+            "geometryUniqueId": 43,
+            "geometryId": "Grass.Dirt.Cube.1x1.001_primitive0",
+            "subMeshes":
+            [
+                {
+                    "materialIndex": 0,
+                    "verticesStart": 0,
+                    "verticesCount": 100,
+                    "indexStart": 0,
+                    "indexCount": 150
+                }
+            ],
+            "materialUniqueId": 44,
+            "materialId": "Dirt.001",
+            "metadata":
+            {},
+            "instances":
+            [],
+            "animations":
+            [],
+            "ranges":
+            [],
+            "layerMask": 268435455,
+            "alphaIndex": 1.7976931348623157E+308,
+            "hasVertexAlpha": false,
+            "overlayAlpha": 0.5,
+            "overlayColor":
+            [
+                1,
+                0,
+                0
+            ],
+            "applyFog": true
+        },
+        {
+            "name": "world.models/terrain/cube_terrains_cube_1x1.gltf[1].Grass.Dirt.Cube.1x1.001.Grass.Dirt.Cube.1x1.001_primitive1",
+            "id": "world.models/terrain/cube_terrains_cube_1x1.gltf[1].Grass.Dirt.Cube.1x1.001.Grass.Dirt.Cube.1x1.001_primitive1.Grass.Dirt.Cube.1x1.001_primitive1",
+            "uniqueId": 149,
+            "type": "Mesh",
+            "position":
+            [
+                0,
+                0,
+                0
+            ],
+            "rotation":
+            [
+                0,
+                0,
+                0
+            ],
+            "scaling":
+            [
+                1,
+                1,
+                1
+            ],
+            "pivotMatrix":
+            {
+                "0": 1,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 1,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 1,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 1
+            },
+            "isEnabled": true,
+            "isVisible": true,
+            "infiniteDistance": false,
+            "pickable": true,
+            "receiveShadows": false,
+            "billboardMode": 0,
+            "visibility": 1,
+            "checkCollisions": true,
+            "isBlocker": false,
+            "overrideMaterialSideOrientation": 0,
+            "parentId": 147,
+            "isUnIndexed": false,
+            "geometryUniqueId": 47,
+            "geometryId": "Grass.Dirt.Cube.1x1.001_primitive1",
+            "subMeshes":
+            [
+                {
+                    "materialIndex": 0,
+                    "verticesStart": 0,
+                    "verticesCount": 132,
+                    "indexStart": 0,
+                    "indexCount": 198
+                }
+            ],
+            "materialUniqueId": 48,
+            "materialId": "Grass.002",
+            "metadata":
+            {},
+            "instances":
+            [],
+            "animations":
+            [],
+            "ranges":
+            [],
+            "layerMask": 268435455,
+            "alphaIndex": 1.7976931348623157E+308,
+            "hasVertexAlpha": false,
+            "overlayAlpha": 0.5,
+            "overlayColor":
+            [
+                1,
+                0,
+                0
+            ],
+            "applyFog": true
+        }
+    ],
+    "particleSystems":
+    [],
+    "postProcesses":
+    []
+}

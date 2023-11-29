@@ -12,14 +12,20 @@ class WorldObject {
     createInstance() {
         this.lastInstanceId += 1;
         if(this.nestedMeshes) {
-            var inst = this.mesh.clone(this.name + '[' + this.lastInstanceId + ']');
+            var inst = this.mesh.clone('world.'+this.name + '[' + this.lastInstanceId + ']');
         } else {
-            var inst = this.mesh.createInstance(this.name + '[' + this.lastInstanceId + ']');
+            var inst = this.mesh.createInstance('world.'+this.name + '[' + this.lastInstanceId + ']');
         }
-        console.log('inst', inst);
+        //console.log('inst', inst);
         this.app.showAll(inst);
         this.instances[this.lastInstanceId] = inst;
         //console.log('createInstance:', inst);
         return inst;
+    }
+
+    disposeAllInstances() {
+        this.instances.forEach((inst) => {
+            inst.dispose();
+        });
     }
 }
