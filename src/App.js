@@ -1,7 +1,8 @@
 const MENU_HUD = 0;
 const MENU_MAIN = 1;
 const MENU_PAUSE = 2;
-const MENU_NEW_GAME_FAKE = 3;
+const MENU_SAVE = 3;
+const MENU_LOAD = 4;
 
 class App {
     constructor() {
@@ -178,16 +179,114 @@ class App {
         }
     }
 
+    triggerMenuItem(menuState, menuItem) {
+        const app = this;
+        switch(menuState) {
+        case MENU_MAIN:
+            switch(menuItem) {
+            case 1:                                 // New Game
+                app.menu.state = MENU_HUD;
+                app.world = new SandboxWorld(app);
+                app.world.clearWorld();
+                app.goto_playMode();
+                break;
+            case 2:                                 // Load Game
+                app.menu.prevState = MENU_MAIN;     // So we cancel back to the right place
+                app.menu.state = MENU_LOAD;
+                break;
+            case 3:                                 // About
+                break;
+            case 4:                                 // Quit
+                break;
+            }
+            break;
+        case MENU_PAUSE:
+            switch(menuItem) {
+            case 1:                                 // Build Mode
+                app.goto_buildMode();
+                break;
+            case 2:                                 // Play Mode
+                app.goto_playMode();
+                break;
+            case 3:                                 // Save Game
+                //app.world.saveToSlot(1);
+                app.menu.prevState = MENU_PAUSE;    // So we cancel back to the right place
+                app.menu.state = MENU_SAVE;
+                break;
+            case 4:                                 // Load Game
+                app.menu.prevState = MENU_PAUSE;    // So we cancel back to the right place
+                app.menu.state = MENU_LOAD;
+                //app.world = new SandboxWorld(app);
+                //app.world.loadFromSlot(1);
+                //app.goto_playMode();
+                //app.menu.state = MENU_HUD;
+                break;
+            case 5:                                 // Quit to Main Menu
+                app.menu.state = MENU_MAIN;
+                break;
+            }
+            break;
+        case MENU_SAVE:
+            if(menuItem == 0) {
+                app.menu.state = app.menu.prevState;
+            } else {
+                if(app.world && app.world.saveToSlot(menuItem)) {
+                    app.menu.state = app.menu.prevState;
+                } else {
+                    app.showMessage('Failed to save to slot ' + menuItem + '!');
+                }
+            }
+            break;
+        case MENU_LOAD:
+            if(menuItem == 0) {
+                app.menu.state = app.menu.prevState;
+            } else {
+                if(!app.world) {
+                    app.world = new SandboxWorld(app);
+                }
+                if(app.world && app.world.loadFromSlot(menuItem)) {
+                    app.menu.state = MENU_HUD;
+                    app.goto_playMode();
+                } else {
+                    app.showMessage('Failed to load from slot ' + menuItem + '!');
+                }
+            }
+            break;
+        }
+    }
+
+    showMessage(message) {
+        const app = this;
+        app.clearMenu();
+        this.MenuRect({height: 10});
+        this.MenuItem({
+            type: 'text',
+            name: 'messageLabel',
+            text: message
+        });
+        this.MenuItem({
+            type: 'button',
+            name: 'btnMessageOK',
+            text: 'OK',
+            handler: () => {
+                app.menu.state = app.menu.prevState;
+            }
+        });
+    }
+
+    clearMenu() {
+        // Remove any menu that is visible before building new menu
+        this.menu.controls.forEach((button) => {
+            button?.dispose();
+        });
+    }
     renderUI() {
         const app = this;
 
         if(this.menu.renderedState != this.menu.state) {
             const activeMenuState = this.menu.state;
 
-            // Remove any menu that is visible before building new menu
-            this.menu.controls.forEach((button) => {
-                button?.dispose();
-            });
+            app.clearMenu();
 
             switch(this.menu.state) {
             case MENU_HUD:                                      // Not really a "menu", just the HUD GUI
@@ -242,10 +341,7 @@ class App {
                     name: 'btnNew',
                     text: '1. New Game',
                     handler: () => {
-                        app.menu.state = MENU_HUD;
-                        app.world = new SandboxWorld(app);
-                        app.world.clearWorld();
-                        app.goto_playMode();
+                        app.triggerMenuItem(MENU_MAIN, 1);
                     }
                 });
 
@@ -254,10 +350,7 @@ class App {
                     name: 'btnLoad',
                     text: '2. Load Game',
                     handler: () => {
-                        app.world = new SandboxWorld(app);
-                        app.world.loadFromSlot(1);
-                        app.goto_playMode();
-                        app.menu.state = MENU_HUD;
+                        app.triggerMenuItem(MENU_MAIN, 2);
                     }
                 });
 
@@ -266,7 +359,7 @@ class App {
                     name: 'btnAbout',
                     text: '3. About',
                     handler: () => {
-                        
+                        app.triggerMenuItem(MENU_MAIN, 3);
                     }
                 });
 
@@ -275,7 +368,7 @@ class App {
                     name: 'btnAbout',
                     text: '4. Quit',
                     handler: () => {
-                        
+                        app.triggerMenuItem(MENU_MAIN, 4);
                     }
                 });
                 break;
@@ -293,7 +386,7 @@ class App {
                     name: 'btnBuild',
                     text: '1. Build Mode',
                     handler: () => {
-                        app.goto_buildMode();
+                        app.triggerMenuItem(MENU_PAUSE, 1);
                     }
                 });
 
@@ -302,7 +395,7 @@ class App {
                     name: 'btnResume',
                     text: '2. Play Mode',
                     handler: () => {
-                        app.goto_playMode();
+                        app.triggerMenuItem(MENU_PAUSE, 2);
                     }
                 });
 
@@ -311,7 +404,7 @@ class App {
                     name: 'btnSave',
                     text: '3. Save Game',
                     handler: () => {
-                        app.world.saveToSlot(1);
+                        app.triggerMenuItem(MENU_PAUSE, 3);
                     }
                 });
 
@@ -320,10 +413,7 @@ class App {
                     name: 'btnLoad',
                     text: '4. Load Game',
                     handler: () => {
-                        app.world = new SandboxWorld(app);
-                        app.world.loadFromSlot(1);
-                        app.goto_playMode();
-                        app.menu.state = MENU_HUD;
+                        app.triggerMenuItem(MENU_PAUSE, 4);
                     }
                 });
 
@@ -332,13 +422,42 @@ class App {
                     name: 'btnLoad',
                     text: '5. Quit to Main Menu',
                     handler: () => {
-                        app.menu.state = MENU_MAIN;
+                        app.triggerMenuItem(MENU_PAUSE, 5);
                     }
                 });
 
 
                 break;
-            
+            case MENU_SAVE:
+            case MENU_LOAD:
+                this.MenuRect();
+
+                this.MenuItem({
+                    type: 'text',
+                    name: 'menuLabel',
+                    text: (this.menu.state == MENU_SAVE ? '-- Save Game --' : '-- Load Game --'),
+                });
+
+                for(let saveSlot = 1; saveSlot <= 9; saveSlot++) {
+                    this.MenuItem({
+                        type: 'button',
+                        name: ((this.menu.state == MENU_SAVE) ? 'btnSave_Slot'+saveSlot : 'btnLoad_Slot'+saveSlot),
+                        text: ((this.menu.state == MENU_SAVE) ? 'Save To Slot '+saveSlot : 'Load From Slot '+saveSlot),
+                        handler: () => {
+                            app.triggerMenuItem(this.menu.state, saveSlot);
+                        }
+                    });
+                }
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnSaveLoadCancel',
+                    text: '0. Cancel',
+                    handler: () => {
+                        app.triggerMenuItem(this.menu.state, 0);
+                    }
+                });
+                break;
             }
 
             // so we don't try to render again, remember which state we last rendered
@@ -346,7 +465,7 @@ class App {
         }
     }
 
-    loadAsset(assetProps) {
+    loadAsset(objectName, assetProps) {
         // assetProps: { rootUrl: '', filename: '' }
         let app = this;
         BABYLON.SceneLoader.ImportMeshAsync("", assetProps.rootUrl, assetProps.filename, this.scene).then((result) => {
@@ -389,7 +508,7 @@ class App {
                 //object.showBoundingBox = true;
                 var nestedMeshes = true;
             }
-            let woNewAsset = new WorldObject(app, assetProps.filename, object, nestedMeshes);
+            let woNewAsset = new WorldObject(app, objectName, object, nestedMeshes);
             this.BuildableObjectList.push(woNewAsset);
         });
     }
@@ -445,15 +564,16 @@ class App {
 
     // Background and frame of popup menu
     MenuRect(opts) {
+        if(typeof opts == 'undefined') opts = {};
         const gradient = new BABYLON.GUI.LinearGradient(500, 900, 500, 600);
         gradient.addColorStop(0, "blue");
         gradient.addColorStop(1, "darkBlue");
 
         const rectangle = new BABYLON.GUI.Rectangle("menuRect");
         rectangle.left = "0%";
-        rectangle.top = "0%";
-        rectangle.width = "50%";
-        rectangle.height = "50%";
+        rectangle.top = (typeof opts.top == 'undefined') ? "0%" : opts.top;
+        rectangle.width = (typeof opts.width == 'undefined') ? "50%" : (opts.width + '%');
+        rectangle.height = (typeof opts.height == 'undefined') ? "50%" : (opts.height + '%');
         rectangle.color = "#FFFFFF";
         rectangle.fontSize = 16;
         rectangle.backgroundGradient = gradient;
@@ -462,7 +582,11 @@ class App {
         this.menu.controls.push(rectangle);
 
         // Reset top of menu items created with this.MenuItem
-        this.menu.nextTop = -23;
+        if(typeof opts.height != 'undefined') {
+            this.menu.nextTop = 0 - opts.height/4;
+        } else {
+            this.menu.nextTop = -23;
+        }
     }
 
     // Item within popup menu

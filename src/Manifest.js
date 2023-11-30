@@ -4,13 +4,13 @@
 class Manifest {
     constructor(app) {
         //app.loadAsset({rootUrl: assetsBaseUrl, filename: 'pirates/Characters_Anne.gltf'});
-        app.loadAsset(Assets.meshes.wall_glb);
-        app.loadAsset(Assets.meshes.wallArch_glb);
-        app.loadAsset(Assets.meshes.wallCorner_glb);
-        app.loadAsset(Assets.meshes.rocks1_glb);
+        app.loadAsset('al_wall', Assets.meshes.wall_glb);
+        app.loadAsset('al_wallArch', Assets.meshes.wallArch_glb);
+        app.loadAsset('al_wallCorner', Assets.meshes.wallCorner_glb);
+        app.loadAsset('al_rocks1', Assets.meshes.rocks1_glb);
         const assetsBaseUrl = './assets/';
-        app.loadAsset({rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_floor_1x1.gltf'});
-        app.loadAsset({rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf'});
+        app.loadAsset('t_floor_1x1', {rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_floor_1x1.gltf'});
+        app.loadAsset('t_cube_1x1', {rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf'});
 
         new CyberpunkManifest(app, assetsBaseUrl);
     }

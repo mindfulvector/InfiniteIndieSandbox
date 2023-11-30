@@ -1,5 +1,5 @@
 class CyberpunkManifest {
     constructor(app, assetsBaseUrl) {
-        app.loadAsset({rootUrl: assetsBaseUrl, filename: 'models/cyberpunk/Platforms/Platform_2x2.gltf'});
+        app.loadAsset('cp_platform_2x2', {rootUrl: assetsBaseUrl, filename: 'models/cyberpunk/Platforms/Platform_2x2.gltf'});
     }
 }

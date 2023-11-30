@@ -20,7 +20,9 @@ class BuildMode {
 
     disposeCurrentInstance() {
         this.app.camera.lockedTarget = this.app.defaultSphere;
-        this.currentInstance?.dispose();
+        if(typeof this.currentWorldObject != 'undefined' && this.currentWorldObject != null) {
+            this.currentWorldObject.disposeInstance(this.currentInstance);
+        }
         this.guideMesh?.dispose();
         this.currentInstance = null;
         this.guideMesh = null;
@@ -72,6 +74,7 @@ class BuildMode {
             this.currentInstance?.dispose();
             const worldObject = this.app.BuildableObjectList[this.selectedObjectIndex];
             console.log(worldObject);
+            this.currentWorldObject = worldObject;
             this.currentInstance = worldObject.createInstance();
             if (placementPosition) {
                 this.currentInstance.position = placementPosition;

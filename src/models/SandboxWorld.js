@@ -4,57 +4,68 @@ class SandboxWorld {
     }
 
     saveToSlot(slot) {
-        let sceneData = BABYLON.SceneSerializer.Serialize(this.app.scene);
-        console.log('[sceneData] :pre-filtered', sceneData);
-        sceneData.cameras = [];
-        for (const [key, value] of Object.entries(sceneData.geometries)) {
-            sceneData.geometries[key] = [];
-        }
-        sceneData.lights = [];
-        sceneData.materials = [];
-        sceneData.meshes = sceneData.meshes.filter((mesh) => {
-            return mesh.name.startsWith('world.');
-        });
-        sceneData.morphTargetManagers = [];
-        sceneData.multiMaterials = [];
-        sceneData.particleSystems = [];
-        sceneData.postProcesses = [];
-        sceneData.postProcesses = [];
-        sceneData.skeletons = [];
-        sceneData.transformNodes = sceneData.transformNodes.filter((node) => {
-            return node.id.startsWith('world.');
-        });
-
-        console.log('[sceneData] :post-filtered', sceneData);
-
-        let worldData = {};
-
-        this.app.BuildableObjectList.forEach((woObject) => {
-            worldData[woObject.name] = woObject.getAllInstances();
-        });
+        console.log('[saveToSlot] :slot', slot);
 
         let saveData = {
-            'scene': sceneData,
-            'world': worldData,
+            'objects': [],
         }
 
-        const result = JSON.stringify(saveData);
-        console.log('[sceneData] :result', result);
+        // get compact data for each world object instance
+        this.app.BuildableObjectList.forEach((woObject) => {
+            saveData.objects = saveData.objects.concat(woObject.getAllInstanceData());
+        });
 
-        return result;
+        console.log('[saveToSlot] :saveData', saveData);
+        const jsonData = JSON.stringify(saveData);
+
+        console.log('[saveToSlot] :json', jsonData);
+
+        window.localStorage.setItem('saveSlot_'+slot, jsonData);
+
+        console.log('[saveToSlot] :objects.count', saveData.objects.length);
+
+        return saveData.objects.length;
     }
 
     loadFromSlot(slot) {
-        var srcFile=File.openDialog("Choose color File (XML or ASE)","XML or ASE:*.xml;*.ase");
-        /*this.clearWorld();
+        console.log('[loadFromSlot] :slot', slot);
 
-        BABYLON.SceneLoader.Append('./', 'saves/slot1.babylon', this.app.scene, (scene) => {
-            console.log('loaded scene for save slot ' + slot + '!');
-            let worldData = 
-            this.app.BuildableObjectList.forEach((woObject) => {
-                worldData[woObject.name] = woObject.getAllInstances();
+        //let worldFile = File.openDialog("Infinite Indie Sandbox World File","IIS Sandbox:*.isw");
+        const jsonData = window.localStorage.getItem('saveSlot_'+slot, '');
+        if('' != jsonData) {
+            const saveData = JSON.parse(jsonData);
+            console.log('[loadFromSlot] :saveData', saveData);
+            this.clearWorld();
+            var loadedObjectCount = 0;
+            saveData.objects.forEach((instData) => {
+                // find world object by name
+                var inst = null;
+                this.app.BuildableObjectList.forEach((woObject) => {
+                    if(woObject.name == instData.wo) {                      // wo property == WorldObject name
+                        // create instance from saved data
+                        inst = woObject.createInstance(instData);
+                        if(inst != null) {
+                            loadedObjectCount++;
+                        }
+                    }
+                });
+
+                console.log('[loadFromSlot] :loadedObjectCount', loadedObjectCount);
+
+                // if we could not find a world object to instance, or didn't get a valid
+                // instance for some reason
+                if(null == inst) {
+                    return false;
+                }
             });
-        });*/
+
+            // no errors so we loaded the world!
+            return true;
+        } else {
+            return false;
+        }
+
+        
     }
 
     clearWorld() {
