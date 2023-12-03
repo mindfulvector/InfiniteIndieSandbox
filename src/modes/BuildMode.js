@@ -86,19 +86,19 @@ class BuildMode {
             }
             //this.app.camera.lockedTarget = this.currentInstance;
 
-            this.guideMesh?.dispose();
+            //this.guideMesh?.dispose();
             
-            let parentDimensions = (this.currentInstance.getBoundingInfo().boundingBox.extendSizeWorld).scale(2);
+            //let parentDimensions = (this.currentInstance.getBoundingInfo().boundingBox.extendSizeWorld).scale(2);
             //this.guideMesh = BABYLON.MeshBuilder.CreateBox("bounding", { 
             //    width: parentDimensions.x, 
             //    height: parentDimensions.y, 
             //    depth: parentDimensions.z}, this.scene);
-            this.guideMesh = BABYLON.MeshBuilder.CreateBox("guideBox", {}, this.app.scene);
-            this.guideMesh.position = placementPosition;
-            //this.guideMesh = this.currentInstance.clone();
-            let guideMaterial = new BABYLON.StandardMaterial("guideMaterial", this.app.scene);
-            guideMaterial.alpha = 0.5; // Translucent
-            guideMaterial.diffuseColor = new BABYLON.Color3(0.0, 0.5, 0.0);
+            // this.guideMesh = BABYLON.MeshBuilder.CreateBox("guideBox", {}, this.app.scene);
+            // this.guideMesh.position = placementPosition;
+            // //this.guideMesh = this.currentInstance.clone();
+            // let guideMaterial = new BABYLON.StandardMaterial("guideMaterial", this.app.scene);
+            // guideMaterial.alpha = 0.5; // Translucent
+            // guideMaterial.diffuseColor = new BABYLON.Color3(0.0, 0.5, 0.0);
 
            /* var guideMaterial = new BABYLON.GridMaterial("default", this.app.scene);
             guideMaterial.majorUnitFrequency = 5;
@@ -107,20 +107,20 @@ class BuildMode {
             guideMaterial.gridRatio = 0.5;
             guideMaterial.alpha = 0.5;*/
 
-            function applyGuideMat(node) {
-                node.material = guideMaterial;
-                node.getChildren().forEach((node) => {
-                    node.material = guideMaterial;
-                });
-            }
+            // function applyGuideMat(node) {
+            //     node.material = guideMaterial;
+            //     node.getChildren().forEach((node) => {
+            //         node.material = guideMaterial;
+            //     });
+            // }
             
             //this.guideMesh.material = guideMaterial;
-            applyGuideMat(this.guideMesh);
+            //applyGuideMat(this.guideMesh);
 
-            this.guideMeshBoundingInfo = this.currentInstance.getBoundingInfo();
-            console.log('this.guideMeshBoundingInfo', this.guideMeshBoundingInfo);
-            this.guideMeshHeight = this.guideMeshBoundingInfo.boundingBox.extendSize.y * 2;
-            this.guideMesh.position = this.currentInstance.position.clone();
+            // this.guideMeshBoundingInfo = this.currentInstance.getBoundingInfo();
+            // console.log('this.guideMeshBoundingInfo', this.guideMeshBoundingInfo);
+            // this.guideMeshHeight = this.guideMeshBoundingInfo.boundingBox.extendSize.y * 2;
+            // this.guideMesh.position = this.currentInstance.position.clone();
 
             // Match the guide mesh size to the current instance
             //let boundingInfo = this.currentInstance.getBoundingInfo();
@@ -141,7 +141,8 @@ class BuildMode {
 
             // Initialize this.targetPosition if not already done
             if (!this.targetPosition) {
-                this.targetPosition = this.guideMesh.position.clone();
+                //this.targetPosition = this.guideMesh.position.clone();
+                this.targetPosition = this.currentInstance.position.clone();
             }
 
             // Get the forward vector of the camera and project it onto the ground plane
@@ -191,7 +192,7 @@ class BuildMode {
                 }
                 this.currentInstance.rotationQuaternion 
                     = this.currentInstance.rotationQuaternion.multiply(BABYLON.Quaternion.RotationYawPitchRoll(-rotationAngle, 0, 0));
-                this.guideMesh.rotationQuaternion = this.currentInstance.rotationQuaternion.clone();
+                //this.guideMesh.rotationQuaternion = this.currentInstance.rotationQuaternion.clone();
             }
             if (this.app.keyPressed('C')) {
                 if(null == this.currentInstance.rotationQuaternion) {
@@ -201,7 +202,7 @@ class BuildMode {
                 // Rotate 45 degrees to the right (clockwise)
                 this.currentInstance.rotationQuaternion 
                     = this.currentInstance.rotationQuaternion.multiply(BABYLON.Quaternion.RotationYawPitchRoll(rotationAngle, 0, 0));
-                this.guideMesh.rotationQuaternion = this.currentInstance.rotationQuaternion.clone();
+                //this.guideMesh.rotationQuaternion = this.currentInstance.rotationQuaternion.clone();
             }
 
             if (moved) {
@@ -209,14 +210,17 @@ class BuildMode {
 
                 
 
-                // Update the guide mesh position
-                this.guideMesh.position.copyFrom(this.targetPosition);
-                this.guideMesh.position.y -= this.guideMeshHeight / 2;
+                // // Update the guide mesh position
+                // this.guideMesh.position.copyFrom(this.targetPosition);
+                // this.guideMesh.position.y -= this.guideMeshHeight / 2;
 
-                // Show the guide mesh
-                this.guideMesh.setEnabled(true);
+                // // Show the guide mesh
+                // this.guideMesh.setEnabled(true);
 
-                this.app.camera.lockedTarget = this.guideMesh;
+                // this.app.camera.lockedTarget = this.guideMesh;
+
+                this.currentInstance.position = this.targetPosition.clone(); //BABYLON.Vector3.Lerp(this.currentInstance.position, this.targetPosition, lerpRate);
+                this.currentInstance.position.y -= 0.02
 
             } else {
                 // User has stopped moving, start drifting towards the nearest snapped position
@@ -225,26 +229,37 @@ class BuildMode {
                     Math.round((this.targetPosition.y + Number.EPSILON) / gridSize) * gridSize,
                     Math.round((this.targetPosition.z + Number.EPSILON) / gridSize) * gridSize
                 );
-                snappedPosition.y -= this.guideMeshHeight / 2;
+                //snappedPosition.y -= this.guideMeshHeight / 2;
                 //snappedPosition.y = Math.max(snappedPosition.y, 0); // Ensure the object stays on the ground plane
                 
                 // Gradually move the guide mesh towards the snapped position
-                this.guideMesh.position = BABYLON.Vector3.Lerp(this.guideMesh.position, snappedPosition, lerpRate);
+                //this.guideMesh.position = BABYLON.Vector3.Lerp(this.guideMesh.position, snappedPosition, lerpRate);
+                this.currentInstance.position = BABYLON.Vector3.Lerp(this.currentInstance.position, snappedPosition, lerpRate);
 
                 // Check if the movement has effectively stopped
-                let distanceToTarget = BABYLON.Vector3.Distance(this.guideMesh.position, snappedPosition);
+                let distanceToTarget = BABYLON.Vector3.Distance(this.currentInstance.position, snappedPosition);
                 if (distanceToTarget < lerpStopThreshold) {
                     //this.currentInstance.position.copyFrom(snappedPosition);
                     //this.currentInstance.position.y -= this.guideMeshHeight / 2;
                     this.currentInstance.position = BABYLON.Vector3.Lerp(this.currentInstance.position, snappedPosition, lerpRate);
 
                     // Check if the movement has effectively stopped
-                    let distanceToTarget = BABYLON.Vector3.Distance(this.currentInstance.position, this.guideMesh.position);
+                    //let distanceToTarget = BABYLON.Vector3.Distance(this.currentInstance.position, this.guideMesh.position);
+                    let distanceToTarget = BABYLON.Vector3.Distance(this.currentInstance.position, this.currentInstance.position);
                     if (distanceToTarget < lerpStopThreshold) {
-
+                        // This helps to prevent z-fighting (though not completely)
+                        if(typeof this.placementJitter == 'undefined') this.placementJitter = 0.01;
+                        else if(this.placementJitter == 0.01) {
+                            this.placementJitter = -0.01;
+                        }
+                        this.currentInstance.position.y += this.placementJitter;
+                        // so that changes start from the grid snapped position of the actual object
+                        this.targetPosition = this.currentInstance.position.clone();
                     }
                 }
             }
+
+            this.app.camera.lockedTarget = this.currentInstance;
         }
     }
 
