@@ -96,7 +96,7 @@ class PlayMode {
                 playMode.cc.setJumpKey("spacebar");
             }
 
-            playMode.cc.setCameraElasticity(true);
+            playMode.cc.setCameraElasticity(false);
 
             playMode.cc.makeObstructionInvisible(false);
 
