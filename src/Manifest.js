@@ -19,6 +19,12 @@ class Manifest {
                   ]
         });
 
+        app.createWorldObject('l_trigger', {
+            prims: [
+                     {ty: 'box',       s: [1,1,1], p: [0,0,0]},
+                  ]
+        }, 'TriggerScript');
+
         new CyberpunkManifest(app, assetsBaseUrl);
     }
 }

@@ -137,7 +137,13 @@ class PlayMode {
     }
 
     update() {
-
+        const playMode = this;
+        const app = this.app;
+        
+        // run update for all active object scripts
+        app.BuildableObjectList.forEach((wo) => {
+            wo.updateAllInstances(true, this);
+        });
     }
 
     renderUI() {

@@ -82,7 +82,7 @@ class DoorScript {
     }
 
     // Called once per frame when an object with this script is active
-    update() {
+    update(isPlayMode, modeObject) {
         /*
         if(this.state.opening || this.state.closing) {
             // Increment ticks for animation

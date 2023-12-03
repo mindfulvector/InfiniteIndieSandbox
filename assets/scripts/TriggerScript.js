@@ -4,7 +4,7 @@ class TriggerScript {
         this.wo = wo;
         this.inst = inst;
         this.state = {
-            flicker: false,
+            entered: [],
         };
     }
 
@@ -27,14 +27,27 @@ class TriggerScript {
     }
 
     // Called once per frame when an object with this script is active
-    update() {
-        if(this.app.activeMode instanceof BuildMode) {
-            this.inst.isVisible = !this.inst.isVisible;
+    update(isPlayMode, modeObject) {
+        if(!isPlayMode) {
+            this.inst.isVisible = true;
             this.inst.isPickable = true;
         } else {
             this.inst.isVisible = false;
             this.inst.isPickable = false;
             this.inst.checkCollisions = false;
+            if(typeof modeObject.player != 'undefined') {
+                if(this.inst.intersectsMesh(modeObject.player)) {
+                    if(typeof this.state.entered[modeObject.player.uniqeId] == 'undefined' || !this.state.entered[modeObject.player.uniqeId]) {
+                        console.log('player entered trigger area '+this.inst.worldId);
+                        this.state.entered[modeObject.player.uniqeId] = true;
+                    }
+                } else {
+                    if(typeof this.state.entered[modeObject.player.uniqeId] != 'undefined' && this.state.entered[modeObject.player.uniqeId]) {
+                        console.log('player exited trigger area '+this.inst.worldId);
+                        this.state.entered[modeObject.player.uniqeId] = false;
+                    }
+                }
+            }
         }
     }
 }

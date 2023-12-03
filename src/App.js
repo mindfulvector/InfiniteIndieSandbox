@@ -14,6 +14,7 @@ class App {
             renderedState: 0,       // if the two numbers are different we need to update the menu
             controls: [],
         };
+        this.loadedScripts = [];
 
         // Keyboard bindings
         this.keysPressed = {};
@@ -521,6 +522,20 @@ class App {
         //          ]
         // }
         let app = this;
+
+        if(null != scriptClass) {
+            if(typeof this.loadedScripts[scriptClass] == 'undefined') {
+                console.log('loading script: '+scriptClass);
+                this.loadedScripts.push(scriptClass);
+                var scriptLoader = document.createElement('script');
+                scriptLoader.setAttribute('src', './assets/scripts/'+scriptClass+'.js');
+                document.head.appendChild(scriptLoader);
+            } else {
+                console.log('script already loaded: '+scriptClass);
+            }
+        }
+
+        // Mesh based objects
         if(typeof assetProps.rootUrl != 'undefined' && typeof assetProps.filename != 'undefined') {
             BABYLON.SceneLoader.ImportMeshAsync("", assetProps.rootUrl, assetProps.filename, this.scene).then((result) => {
                 // Check if the model is a single empty __root__ node with a single mesh under it
@@ -567,6 +582,7 @@ class App {
             });
         }
 
+        // Primitive based objects
         else if(typeof assetProps.prims != 'undefined') {
             var object = null;
             var nestedMeshes = assetProps.prims > 1;

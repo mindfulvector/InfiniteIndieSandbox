@@ -261,6 +261,18 @@ class BuildMode {
 
             this.app.camera.lockedTarget = this.currentInstance;
         }
+
+        this.updateObjectsInBuildMode();
+    }
+
+    updateObjectsInBuildMode() {
+        const playMode = this;
+        const app = this.app;
+        
+        // run update for all active object scripts
+        app.BuildableObjectList.forEach((wo) => {
+            wo.updateAllInstances(false, this);
+        });
     }
 
     renderUI() {

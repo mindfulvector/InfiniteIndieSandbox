@@ -72,11 +72,15 @@ class WorldObject {
 
         // rotation
         if(typeof woInstData.ro != 'undefined') inst.rotationQuaternion = woInstData.ro;
-
-
         
         this.instances[this.lastInstanceId] = inst;
         console.log('createInstance['+this.name+']:', inst);
+
+        if(null != this.scriptClass) {
+            inst.script = eval("new " + this.scriptClass + "(this.app, this, inst)");
+        } else {
+            inst.script = null;
+        }
 
         return inst;
     }
@@ -184,5 +188,17 @@ class WorldObject {
             targetInst.isOpened = false;
             break;
         }
+    }
+
+    // Update all instances once per frame
+    updateAllInstances(isPlayMode, modeObject) {
+        const app = this.app;
+        const wo = this;
+        let result = [];
+        this.instances.forEach((inst) => {
+            if(null != inst.script) {
+                inst.script.update(isPlayMode, modeObject);
+            }
+        });
     }
 }
