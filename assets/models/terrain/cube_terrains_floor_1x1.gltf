@@ -17,14 +17,9 @@
             "mesh" : 0,
             "name" : "Grass.Dirt.Floor.001",
             "scale" : [
-                2,
-                1,
-                2
-            ],
-            "translation" : [
-                5.935691297054291e-05,
-                0.053105831146240234,
-                -0.012365520000457764
+                5,
+                5,
+                5
             ]
         }
     ],
@@ -103,29 +98,29 @@
         {
             "bufferView" : 0,
             "componentType" : 5126,
-            "count" : 158,
+            "count" : 160,
             "max" : [
-                0.9999411106109619,
-                0.02467334270477295,
-                1.0000174045562744
+                0.9999529123306274,
+                -0.027973104268312454,
+                0.9975442886352539
             ],
             "min" : [
-                -1.000059723854065,
-                -0.029912233352661133,
-                -0.999983549118042
+                -1.0000479221343994,
+                -0.08255867660045624,
+                -1.0024566650390625
             ],
             "type" : "VEC3"
         },
         {
             "bufferView" : 1,
             "componentType" : 5126,
-            "count" : 158,
+            "count" : 160,
             "type" : "VEC3"
         },
         {
             "bufferView" : 2,
             "componentType" : 5126,
-            "count" : 158,
+            "count" : 160,
             "type" : "VEC2"
         },
         {
@@ -139,14 +134,14 @@
             "componentType" : 5126,
             "count" : 40,
             "max" : [
-                0.9999411106109619,
-                0.05467331409454346,
-                1.0000174045562744
+                0.9999529123306274,
+                0.0020268671214580536,
+                0.9975442886352539
             ],
             "min" : [
-                -1.000059723854065,
-                0.02467334270477295,
-                -0.9999831914901733
+                -1.0000479221343994,
+                -0.027973104268312454,
+                -1.0024563074111938
             ],
             "type" : "VEC3"
         },
@@ -172,43 +167,43 @@
     "bufferViews" : [
         {
             "buffer" : 0,
-            "byteLength" : 1896,
+            "byteLength" : 1920,
             "byteOffset" : 0
         },
         {
             "buffer" : 0,
-            "byteLength" : 1896,
-            "byteOffset" : 1896
+            "byteLength" : 1920,
+            "byteOffset" : 1920
         },
         {
             "buffer" : 0,
-            "byteLength" : 1264,
-            "byteOffset" : 3792
+            "byteLength" : 1280,
+            "byteOffset" : 3840
         },
         {
             "buffer" : 0,
             "byteLength" : 468,
-            "byteOffset" : 5056
+            "byteOffset" : 5120
         },
         {
             "buffer" : 0,
             "byteLength" : 480,
-            "byteOffset" : 5524
+            "byteOffset" : 5588
         },
         {
             "buffer" : 0,
             "byteLength" : 480,
-            "byteOffset" : 6004
+            "byteOffset" : 6068
         },
         {
             "buffer" : 0,
             "byteLength" : 320,
-            "byteOffset" : 6484
+            "byteOffset" : 6548
         },
         {
             "buffer" : 0,
             "byteLength" : 132,
-            "byteOffset" : 6804
+            "byteOffset" : 6868
         }
     ],
     "samplers" : [
@@ -219,7 +214,7 @@
     ],
     "buffers" : [
         {
-            "byteLength" : 6936,
+            "byteLength" : 7000,
             "uri" : "models/terrain/cube_terrains_floor_1x1.bin"
         }
     ]

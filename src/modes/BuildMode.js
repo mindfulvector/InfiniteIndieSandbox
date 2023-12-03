@@ -19,7 +19,7 @@ class BuildMode {
     }
 
     disposeCurrentInstance() {
-        this.app.camera.lockedTarget = this.app.defaultSphere;
+        //this.app.camera.lockedTarget = this.app.defaultSphere;
         if(typeof this.currentWorldObject != 'undefined' && this.currentWorldObject != null) {
             this.currentWorldObject.disposeInstance(this.currentInstance);
         }
@@ -61,17 +61,22 @@ class BuildMode {
         let placementPosition = false;
 
         // Handling Space key to clone currentInstance
-        if (this.currentInstance && this.app.keyPressed(' ')) {
-            //const clone = this.currentInstance.clone();
-            //clone.checkCollisions = true;
-            //this.app.scene.addMesh(clone);
+        if (this.currentInstance) {
             placementPosition = this.currentInstance.position.clone();
-            this.currentInstance = null;
-            objectChanged = true;
+            if(this.app.keyPressed(' ')) {
+                //const clone = this.currentInstance.clone();
+                //clone.checkCollisions = true;
+                //this.app.scene.addMesh(clone);
+                
+                this.currentInstance = null;
+                objectChanged = true;
+            }
         }
 
         if (objectChanged) {
-            this.currentInstance?.dispose();
+            if(typeof this.currentWorldObject != 'undefined') {
+                this.currentWorldObject.disposeInstance(this.currentInstance);
+            }
             const worldObject = this.app.BuildableObjectList[this.selectedObjectIndex];
             console.log(worldObject);
             this.currentWorldObject = worldObject;
@@ -79,20 +84,39 @@ class BuildMode {
             if (placementPosition) {
                 this.currentInstance.position = placementPosition;
             }
-            this.app.camera.lockedTarget = this.currentInstance;
+            //this.app.camera.lockedTarget = this.currentInstance;
 
             this.guideMesh?.dispose();
             
             let parentDimensions = (this.currentInstance.getBoundingInfo().boundingBox.extendSizeWorld).scale(2);
-            this.guideMesh = BABYLON.MeshBuilder.CreateBox("bounding", { 
-                width: parentDimensions.x, 
-                height: parentDimensions.y, 
-                depth: parentDimensions.z}, this.scene);
-            //this.guideMesh = BABYLON.MeshBuilder.CreateBox("guideBox", {}, this.app.scene);
+            //this.guideMesh = BABYLON.MeshBuilder.CreateBox("bounding", { 
+            //    width: parentDimensions.x, 
+            //    height: parentDimensions.y, 
+            //    depth: parentDimensions.z}, this.scene);
+            this.guideMesh = BABYLON.MeshBuilder.CreateBox("guideBox", {}, this.app.scene);
+            this.guideMesh.position = placementPosition;
+            //this.guideMesh = this.currentInstance.clone();
             let guideMaterial = new BABYLON.StandardMaterial("guideMaterial", this.app.scene);
             guideMaterial.alpha = 0.5; // Translucent
-            guideMaterial.diffuseColor = new BABYLON.Color3(0.0, 0.5, 0.0); // Grey color, adjust as needed
-            this.guideMesh.material = guideMaterial;
+            guideMaterial.diffuseColor = new BABYLON.Color3(0.0, 0.5, 0.0);
+
+           /* var guideMaterial = new BABYLON.GridMaterial("default", this.app.scene);
+            guideMaterial.majorUnitFrequency = 5;
+            guideMaterial.mainColor = new BABYLON.Color3(0, 0, 0);
+            guideMaterial.lineColor = new BABYLON.Color3(0.0, 1.0, 0.0);
+            guideMaterial.gridRatio = 0.5;
+            guideMaterial.alpha = 0.5;*/
+
+            function applyGuideMat(node) {
+                node.material = guideMaterial;
+                node.getChildren().forEach((node) => {
+                    node.material = guideMaterial;
+                });
+            }
+            
+            //this.guideMesh.material = guideMaterial;
+            applyGuideMat(this.guideMesh);
+
             this.guideMeshBoundingInfo = this.currentInstance.getBoundingInfo();
             console.log('this.guideMeshBoundingInfo', this.guideMeshBoundingInfo);
             this.guideMeshHeight = this.guideMeshBoundingInfo.boundingBox.extendSize.y * 2;
@@ -107,7 +131,7 @@ class BuildMode {
         // Movement control for currentInstance
         if (this.currentInstance) {
             const moveSpeed = 0.1;
-            const gridSize = 2;
+            const gridSize = 1;
             const marginOfError = 0.05; // Define a small margin of error
             const lerpRate = 0.1; // Rate of interpolation
             const lerpStopThreshold = 0.19; // Threshold to consider movement as stopped
@@ -117,7 +141,7 @@ class BuildMode {
 
             // Initialize this.targetPosition if not already done
             if (!this.targetPosition) {
-                this.targetPosition = this.currentInstance.position.clone();
+                this.targetPosition = this.guideMesh.position.clone();
             }
 
             // Get the forward vector of the camera and project it onto the ground plane
@@ -162,11 +186,18 @@ class BuildMode {
 
             if (this.app.keyPressed('Z')) {
                 // Rotate 45 degrees to the left (counter-clockwise)
+                if(null == this.currentInstance.rotationQuaternion) {
+                    this.currentInstance.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(0, 0, 0);
+                }
                 this.currentInstance.rotationQuaternion 
                     = this.currentInstance.rotationQuaternion.multiply(BABYLON.Quaternion.RotationYawPitchRoll(-rotationAngle, 0, 0));
                 this.guideMesh.rotationQuaternion = this.currentInstance.rotationQuaternion.clone();
             }
             if (this.app.keyPressed('C')) {
+                if(null == this.currentInstance.rotationQuaternion) {
+                    this.currentInstance.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(0, 0, 0);
+                }
+                
                 // Rotate 45 degrees to the right (clockwise)
                 this.currentInstance.rotationQuaternion 
                     = this.currentInstance.rotationQuaternion.multiply(BABYLON.Quaternion.RotationYawPitchRoll(rotationAngle, 0, 0));

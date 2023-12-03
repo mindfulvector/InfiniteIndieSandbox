@@ -24,6 +24,38 @@ class App {
             this.keysPressed[event.key.toUpperCase()] = false;
         });
 
+        window.addEventListener("gamepadconnected", (e) => {
+          console.log(
+            "Gamepad connected at index %d: %s. %d buttons, %d axes.",
+            e.gamepad.index,
+            e.gamepad.id,
+            e.gamepad.buttons.length,
+            e.gamepad.axes.length,
+          );
+        });
+
+        const gamepadManager = new BABYLON.GamepadManager();
+        gamepadManager.onGamepadConnectedObservable.add((gamepad, state)=>{
+            console.log('gamepad connected', gamepad);
+
+            if (gamepad instanceof BABYLON.Xbox360Pad) {
+                console.log('BABYLON.Xbox360Pad');
+                //Xbox button down/up events
+                gamepad.onButtonDownObservable.add((button, state)=>{
+                    console.log('down',button);
+                    console.log(BABYLON.Xbox360Button[button] + " pressed");
+                })
+                gamepad.onButtonUpObservable.add((button, state)=>{
+                    console.log('up',button);
+                    console.log(BABYLON.Xbox360Button[button] + " released");
+                })
+            } else {
+                console.log('NOT BABYLON.Xbox360Pad');
+            }
+        });
+
+        gamepadManager.onGamepadDisconnectedObservable.add((gamepad, state) => {});
+
         // create the canvas html element and attach it to the webpage
         var canvas = document.createElement("canvas");
         canvas.style.width = "100%";
@@ -54,14 +86,14 @@ class App {
         */
 
         var light1 = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(1, 1, 0), this.scene);
-        this.defaultSphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 1 }, this.scene);
+        //this.defaultSphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 1 }, this.scene);
 
-        var box2 = BABYLON.Mesh.CreateBox("box2", 2, this.scene);
-        box2.checkCollisions = true;
+        //var box2 = BABYLON.Mesh.CreateBox("box2", 2, this.scene);
+        //box2.checkCollisions = true;
         //box2.position = new BABYLON.Vector3(0, 8, 7);
 
         // Temporary camera target during loading
-        this.camera.lockedTarget = this.defaultSphere;
+        //this.camera.lockedTarget = this.defaultSphere;
 
         // Create a full-screen UI layer
         this.gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
@@ -115,6 +147,15 @@ class App {
 
         this.menu.state = MENU_MAIN;
 
+
+
+        BABYLON.SceneOptimizer.OptimizeAsync(this.scene, BABYLON.SceneOptimizerOptions.HighDegradationAllowed(),
+        function() {
+           console.log('optimized')
+        }, function() {
+           console.log('cannot optimize to target FPS')
+        });
+
         // Run the main render loop
         app.engine.runRenderLoop(() => {
             this.scene.render();
@@ -133,6 +174,9 @@ class App {
                     this.activeMode.renderUI();
                 }
             }
+
+            // pump messages between objects
+            
         });
     }
 
@@ -160,22 +204,19 @@ class App {
                     this.toasty('No active mode to exit!');
                 }
             }
+        }
 
-            if(this.keyPressed('1')) {
-                if(null == this.activeMode) {
-                    this.goto_buildMode();
-                } else {
-                    this.toasty('Please exit the active mode first! (press Esc)');
-                }
-            }
-
-            if(this.keyPressed('2')) {
-                if(null == this.activeMode) {
-                    this.goto_playMode();
-                } else {
-                    this.toasty('Please exit the active mode first! (press Esc)');
-                }
-            }
+        if(this.menu.state != MENU_HUD) {
+            if(this.keyPressed('1')) this.triggerMenuItem(this.menu.state, 1);
+            if(this.keyPressed('2')) this.triggerMenuItem(this.menu.state, 2);
+            if(this.keyPressed('3')) this.triggerMenuItem(this.menu.state, 3);
+            if(this.keyPressed('4')) this.triggerMenuItem(this.menu.state, 4);
+            if(this.keyPressed('5')) this.triggerMenuItem(this.menu.state, 5);
+            if(this.keyPressed('6')) this.triggerMenuItem(this.menu.state, 6);
+            if(this.keyPressed('7')) this.triggerMenuItem(this.menu.state, 7);
+            if(this.keyPressed('8')) this.triggerMenuItem(this.menu.state, 8);
+            if(this.keyPressed('9')) this.triggerMenuItem(this.menu.state, 9);
+            if(this.keyPressed('0')) this.triggerMenuItem(this.menu.state, 0);
         }
     }
 
@@ -188,6 +229,7 @@ class App {
                 app.menu.state = MENU_HUD;
                 app.world = new SandboxWorld(app);
                 app.world.clearWorld();
+                app.findWorldObject('t_cube_1x1').createInstance();
                 app.goto_playMode();
                 break;
             case 2:                                 // Load Game
@@ -465,52 +507,137 @@ class App {
         }
     }
 
-    loadAsset(objectName, assetProps) {
-        // assetProps: { rootUrl: '', filename: '' }
+    createWorldObject(objectName, assetProps, scriptClass=null) {
+        // assetProps can have two formats:
+        //      for a model: {
+        //          rootUrl: '',
+        //          filename: ''
+        //      }
+        //  (this matches the asset librarian format)
+        // or, for primitive based object: {
+        //          prims: [
+        //             {ty: 'box',       s: [2,1,2], p: [0,0,0]},
+        //             {ty: 'cylindar',  s: [1,5,1], p: [0,0,0], tex: {id: 'brick', w: 10, h:6}}
+        //          ]
+        // }
         let app = this;
-        BABYLON.SceneLoader.ImportMeshAsync("", assetProps.rootUrl, assetProps.filename, this.scene).then((result) => {
-            // Check if the model is a single empty __root__ node with a single mesh under it
-            let parent = result.meshes[0];
-            if(result.meshes.length == 1) {
-                object = parent;
-                var nestedMeshes = false;
-            } else if(result.meshes.length == 2 && parent.name == '__root__') {
-                // If so, remove the root node and just save the child mesh so we can easily
-                // have instances instead of needing deep clones and cluttering up the scene
-                // graph.
-                var object = parent.getChildMeshes()[0];    // The real mesh
-                var nestedMeshes = false;
-                object.setParent(null);                     // Removes parent while preserving rotation, scale, position, etc.
-                parent.dispose();                           // Get rid of the __root__ node
-                object.isVisible = false;
-            } else {
-                // Otherwise the model is more complex so we keep the root node and mark
-                // the world object as having nested meshes, this means it will be deep cloned
-                // wheen an instance is needed instead of a true instance being used (this
-                // still shared geometry though).
-                var object = result.meshes[0];
-                
-                let childMeshes = parent.getChildMeshes();
-                let min = childMeshes[0].getBoundingInfo().boundingBox.minimumWorld;
-                let max = childMeshes[0].getBoundingInfo().boundingBox.maximumWorld;
-                for(let i=0; i<childMeshes.length; i++){
+        if(typeof assetProps.rootUrl != 'undefined' && typeof assetProps.filename != 'undefined') {
+            BABYLON.SceneLoader.ImportMeshAsync("", assetProps.rootUrl, assetProps.filename, this.scene).then((result) => {
+                // Check if the model is a single empty __root__ node with a single mesh under it
+                let parent = result.meshes[0];
+                if(result.meshes.length == 1) {
+                    object = parent;
+                    var nestedMeshes = false;
+                } else if(result.meshes.length == 2 && parent.name == '__root__') {
+                    // If so, remove the root node and just save the child mesh so we can easily
+                    // have instances instead of needing deep clones and cluttering up the scene
+                    // graph.
+                    var object = parent.getChildMeshes()[0];    // The real mesh
+                    var nestedMeshes = false;
+                    object.setParent(null);                     // Removes parent while preserving rotation, scale, position, etc.
+                    parent.dispose();                           // Get rid of the __root__ node
+                    object.isVisible = false;
+                } else {
+                    // Otherwise the model is more complex so we keep the root node and mark
+                    // the world object as having nested meshes, this means it will be deep cloned
+                    // wheen an instance is needed instead of a true instance being used (this
+                    // still shared geometry though).
+                    var object = result.meshes[0];
+                    
+                    let childMeshes = parent.getChildMeshes();
+                    let min = childMeshes[0].getBoundingInfo().boundingBox.minimumWorld;
+                    let max = childMeshes[0].getBoundingInfo().boundingBox.maximumWorld;
+                    for(let i=0; i<childMeshes.length; i++){
 
-                    let meshMin = childMeshes[i].getBoundingInfo().boundingBox.minimumWorld;
-                    let meshMax = childMeshes[i].getBoundingInfo().boundingBox.maximumWorld;
+                        let meshMin = childMeshes[i].getBoundingInfo().boundingBox.minimumWorld;
+                        let meshMax = childMeshes[i].getBoundingInfo().boundingBox.maximumWorld;
 
-                    min = BABYLON.Vector3.Minimize(min, meshMin);
-                    max = BABYLON.Vector3.Maximize(max, meshMax);
-                    childMeshes[i].isVisible = false;
+                        min = BABYLON.Vector3.Minimize(min, meshMin);
+                        max = BABYLON.Vector3.Maximize(max, meshMax);
+                        childMeshes[i].isVisible = false;
 
-                    //console.log('i', [childMeshes[i], min, max]);
+                        //console.log('i', [childMeshes[i], min, max]);
+                    }
+                    object.setBoundingInfo(new BABYLON.BoundingInfo(min, max));
+                    //object.showBoundingBox = true;
+                    var nestedMeshes = true;
                 }
-                object.setBoundingInfo(new BABYLON.BoundingInfo(min, max));
-                //object.showBoundingBox = true;
-                var nestedMeshes = true;
+                let woNewAsset = new WorldObject(app, objectName, object, nestedMeshes, scriptClass);
+                this.BuildableObjectList.push(woNewAsset);
+            });
+        }
+
+        else if(typeof assetProps.prims != 'undefined') {
+            var object = null;
+            var nestedMeshes = assetProps.prims > 1;
+            assetProps.prims.forEach((p) => {
+                var prim = null;
+
+                switch(p.ty) {
+                case 'box':
+                    prim = BABYLON.MeshBuilder.CreateBox('prim.box', { 
+                        width: p.s[0], 
+                        height: p.s[1], 
+                        depth: p.s[2]}, app.scene);
+                    break;
+                case 'sphere':
+                    prim = BABYLON.MeshBuilder.CreateCube('prim.sphere', {
+                        diameter: p.s[0] }, app.scene);
+                    break;
+                case 'cylinder':
+                    prim = BABYLON.MeshBuilder.CreateCylinder('prim.cylinder', {
+                        diameterBottom: p.s[0],
+                        height: p.s[1],
+                        diameterTop: p.s[2],
+                        tessellation: p.s[3],
+                        subdivisions: p.s[4] }, app.scene);
+                    break;
+                }
+
+                if(null != prim) {
+                    prim.isVisible = false;
+
+                    // make name unique by adding uniqueId to it
+                    prim.name += '[' + prim.uniqueId + ']';
+
+                    // apply procedural textures if required
+                    if(typeof p.tex != 'undefined') {
+                        switch(p.tex.id) {
+                        case 'brick':
+                            var mat = new BABYLON.StandardMaterial('brickMat['+prim.uniqueId+']', app.scene);
+                            var tex = new BABYLON.BrickProceduralTexture('brickTex['+prim.uniqueId+']', 512, app.scene);
+                            tex.numberOfBricksHeight = p.tex.h;
+                            tex.numberOfBricksWidth = p.tex.w;
+                            mat.diffuseTexture = tex;
+                            prim.material = mat;
+                            break;
+                        case 'wood':
+                            var mat = new BABYLON.StandardMaterial('woodMat['+prim.uniqueId+']', app.scene);
+                            var tex = new BABYLON.WoodProceduralTexture(name + "text", 1024, app.scene, null, true);
+                            tex.ampScale = p.tex.s;
+                            mat.diffuseTexture = tex;
+                            prim.material = mat;
+                            break;
+                        default:
+                            console.error('error in createWorldObject: tex definition has invalid id: `'+p.tex.id+'`', assetProps);
+                        }
+                    }
+
+                    if(null == object) {
+                        object = prim;
+                    }
+                }
+            });
+            
+            if(null != object) {
+                let woNewAsset = new WorldObject(app, objectName, object, nestedMeshes, scriptClass);
+                this.BuildableObjectList.push(woNewAsset);
+            } else {
+                console.error('error in createWorldObject: assetProps understood to be prims structure, but no primitives generated:', assetProps);
             }
-            let woNewAsset = new WorldObject(app, objectName, object, nestedMeshes);
-            this.BuildableObjectList.push(woNewAsset);
-        });
+        } else {
+            console.error('error in createWorldObject: cannot understand the assetProps:', assetProps);
+        }
     }
 
     keyPressed(key) {
@@ -541,13 +668,29 @@ class App {
         }, 2000);
     }
 
+    findWorldObject(woName) {
+        var result = null;
+        this.BuildableObjectList.forEach((wo) => {
+            if(wo.name == woName) {
+                result = wo;
+            }
+        });
+        return result;
+    }
+
     showAll(node) {
         let app = this;
-        node.getChildren().forEach((mesh) => {
-            mesh.isVisible = true;
-            mesh.checkCollisions = true;
-            app.showAll(mesh);
-        })
+        let children = node.getChildren();
+        //if(children.length > 0) {
+            children.forEach((mesh) => {
+                mesh.isVisible = true;
+                mesh.checkCollisions = true;
+                app.showAll(mesh);
+            })
+        //} else {
+        //    node.isVisible = true;
+        //    node.checkCollisions = true;
+        //}
     }
 
     TextBlock(opts) {

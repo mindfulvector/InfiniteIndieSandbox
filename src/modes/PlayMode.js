@@ -25,7 +25,7 @@ class PlayMode {
 
             skeleton.enableBlending(0.1);
             //if the skeleton does not have any animation ranges then set them as below
-            // setAnimationRanges(skeleton);
+            // setupAnimRanges(skeleton);
 
             var sm = playMode.player.material;
             if (sm.diffuseTexture != null) {
@@ -39,6 +39,7 @@ class PlayMode {
             playMode.player.ellipsoidOffset = new BABYLON.Vector3(0, 1, 0);
 
             // initialize the character controller library
+            playMode.app.camera.lockedTarget = playMode.player;
             playMode.cc = new CharacterController(playMode.player, playMode.app.camera, playMode.app.scene);
             playMode.cc.setFaceForward(false);
             playMode.cc.setMode(0);
@@ -51,11 +52,11 @@ class PlayMode {
             // no first person view when camera is close to avatar
             playMode.cc.setNoFirstPerson(true);
 
-            // make avatar movement relative to camera direction
+            // make avatar movement relative to camera direction / disable tank controls
             playMode.cc.setTurningOff(true);
 
             // the height of steps which the player can climb
-            playMode.cc.setStepOffset(0.4);
+            playMode.cc.setStepOffset(0.45);
 
             // the minimum and maximum slope the player can go up
             // between the two the player will start sliding down if it stops
@@ -96,7 +97,9 @@ class PlayMode {
             }
 
             playMode.cc.setCameraElasticity(true);
-            playMode.cc.makeObstructionInvisible(true);
+
+            playMode.cc.makeObstructionInvisible(false);
+
             playMode.cc.start();
         });
     }
