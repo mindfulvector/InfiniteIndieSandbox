@@ -6,7 +6,7 @@ Inspired by the now defunct toys-to-life genre, but with an all-digital premise 
 <img src="iis.png" />
 
 # How to play
-To run the game, you need to have PHP installed to use a local dev server.
+To run the game, right now you need to have PHP installed to use a local dev server. This will be replaced with a single-EXE HTTP server and WebView shell in a future update.
 
 ### Mac OS
 You should already have PHP installed. Double click `run.sh` to start the game server.
