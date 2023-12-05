@@ -39,6 +39,7 @@ class SandboxWorld {
             this.clearWorld();
             var loadedObjectCount = 0;
             var foundObjectAtOrigin = false;
+
             saveData.objects.forEach((instData) => {
                 // find world object by name
                 var inst = null;
@@ -57,17 +58,17 @@ class SandboxWorld {
 
                 console.log('[loadFromSlot] :loadedObjectCount', loadedObjectCount);
 
-                if(!foundObjectAtOrigin) {
-                    console.log('[loadFromSlot] :no origin object found, adding one');
-                    app.findWorldObject('t_cube_1x1').createInstance();
-                }
-
                 // if we could not find a world object to instance, or didn't get a valid
                 // instance for some reason
                 if(null == inst) {
                     return false;
                 }
             });
+
+            if(!foundObjectAtOrigin) {
+                console.log('[loadFromSlot] :no origin object found, adding one');
+                app.findWorldObject('t_cube_1x1').createInstance();
+            }
 
             // no errors so we loaded the world!
             return true;

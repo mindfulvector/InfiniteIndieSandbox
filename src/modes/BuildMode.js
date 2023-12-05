@@ -11,7 +11,7 @@ class BuildMode {
         this.initialScale = 1.0;
         this.targetScale = 1.0;
 
-        this.cursor = BABYLON.MeshBuilder.CreateBox('meshCursor', { size:0.10 });
+        this.cursor = BABYLON.MeshBuilder.CreateBox('meshCursor', { size:0.25 });
         this.cursorMatIndex = 0;
 
         this.cursorMats = [];
@@ -27,7 +27,8 @@ class BuildMode {
 
         this.app.scene.getBoundingBoxRenderer().frontColor.set(0, 0, 1);
         this.app.scene.getBoundingBoxRenderer().backColor.set(0, 0, 0.5);
-            
+        this.selectionColorIndex = 0;
+
         // Set static UI strings once on mode load
         this.app.modeName.text = "BuildMode";
     }
@@ -42,7 +43,10 @@ class BuildMode {
         if(typeof this.currentWorldObject != 'undefined' && this.currentWorldObject != null) {
             this.currentWorldObject.disposeInstance(this.currentInstance);
         }
+        this.clearSelection();
         this.guideMesh?.dispose();
+        this.cursor?.dispose();
+        this.selectionMesh?.dispose();
         this.currentInstance = null;
         this.currentWorldObject = null;
         this.guideMesh = null;
@@ -56,6 +60,7 @@ class BuildMode {
         }
 
         let objectChanged = false;
+        let cursorMode = false;
 
         // User input for changing the build menu selection
         if (this.app.keyPressed('Q')) {
@@ -75,6 +80,7 @@ class BuildMode {
 
         if (this.app.keyPressed('0')) {
             console.log('0 key is pressed; cursor mode');
+            cursorMode = true;
             this.selectedObjectIndex = -1;
             this.disposeCurrentInstance();
             objectChanged = true;
@@ -95,12 +101,17 @@ class BuildMode {
                 //const clone = this.currentInstance.clone();
                 //clone.checkCollisions = true;
                 //this.app.scene.addMesh(clone);
-                
+                this.app.showBoundingBoxAll(this.currentInstance, false);
                 this.currentInstance = null;
                 objectChanged = true;
                 objectPlaced = true;
             }
         } else {
+            if(this.app.keyPressed(' ')) {
+                if (!this.currentInstance && typeof this.selection != 'undefined' && this.selection.length > 0) {
+                    this.app.menu.state = MENU_OBJ_PROPS;
+                }
+            }
             this.cursorMatIndex += 1;
             if(this.cursorMatIndex >= 100) {
                 this.cursorMatIndex = 0;
@@ -110,18 +121,26 @@ class BuildMode {
 
         if (objectChanged) {
             if(!objectPlaced) {
-                if(typeof this.currentWorldObject != 'undefined') {
+                if(typeof this.currentWorldObject != 'undefined' && this.currentWorldObject) {
                     this.currentWorldObject.disposeInstance(this.currentInstance);
                 }
             }
-            if(!this.currentInstance) {
+            if(cursorMode) {
                 // cursor selection mode entered
+                this.cursor?.dispose();
+                    this.cursor = BABYLON.MeshBuilder.CreateBox('meshCursor', { size:0.25 });
                 this.initialScale = 1.0;                
             } else {
+                this.cursor?.dispose();
+                this.clearSelection();
+
                 const worldObject = this.app.BuildableObjectList[this.selectedObjectIndex];
                 console.log(worldObject);
                 this.currentWorldObject = worldObject;
                 this.currentInstance = worldObject.createInstance();
+                this.app.showBoundingBoxAll(this.currentInstance, true);
+                console.log('TRUE INITAL scaling this.currentInstance.scaling=',this.currentInstance.scaling);
+                
                 this.initialScale = this.currentInstance.scaling.x;
                 console.log('initial scale: '+this.initialScale);
                 // If we just created a new instance because the previous one was placed,
@@ -129,10 +148,16 @@ class BuildMode {
                 if(!objectPlaced) {
                     this.targetScale = this.initialScale;
                     console.log('set scale: '+this.targetScale);
+
+                    if(typeof this.targetRotation != 'undefined') {
+                        this.currentInstance.rotationQuaternion = this.targetRotation;
+                    }
                 } else {
-                    this.currentInstance.scaling = new BABYLON.Vector3(this.targetScale, this.targetScale, this.targetScale);
+                    this.currentInstance.scaling = this.makeBuildableObjectScale(this.targetScale);
                     console.log('keep scale: '+this.targetScale);
                 }
+
+
                 
                 if (placementPosition) {
                     this.currentInstance.position = placementPosition;
@@ -218,6 +243,12 @@ class BuildMode {
         }
 
         if (!this.currentInstance) {
+            this.selectionColorIndex++;
+            if(this.selectionColorIndex >= 100) this.selectionColorIndex = 0;
+            let g = 1.0 / 100 * this.selectionColorIndex;
+            this.app.scene.getBoundingBoxRenderer().frontColor.set(1.0-g, g, 1.0);
+            this.app.scene.getBoundingBoxRenderer().backColor.set(0.75-g, g, 0.75);
+            
             if(moved) {
                 var checkIntersects = function(mesh) {
                     var result = false;
@@ -265,6 +296,12 @@ class BuildMode {
                 });
             }
         } else {
+            this.selectionColorIndex++;
+            if(this.selectionColorIndex >= 100) this.selectionColorIndex = 0;
+            let g = 1.0 / 100 * this.selectionColorIndex;
+            this.app.scene.getBoundingBoxRenderer().frontColor.set(1.0, 1.0-g, g);
+            this.app.scene.getBoundingBoxRenderer().backColor.set(1.0, 0.75-g, g);
+            
             // Buildable object for placement
             if (this.app.keyPressed('Z')) {
                 // Rotate 45 degrees to the left (counter-clockwise)
@@ -274,6 +311,8 @@ class BuildMode {
                 this.currentInstance.rotationQuaternion 
                     = this.currentInstance.rotationQuaternion.multiply(BABYLON.Quaternion.RotationYawPitchRoll(-rotationAngle, 0, 0));
                 //this.guideMesh.rotationQuaternion = this.currentInstance.rotationQuaternion.clone();
+
+                this.targetRotation = this.currentInstance.rotationQuaternion.clone();
             }
             if (this.app.keyPressed('C')) {
                 if(null == this.currentInstance.rotationQuaternion) {
@@ -284,9 +323,12 @@ class BuildMode {
                 this.currentInstance.rotationQuaternion 
                     = this.currentInstance.rotationQuaternion.multiply(BABYLON.Quaternion.RotationYawPitchRoll(rotationAngle, 0, 0));
                 //this.guideMesh.rotationQuaternion = this.currentInstance.rotationQuaternion.clone();
+
+                this.targetRotation = this.currentInstance.rotationQuaternion.clone();
             }
 
             gridSize = Math.abs(gridSize * this.targetScale);
+            if(gridSize > 1.0) gridSize = 1.0;
 
             if (moved) {
                 // Update the guide mesh to match the target position and the size of the current instance
@@ -304,8 +346,10 @@ class BuildMode {
 
                 this.currentInstance.position = this.targetPosition.clone(); //BABYLON.Vector3.Lerp(this.currentInstance.position, this.targetPosition, lerpRate);
                 this.currentInstance.position.y -= 0.02
-                this.currentInstance.scaling = new BABYLON.Vector3(this.targetScale, this.targetScale, this.targetScale);
-                console.log('this.currentInstance.scaling=',this.currentInstance.scaling);
+                if(this.currentInstance.scaling.x != this.targetScale.x || this.currentInstance.scaling.y != this.targetScale.y || this.currentInstance.scaling.z != this.targetScale.z) {
+                    this.currentInstance.scaling = this.makeBuildableObjectScale(this.targetScale);
+                    console.log('update this.currentInstance.scaling=',this.currentInstance.scaling);
+                }
 
             } else {
                 // User has stopped moving, start drifting towards the nearest snapped position
@@ -358,6 +402,23 @@ class BuildMode {
         app.BuildableObjectList.forEach((wo) => {
             wo.updateAllInstances(false, this);
         });
+    }
+
+    // Makes a scale preserving inversion of the y-scale and z-scale so models are not turned upside down or rotated
+    makeBuildableObjectScale(scale) {
+        const yScale = (this.currentInstance.scaling.y < 0) ? (0 - scale) : scale;
+        const zScale = (this.currentInstance.scaling.z < 0) ? (0 - scale) : scale;
+
+        return new BABYLON.Vector3(scale, yScale, zScale);
+    }
+
+    clearSelection() {
+        if(typeof this.selection != 'undefined') {
+            this.selection.forEach((node) => {
+                this.app.showBoundingBoxAll(node, false);
+            });
+        }
+        this.selection = [];
     }
 
     renderUI() {

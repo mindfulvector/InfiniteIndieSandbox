@@ -3,6 +3,7 @@ const MENU_MAIN = 1;
 const MENU_PAUSE = 2;
 const MENU_SAVE = 3;
 const MENU_LOAD = 4;
+const MENU_OBJ_PROPS = 5;
 
 class App {
     constructor() {
@@ -194,8 +195,8 @@ class App {
 
     // System-wide updates such as starting and existing particular modes
     update() {
-        if(this.menu.state != MENU_MAIN) {
-            if(this.keyPressed('ESCAPE')) {
+        if(this.keyPressed('ESCAPE')) {
+            if(this.menu.state == MENU_HUD) {
                 if(null != this.activeMode) {
                     this.activeMode?.dispose();
                     this.activeMode = null;
@@ -204,6 +205,9 @@ class App {
                 } else {
                     this.toasty('No active mode to exit!');
                 }
+            } else {
+                // Cancel button
+                this.triggerMenuItem(this.menu.state, 0);
             }
         }
 
@@ -294,6 +298,9 @@ class App {
                     app.showMessage('Failed to load from slot ' + menuItem + '!');
                 }
             }
+            break;
+        case MENU_OBJ_PROPS:
+            app.menu.state = MENU_HUD;
             break;
         }
     }
@@ -495,6 +502,23 @@ class App {
                 this.MenuItem({
                     type: 'button',
                     name: 'btnSaveLoadCancel',
+                    text: '0. Cancel',
+                    handler: () => {
+                        app.triggerMenuItem(this.menu.state, 0);
+                    }
+                });
+                break;
+            case MENU_OBJ_PROPS:
+                this.MenuRect();
+
+                this.MenuItem({
+                    type: 'text',
+                    name: 'menuLabel',
+                    text: '>> Object Properties <<',
+                });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnObjPropsCancel',
                     text: '0. Cancel',
                     handler: () => {
                         app.triggerMenuItem(this.menu.state, 0);
