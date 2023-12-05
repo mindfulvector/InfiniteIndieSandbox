@@ -656,6 +656,19 @@ class App {
         }
     }
 
+    // Create a material with diffuse color `r`,`g`,`b` and with `a` alpha transparency
+    createColorMaterial(r=1.0, g=1.0, b=1.0, a=0.5, matName=null) {
+        if(null == matName) {
+            matName = "mat["+r+","+g+","+b+","+a+"]";
+        }
+        let mat = new BABYLON.StandardMaterial(matName, this.scene);
+        mat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+        mat.alpha = a;
+        mat.diffuseColor = new BABYLON.Color3(r,g,b);
+        mat.disableLightning = true;
+        return mat;
+    }
+
     keyPressed(key) {
         if(typeof this.keysPressed[key.toUpperCase()] != 'undefined') {
             var result = this.keysPressed[key.toUpperCase()];
@@ -702,6 +715,21 @@ class App {
                 mesh.isVisible = true;
                 mesh.checkCollisions = true;
                 app.showAll(mesh);
+            })
+        //} else {
+        //    node.isVisible = true;
+        //    node.checkCollisions = true;
+        //}
+    }
+
+    showBoundingBoxAll(node, on=true) {
+        let app = this;
+        let children = node.getChildren();
+        node.showBoundingBox = on;
+        //if(children.length > 0) {
+            children.forEach((mesh) => {
+                mesh.showBoundingBox = on;
+                app.showBoundingBoxAll(mesh, on);
             })
         //} else {
         //    node.isVisible = true;
@@ -786,4 +814,5 @@ class App {
         }
     }
 }
-new App();
+
+window.app = new App();

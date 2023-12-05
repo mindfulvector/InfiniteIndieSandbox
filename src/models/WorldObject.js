@@ -19,24 +19,36 @@ class WorldObject {
         if(typeof woInstData.id != 'undefined') this.lastInstanceId = woInstData.id;
         else this.lastInstanceId += 1;
 
-        // create an instance name from the object tag+brackets+instanceId
+        // Create an instance name from the object tag+brackets+instanceId
         const instName = this.tag + '[' + this.lastInstanceId + ']';
 
-        // create actual clone or instance
+        // Create actual clone or instance -- we clone template objects that have nested meshes
+        // because non-mesh nodes cannot be instanced.
+        // TODO: Need to investigate if performance or memory
+        // footprint can be improved by doing our own deep clone and creating instances of each
+        // mesh node instead. I tend to not think so though because that'd be an obvious engine
+        // optimization? Unless there is some significant downside of course...
         if(this.nestedMeshes) {
             var inst = this.mesh.clone(instName);
         } else {
             var inst = this.mesh.createInstance(instName);
         }
 
-        // add three tags: 'worldObject', 'world.<object_name>' and 'world.<object_name>[<index>]'
+        // Add three tags: 'worldObject', 'world.<object_name>' and 'world.<object_name>[<index>]'
+        // Note: tags aren't actually being used for retrival because our root nodes are not always
+        // meshes and I'm not sure how to universally get all tagged objects across node types...
+        // actually using these tags are originally intended would seem to be a good performance
+        // update potentially (need to test that first, however).
         BABYLON.Tags.EnableFor(inst);
         inst.addTags('worldObject ' + this.tag + ' ' + instName);
 
-        // make all sub-nodes visible and add colliders
+        // Make all sub-nodes visible and add colliders to them
         this.app.showAll(inst);
         
+        // Store reference to the engine object for use in scripts, etc.
         inst.worldObject = this;
+
+        // Store the instance ID as worldId for use in scripts, etc.
         inst.worldId = this.lastInstanceId;
 
         // Outgoing connections to other object instances
@@ -54,6 +66,7 @@ class WorldObject {
         if(typeof woInstData.s1 != 'undefined') inst.isOpened = woInstData.s1;
         else inst.isOpened = null;
         
+        // Make some custom properties visible in the inspector
         inst.inspectableCustomProperties = [
             {
                 label: "worldId",
@@ -67,19 +80,36 @@ class WorldObject {
             }
         ];
 
-        // position
+        // Apply saved object position and rotation
         if(typeof woInstData.po != 'undefined') inst.position = woInstData.po;
-
-        // rotation
         if(typeof woInstData.ro != 'undefined') inst.rotationQuaternion = woInstData.ro;
         
+        // Store indexed reference to the instance so it can be retrieved by ID instantly,
+        // if needed
         this.instances[this.lastInstanceId] = inst;
+
         console.log('createInstance['+this.name+']:', inst);
 
+        // If a script class is defined, create an instance of it. The script file itself
+        // is included for us by either the HTML file, a Manifest or the App class.
         if(null != this.scriptClass) {
             inst.script = eval("new " + this.scriptClass + "(this.app, this, inst)");
         } else {
             inst.script = null;
+        }
+
+        // If we have a script with a createMaterial implementation and we don't yet have
+        // a scripted material cached, call the method to create the material.
+        if(null != inst.script 
+                && typeof inst.script.createMaterial != 'undefined' 
+                && typeof this.scriptedMaterial == 'undefined')
+        {
+            this.scriptedMaterial = inst.script.createMaterial();
+        }
+
+        // If we have a cached scripted material, use it
+        if(typeof this.scriptedMaterial != 'undefined') {
+            this.mesh.material = this.scriptedMaterial;
         }
 
         return inst;
