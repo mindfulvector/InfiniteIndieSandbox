@@ -83,6 +83,10 @@ class WorldObject {
         // Apply saved object position and rotation
         if(typeof woInstData.po != 'undefined') inst.position = woInstData.po;
         if(typeof woInstData.ro != 'undefined') inst.rotationQuaternion = woInstData.ro;
+        if(typeof woInstData.sc != 'undefined') {
+            inst.scaling = new BABYLON.Vector3(woInstData.sc._x,woInstData.sc._y,woInstData.sc._z);
+        }
+
         
         // Store indexed reference to the instance so it can be retrieved by ID instantly,
         // if needed
@@ -148,6 +152,7 @@ class WorldObject {
                 'id': inst.worldId,
                 'po': inst.position,
                 'ro': inst.rotationQuaternion,
+                'sc': inst.scaling,
                 's1': inst.isOpened,
                 'ev': inst.events
             });
@@ -230,5 +235,87 @@ class WorldObject {
                 inst.script.update(isPlayMode, modeObject);
             }
         });
+    }
+
+    nodePropsMenu(selection) {
+        const wo = this;
+        const app = this.app;
+
+        let woInstances = [];
+
+        selection.forEach((node) => {
+            if(node.worldObject == wo) {
+                woInstances.push(node);
+            }
+        });
+
+        if(woInstances.length > 1) {
+            app.MenuItem({
+                type: 'text',
+                name: 'menuTooManyObjectsWarning',
+                text: '> Please select 1 object for editing. <',
+            });
+        } else {
+            let eventDefNum = 0;
+            selection[0].script.eventDefs.forEach((eventDef) => {
+                eventDefNum++;
+                app.MenuItem({
+                    type: 'button',
+                    name: 'menuEventsBtn_'+eventDefNum,
+                    text: 'Event #'+eventDefNum+' '+eventDef.id,
+                    handler: () => {
+                        app.menu.state = MENU_OBJ_EVENT_BINDINGS;
+                        app.menu.eventDefNum = eventDefNum;
+                        app.menu.eventDefInfo = eventDef;
+                    }
+                });
+            });
+        }
+    }
+
+    triggerMenuItem(menuState, menuItem) {
+        const app = this.app;
+
+        switch(menuState) {
+        case MENU_OBJ_PROPS:
+            if(app.activeMode.selection.length > 0) {
+                let node = app.activeMode.selection[0];
+                let eventNum = 1;
+
+                app.MenuItem({
+                    type: 'button',
+                    name: 'menuEventsBtn_'+eventNum,
+                    text: '1. New',
+                    handler: () => {
+                        app.menu.state = MENU_OBJ_EVENT_BINDING_EDIT;
+                        app.menu.eventNum = eventNum;
+                        app.menu.eventInfo = {};
+                    }
+                });
+
+                app.activeMode.selection[0].script.eventDefs.forEach((eventDef) => {
+                    eventNum++;
+                    if(typeof node.worldObject == this) {
+                        // Display existing events for this event ID
+                        node.events[eventDef.id].forEach((event) => {
+                            app.MenuItem({
+                                type: 'button',
+                                name: 'menuEventsBtn_'+eventNum,
+                                text: 'To '+event.wo+'#'+event.to+' = '+event.msg + JSON.stringify(event.p),
+                                handler: () => {
+                                    app.menu.state = MENU_OBJ_EVENT_BINDING_EDIT;
+                                    app.menu.eventNum = eventNum;
+                                    app.menu.eventInfo = event;
+                                }
+                            });
+                        });
+                    }
+                });
+            }
+            break;
+        case MENU_OBJ_EVENT_BINDING_EDIT:
+            
+            break;
+        }
     }
 }

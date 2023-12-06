@@ -7,22 +7,24 @@ class TriggerScript {
             activated: false,
             entered: [],
         };
+        this.eventDefs = [
+            {
+                id: 'entered:player',
+            },
+            {
+                id: 'exited:player',
+            }
+        ];
     }
 
     // Incoming message from another object
     message(msg) {
         switch(msg) {
-        case 'open':
-            if(this.state.closed) {
-                this.state.closed = false;
-                this._startOpeningAnimation();
-            }
+        case 'trigger:entered:player':
+            
             break;
-        case 'close':
-            if(!this.state.closed) {
-                this.state.closed = true;
-                this._startClosingAnimation();
-            }
+        case 'trigger:exited:player':
+            
             break;
         }
     }

@@ -4,12 +4,14 @@ const MENU_PAUSE = 2;
 const MENU_SAVE = 3;
 const MENU_LOAD = 4;
 const MENU_OBJ_PROPS = 5;
+const MENU_OBJ_EVENT_BINDINGS = 6;
+const MENU_OBJ_EVENT_BINDING_EDIT = 7;
 
 class App {
     constructor() {
         const app = this;
         this.toastyTimer = 0;
-        app.world = null;
+        this.world = null;
         this.menu = {
             state: 0,               // no menu displayed
             renderedState: 0,       // if the two numbers are different we need to update the menu
@@ -300,7 +302,9 @@ class App {
             }
             break;
         case MENU_OBJ_PROPS:
-            app.menu.state = MENU_HUD;
+        case MENU_OBJ_EVENT_BINDINGS:
+        case MENU_OBJ_EVENT_BINDING_EDIT:
+            app.activeMode.triggerMenuItem(menuState, menuItem);
             break;
         }
     }
@@ -509,21 +513,9 @@ class App {
                 });
                 break;
             case MENU_OBJ_PROPS:
-                this.MenuRect();
-
-                this.MenuItem({
-                    type: 'text',
-                    name: 'menuLabel',
-                    text: '>> Object Properties <<',
-                });
-                this.MenuItem({
-                    type: 'button',
-                    name: 'btnObjPropsCancel',
-                    text: '0. Cancel',
-                    handler: () => {
-                        app.triggerMenuItem(this.menu.state, 0);
-                    }
-                });
+            case MENU_OBJ_EVENT_BINDINGS:
+            case MENU_OBJ_EVENT_BINDING_EDIT:
+                app.activeMode.renderUI(this.menu.state);
                 break;
             }
 
