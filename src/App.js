@@ -130,11 +130,23 @@ class App {
             paddingTop: 60,
         });
 
+        this.loadingText = this.TextBlock({
+            text: "Loading...",
+            color: "white",
+            fontSize: 15,
+            textHorizontalAlignment: BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER,
+            textVerticalAlignment: BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP,
+            paddingTop: 80,
+        });
+
         //this.activeMode = new BuildMode(app);
 
         // Load WorldObjects -- these are objects that can be built or are used by
         // built-in levels, etc. Basically, everything!
         this.BuildableObjectList = [];
+
+        this.manifestObjectTarget = 0;
+        this.manifestObjectCount = 0;
 
         new Manifest(this);
         
@@ -182,6 +194,14 @@ class App {
             // pump messages between objects
             
         });
+    }
+
+    uploadLoadingMessage() {
+        if(this.manifestObjectTarget > this.manifestObjectCount) {
+            this.loadingText.text = 'Loading ' + this.manifestObjectCount + '/' + this.manifestObjectTarget;
+        } else {
+            this.loadingText.text = '';
+        }
     }
 
     goto_buildMode() {
@@ -539,6 +559,9 @@ class App {
         // }
         let app = this;
 
+        app.manifestObjectTarget++;
+        app.uploadLoadingMessage();
+
         if(null != scriptClass) {
             if(typeof this.loadedScripts[scriptClass] == 'undefined') {
                 console.log('loading script: '+scriptClass);
@@ -576,25 +599,33 @@ class App {
                     var object = result.meshes[0];
                     
                     let childMeshes = parent.getChildMeshes();
-                    let min = childMeshes[0].getBoundingInfo().boundingBox.minimumWorld;
-                    let max = childMeshes[0].getBoundingInfo().boundingBox.maximumWorld;
-                    for(let i=0; i<childMeshes.length; i++){
+                    if(typeof childMeshes[0] != 'undefined') {
+                        let min = childMeshes[0].getBoundingInfo().boundingBox.minimumWorld;
+                        let max = childMeshes[0].getBoundingInfo().boundingBox.maximumWorld;
+                        for(let i=0; i<childMeshes.length; i++){
 
-                        let meshMin = childMeshes[i].getBoundingInfo().boundingBox.minimumWorld;
-                        let meshMax = childMeshes[i].getBoundingInfo().boundingBox.maximumWorld;
+                            let meshMin = childMeshes[i].getBoundingInfo().boundingBox.minimumWorld;
+                            let meshMax = childMeshes[i].getBoundingInfo().boundingBox.maximumWorld;
 
-                        min = BABYLON.Vector3.Minimize(min, meshMin);
-                        max = BABYLON.Vector3.Maximize(max, meshMax);
-                        childMeshes[i].isVisible = false;
+                            min = BABYLON.Vector3.Minimize(min, meshMin);
+                            max = BABYLON.Vector3.Maximize(max, meshMax);
+                            childMeshes[i].isVisible = false;
 
-                        //console.log('i', [childMeshes[i], min, max]);
+                            //console.log('i', [childMeshes[i], min, max]);
+                        }
+                        object.setBoundingInfo(new BABYLON.BoundingInfo(min, max));
+
+                        //object.showBoundingBox = true;
+                        var nestedMeshes = true;
+                    } else {
+                        // but are there?
+                        var nestedMeshes = true;
                     }
-                    object.setBoundingInfo(new BABYLON.BoundingInfo(min, max));
-                    //object.showBoundingBox = true;
-                    var nestedMeshes = true;
                 }
                 let woNewAsset = new WorldObject(app, objectName, object, nestedMeshes, scriptClass);
-                this.BuildableObjectList.push(woNewAsset);
+                app.BuildableObjectList.push(woNewAsset);
+                app.manifestObjectCount++;
+                app.uploadLoadingMessage();
             });
         }
 
@@ -664,6 +695,8 @@ class App {
             if(null != object) {
                 let woNewAsset = new WorldObject(app, objectName, object, nestedMeshes, scriptClass);
                 this.BuildableObjectList.push(woNewAsset);
+                app.manifestObjectCount++;
+                app.uploadLoadingMessage();
             } else {
                 console.error('error in createWorldObject: assetProps understood to be prims structure, but no primitives generated:', assetProps);
             }

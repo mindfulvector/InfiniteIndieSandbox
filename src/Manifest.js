@@ -11,7 +11,6 @@ class Manifest {
         const assetsBaseUrl     = './assets/';
         app.createWorldObject('t_floor_1x1', {rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_floor_1x1.gltf'});
         app.createWorldObject('t_cube_1x1', {rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf'});
-
         
         app.createWorldObject('pr_door', {
             prims: [
@@ -26,5 +25,6 @@ class Manifest {
         }, 'TriggerScript');
 
         new CyberpunkManifest(app, assetsBaseUrl);
+        new ChristmasManifest(app, assetsBaseUrl);
     }
 }
