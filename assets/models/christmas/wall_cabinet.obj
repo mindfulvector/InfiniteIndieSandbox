@@ -1,6 +1,6 @@
 # Blender 4.0.1
 # www.blender.org
-mtllib wall_cabinet.mtl
+mtllib models/christmas/wall_cabinet.mtl
 o Plane.042
 v -0.078431 2.539606 0.208397
 v -0.078431 2.539606 0.098393

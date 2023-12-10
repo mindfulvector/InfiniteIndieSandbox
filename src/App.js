@@ -72,6 +72,7 @@ class App {
         this.scene = new BABYLON.Scene(this.engine);
 
         this.camera = new BABYLON.ArcRotateCamera("Camera", 0-Math.PI / 3, Math.PI / 3, 20, BABYLON.Vector3.Zero(), this.scene);
+        this.camera.wheelPrecision = 50;
         this.camera.attachControl(canvas, true);
 
         /*
@@ -165,7 +166,7 @@ class App {
 
 
 
-        BABYLON.SceneOptimizer.OptimizeAsync(this.scene, BABYLON.SceneOptimizerOptions.HighDegradationAllowed(),
+        BABYLON.SceneOptimizer.OptimizeAsync(this.scene, BABYLON.SceneOptimizerOptions.HighDegradationAllowed(30),
         function() {
            console.log('optimized')
         }, function() {
@@ -557,6 +558,9 @@ class App {
         //             {ty: 'cylindar',  s: [1,5,1], p: [0,0,0], tex: {id: 'brick', w: 10, h:6}}
         //          ]
         // }
+        //
+        // either format may have additional options defined:
+        //      colliderMesh: 1                     // which submesh to enable collisions for
         let app = this;
 
         app.manifestObjectTarget++;
@@ -577,6 +581,24 @@ class App {
         // Mesh based objects
         if(typeof assetProps.rootUrl != 'undefined' && typeof assetProps.filename != 'undefined') {
             BABYLON.SceneLoader.ImportMeshAsync("", assetProps.rootUrl, assetProps.filename, this.scene).then((result) => {
+                if(typeof assetProps.colliderMeshes != 'undefined') {
+                    for(let i = 0; i < result.meshes.length; i++){
+                        if(-1 != assetProps.colliderMeshes.indexOf(result.meshes[i].name)) {
+                            result.meshes[i].checkCollisions = true;
+                            console.log('enabled collisions on mesh #'+i+' in '+assetProps.filename, result.meshes[i]);
+                            //childMeshes[i].showBoundingBox = true;
+                        }
+                    }
+                } else {
+                    console.log('%cWarning! No colliderMeshes for asset `%c'+assetProps.filename+'%c`: %c'+JSON.stringify(assetProps), 'color: orange;', 'color: red;', 'color: orange;', 'color: default;');
+                    console.log('Please set to an array with one of these mesh names:');
+                    for(let i = 0; i < result.meshes.length; i++){
+                        if(result.meshes[i].name != '__root__') {
+                            console.log(result.meshes[i].name);
+                        }
+                    }                    
+                }
+
                 // Check if the model is a single empty __root__ node with a single mesh under it
                 let parent = result.meshes[0];
                 if(result.meshes.length == 1) {
@@ -600,20 +622,29 @@ class App {
                     
                     let childMeshes = parent.getChildMeshes();
                     if(typeof childMeshes[0] != 'undefined') {
-                        let min = childMeshes[0].getBoundingInfo().boundingBox.minimumWorld;
-                        let max = childMeshes[0].getBoundingInfo().boundingBox.maximumWorld;
-                        for(let i=0; i<childMeshes.length; i++){
+                        //let min = childMeshes[0].getBoundingInfo().boundingBox.minimumWorld;
+                        //let max = childMeshes[0].getBoundingInfo().boundingBox.maximumWorld;
+                            if(typeof assetProps.colliderMeshes != 'undefined') {
+                                for(let i = 0; i<childMeshes.length; i++){
+                                    if(-1 != assetProps.colliderMeshes.indexOf(childMeshes[i].name)) {
+                                        childMeshes[i].checkCollisions = true;
+                                        console.log('enabled collisions on childMesh #'+i+' in '+assetProps.filename, childMeshes[i]);
+                                        //childMeshes[i].showBoundingBox = true;
+                                    }
+                                }
+                            }
+                            //let meshMin = childMeshes[i].getBoundingInfo().boundingBox.minimumWorld;
+                            //let meshMax = childMeshes[i].getBoundingInfo().boundingBox.maximumWorld;
 
-                            let meshMin = childMeshes[i].getBoundingInfo().boundingBox.minimumWorld;
-                            let meshMax = childMeshes[i].getBoundingInfo().boundingBox.maximumWorld;
-
-                            min = BABYLON.Vector3.Minimize(min, meshMin);
-                            max = BABYLON.Vector3.Maximize(max, meshMax);
-                            childMeshes[i].isVisible = false;
+                            //min = BABYLON.Vector3.Minimize(min, meshMin);
+                            //max = BABYLON.Vector3.Maximize(max, meshMax);
+                            for(let i=0; i<childMeshes.length; i++){
+                                childMeshes[i].isVisible = false;
+                            }
 
                             //console.log('i', [childMeshes[i], min, max]);
-                        }
-                        object.setBoundingInfo(new BABYLON.BoundingInfo(min, max));
+                        
+                        //object.setBoundingInfo(new BABYLON.BoundingInfo(min, max));
 
                         //object.showBoundingBox = true;
                         var nestedMeshes = true;

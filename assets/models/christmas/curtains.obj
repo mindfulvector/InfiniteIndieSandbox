@@ -1,6 +1,6 @@
 # Blender 4.0.1
 # www.blender.org
-mtllib curtains.mtl
+mtllib models/christmas/curtains.mtl
 o Plane.021
 v -0.051695 5.165060 1.690428
 v -0.111257 5.156018 0.938322

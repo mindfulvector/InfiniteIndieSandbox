@@ -4,13 +4,13 @@
 class Manifest {
     constructor(app) {
 
-        app.createWorldObject('al_wall', Assets.meshes.wall_glb);
-        app.createWorldObject('al_wallArch', Assets.meshes.wallArch_glb);
-        app.createWorldObject('al_wallCorner', Assets.meshes.wallCorner_glb);
-        app.createWorldObject('al_rocks1', Assets.meshes.rocks1_glb);
+        app.createWorldObject('al_wall',        Object.assign({}, Assets.meshes.wall_glb,           { colliderMeshes: ['wall'] }));
+        app.createWorldObject('al_wallArch',    Object.assign({}, Assets.meshes.wallArch_glb,       { colliderMeshes: ['wallArch'] }));
+        app.createWorldObject('al_wallCorner',  Object.assign({}, Assets.meshes.wallCorner_glb,     { colliderMeshes: ['wallCorner'] }));
+        app.createWorldObject('al_rocks1',      Object.assign({}, Assets.meshes.rocks1_glb,         { colliderMeshes: ['rocks1'] }));
         const assetsBaseUrl     = './assets/';
-        app.createWorldObject('t_floor_1x1', {rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_floor_1x1.gltf'});
-        app.createWorldObject('t_cube_1x1', {rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf'});
+        app.createWorldObject('t_floor_1x1',    { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_floor_1x1.gltf' });
+        app.createWorldObject('t_cube_1x1',     { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf' });
         
         app.createWorldObject('pr_door', {
             prims: [

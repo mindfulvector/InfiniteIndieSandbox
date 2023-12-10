@@ -1,6 +1,6 @@
 # Blender 4.0.1
 # www.blender.org
-mtllib foot_steps.mtl
+mtllib models/christmas/foot_steps.mtl
 o Plane.004
 v -1.940346 0.096584 0.846281
 v -1.908523 0.105476 0.658603

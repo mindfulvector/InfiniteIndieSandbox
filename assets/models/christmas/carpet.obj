@@ -1,6 +1,6 @@
 # Blender 4.0.1
 # www.blender.org
-mtllib carpet.mtl
+mtllib models/christmas/carpet.mtl
 o Circle.004
 v 0.011493 0.086231 -1.168167
 v -0.441305 0.086231 -1.078100

@@ -1,6 +1,6 @@
 # Blender 4.0.1
 # www.blender.org
-mtllib wall_paneling.mtl
+mtllib models/christmas/wall_paneling.mtl
 o Cube.053
 v -0.023935 1.913402 0.223984
 v -0.023934 1.684234 0.371131

@@ -1,6 +1,6 @@
 # Blender 4.0.1
 # www.blender.org
-mtllib table.mtl
+mtllib models/christmas/table.mtl
 o Cylinder.010
 v -0.000000 0.876126 -0.289860
 v 0.000000 1.063855 -0.377133
