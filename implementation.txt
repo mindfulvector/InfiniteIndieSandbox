@@ -1,0 +1,109 @@
+Infinity Indie Sandbox - Architecture & Implementation Notes
+====================================================
+
+Overview:
+---------
+Infinity Indie Sandbox is a browser-based 3D sandbox game built on Babylon.js. The architecture is modular, with a main App class orchestrating the game, and a plugin/manifest system for loading themed assets and world objects. The game supports build and play modes, object placement, saving/loading, and extensibility via plugins.
+
+Key Components:
+----------------
+
+1. index.html
+   - Loads all required JS libraries (Babylon.js, GUI, physics engines, etc.) and the main game scripts.
+   - Sets up the canvas and includes all source files in the correct order.
+
+2. App.js (class App)
+   - The main entry point and controller for the game.
+   - Handles input (keyboard, gamepad), menu state, and the main render loop.
+   - Initializes Babylon.js engine, scene, camera, lighting, and GUI.
+   - Manages BuildableObjectList (all world objects that can be placed/instanced).
+   - Handles switching between BuildMode and PlayMode.
+   - Loads manifests/plugins to register world objects.
+   - Provides utility methods for UI, object creation, and input handling.
+
+3. Manifest.js (class Manifest)
+   - Responsible for registering all core and plugin world objects with the App.
+   - Instantiates plugin manifests (e.g., CyberpunkManifest, ChristmasManifest) to load themed assets.
+   - Uses app.createWorldObject to register each object, passing asset info and optional scripts.
+
+4. Plugins (e.g., ChristmasManifest.js, CyberpunkManifest.js)
+   - Each plugin manifest registers themed world objects with the App.
+   - Follows a convention: new PluginManifest(app, assetsBaseUrl).
+   - Allows for modular addition of new asset packs or themes.
+
+5. WorldObject.js (class WorldObject)
+   - Represents a type of object that can be placed in the world (mesh, script, etc.).
+   - Handles instancing, serialization, event connections, and script attachment.
+   - Supports both mesh-based and primitive-based objects.
+   - Manages all instances of itself for save/load and update.
+
+6. SandboxWorld.js (class SandboxWorld)
+   - Represents the current world state (all placed object instances).
+   - Handles saving/loading world state to/from localStorage.
+   - Can clear the world (remove all instances).
+
+7. BuildMode.js (class BuildMode)
+   - Handles object placement, selection, and manipulation in the world.
+   - Provides a cursor for selection and placement.
+   - Supports grid snapping, scaling, rotation, and object cycling.
+   - Integrates with the App's menu/UI system for object properties and event bindings.
+
+8. PlayMode.js (class PlayMode)
+   - Handles player control and avatar movement using a character controller.
+   - Loads the player avatar and sets up camera, controls, and animation.
+   - Updates all active object scripts in play mode.
+
+9. Character.js (class Character)
+   - Utility for spawning and managing character avatars (player or NPC).
+   - Wraps a WorldObject and provides spawn logic.
+
+10. Utils.js (class Utils)
+    - Static utility methods (e.g., ground picking, rounding).
+
+Asset System:
+-------------
+- Assets are referenced by path and filename, with collider mesh names specified for collision.
+- Supports both GLTF/OBJ mesh assets and procedural primitives.
+- Plugins can register new assets by calling app.createWorldObject.
+
+Menu/UI System:
+---------------
+- Uses Babylon.js GUI for all in-game menus and HUD.
+- Menu state is managed by App, with different states for main menu, pause, save/load, object properties, etc.
+- Menu items are dynamically created and disposed as needed.
+
+Event System:
+-------------
+- WorldObject supports event connections between instances (e.g., button triggers door).
+- Events and connections are serialized for save/load.
+- Event bindings are managed via the object properties menu in BuildMode.
+
+Extensibility:
+--------------
+- New asset packs/themes can be added as plugins (manifest classes in src/plugins/).
+- New object scripts can be added in assets/scripts/ and referenced by name.
+- The architecture is designed for modularity and easy addition of new content.
+
+Save/Load:
+-----------
+- World state (all object instances and their properties) is saved to localStorage in JSON format.
+- Supports multiple save slots.
+
+Input:
+------
+- Keyboard and gamepad input supported for both menu navigation and in-game actions.
+- Key bindings for object manipulation (WASD, R/V, Z/C, etc.).
+
+Rendering:
+----------
+- Uses Babylon.js for all 3D rendering, physics, and GUI.
+- Main render loop is managed by App.
+
+Known Conventions:
+------------------
+- All world objects are registered via app.createWorldObject.
+- Plugins follow the <Theme>Manifest.js naming and structure.
+- Scripts for objects are loaded dynamically if specified.
+
+---
+This file is intended as a living document. Update as the architecture evolves or new major features are added. 
