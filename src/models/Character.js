@@ -20,15 +20,15 @@ class Character {
                 }
                 inst.position = spawnPos;
                 playMode.player = inst;
-                if(typeof inst.script != 'unefined' && typeof inst.script.spawned != 'unefined') {
+                if(inst.script != null && typeof inst.script.spawned != 'undefined') {
                     // Notify character script of the spawn, indicating it is a player
                     playMode.player.script.spawned(true);
                 }
             }
         } else {
-            if(typeof inst.script != 'unefined' && typeof inst.script.spawned != 'unefined') {
+            if(inst.script != null && typeof inst.script.spawned != 'undefined') {
                 // Notify character script of the spawn, indicating it is an NPC
-                playMode.player.script.spawned(false);
+                inst.script.spawned(false);
             }
         }
 

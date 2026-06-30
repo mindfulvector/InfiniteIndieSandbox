@@ -7,6 +7,13 @@ const MENU_OBJ_PROPS = 5;
 const MENU_OBJ_EVENT_BINDINGS = 6;
 const MENU_OBJ_EVENT_BINDING_EDIT = 7;
 
+// HUD / menu theme
+const HUD_ACCENT       = "#4ad6ff";   // default cyan accent
+const HUD_BUILD_ACCENT = "#ffb14a";   // build mode = amber
+const HUD_PLAY_ACCENT  = "#5effa0";   // play mode = green
+const HUD_PANEL_BG     = "rgba(13,20,32,0.82)";
+const HUD_BAR_BG       = "rgba(10,15,24,0.72)";
+
 class App {
     constructor() {
         const app = this;
@@ -104,41 +111,8 @@ class App {
         this.gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
         //this.gui.parseFromURLAsync('./assets/gui/main.json');
 
-        // Create a text block
-        this.modeName = this.TextBlock({
-            text: "Welcome to the Infinite Indie Sandbox!",
-            color: "white",
-            fontSize: 15,
-            textHorizontalAlignment: BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER,
-            textVerticalAlignment: BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP,
-            paddingTop: 20,
-        });
-        this.message = this.TextBlock({
-            text: "",
-            color: "white",
-            fontSize: 15,
-            textHorizontalAlignment: BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER,
-            textVerticalAlignment: BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP,
-            paddingTop: 40,
-        });
-        
-        this.tips = this.TextBlock({
-            text: "Press Esc for menu. W/A/S/D to move object/avatar. R/V to raise/lower object. Z/C to rotate object. Space to place object/jump.",
-            color: "white",
-            fontSize: 15,
-            textHorizontalAlignment: BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER,
-            textVerticalAlignment: BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP,
-            paddingTop: 60,
-        });
-
-        this.loadingText = this.TextBlock({
-            text: "Loading...",
-            color: "white",
-            fontSize: 15,
-            textHorizontalAlignment: BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER,
-            textVerticalAlignment: BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP,
-            paddingTop: 80,
-        });
+        // Build the styled in-game HUD (mode badge, control hints, toasts, etc.)
+        this.buildHUD();
 
         //this.activeMode = new BuildMode(app);
 
@@ -148,6 +122,7 @@ class App {
 
         this.manifestObjectTarget = 0;
         this.manifestObjectCount = 0;
+        this.manifestObjectFailed = 0;
 
         new Manifest(this);
         
@@ -166,7 +141,22 @@ class App {
 
 
 
-        BABYLON.SceneOptimizer.OptimizeAsync(this.scene, BABYLON.SceneOptimizerOptions.HighDegradationAllowed(30),
+        // Scene optimization. The built-in HighDegradationAllowed preset includes
+        // a HardwareScalingOptimization that lowers the render resolution when the
+        // frame rate is under target. Because the fullscreen GUI texture is tied to
+        // the render resolution, that made the whole HUD/menus balloon in size and
+        // go blurry on any machine that dips below the target FPS. We use a custom
+        // option set that keeps the cheap scene optimizations but never touches
+        // hardware scaling or texture size, so the UI stays crisp and correctly
+        // proportioned.
+        const optOptions = new BABYLON.SceneOptimizerOptions(30, 2000);
+        optOptions.addOptimization(new BABYLON.ShadowsOptimization(0));
+        optOptions.addOptimization(new BABYLON.LensFlaresOptimization(0));
+        optOptions.addOptimization(new BABYLON.PostProcessesOptimization(1));
+        optOptions.addOptimization(new BABYLON.ParticlesOptimization(1));
+        optOptions.addOptimization(new BABYLON.RenderTargetsOptimization(1));
+        optOptions.addOptimization(new BABYLON.MergeMeshesOptimization(2));
+        BABYLON.SceneOptimizer.OptimizeAsync(this.scene, optOptions,
         function() {
            console.log('optimized')
         }, function() {
@@ -185,6 +175,7 @@ class App {
             }
 
             this.renderUI();
+            this.updateHUD();
 
             if(this.menu.state == MENU_HUD) {
                 if(null != this.activeMode) {
@@ -197,11 +188,286 @@ class App {
         });
     }
 
+    // Build the in-game HUD: a styled set of overlay controls that read like a
+    // real game (mode badge, contextual control hints, selected-object readout,
+    // toast notifications, loading indicator) plus a dim backdrop for menus.
+    buildHUD() {
+        const A = BABYLON.GUI.Control;
+        this.hud = {};
+
+        // Dim backdrop shown behind menus so the 3D scene recedes.
+        const backdrop = new BABYLON.GUI.Rectangle("hudBackdrop");
+        backdrop.width = "100%";
+        backdrop.height = "100%";
+        backdrop.thickness = 0;
+        backdrop.background = "rgba(4,6,12,0.55)";
+        backdrop.isVisible = false;
+        backdrop.isPointerBlocker = true;   // swallow camera-drags behind menus
+        this.gui.addControl(backdrop);
+        this.hud.backdrop = backdrop;
+
+        // --- Mode badge (top-left) ---
+        const badge = new BABYLON.GUI.Rectangle("hudBadge");
+        badge.height = "40px";
+        badge.width = "188px";
+        badge.cornerRadius = 8;
+        badge.thickness = 2;
+        badge.color = HUD_ACCENT;
+        badge.background = HUD_PANEL_BG;
+        badge.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        badge.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        badge.left = "18px";
+        badge.top = "16px";
+        badge.isVisible = false;
+        this.gui.addControl(badge);
+        this.hud.badge = badge;
+
+        const badgeDot = new BABYLON.GUI.Ellipse("hudBadgeDot");
+        badgeDot.width = "12px";
+        badgeDot.height = "12px";
+        badgeDot.thickness = 0;
+        badgeDot.background = HUD_ACCENT;
+        badgeDot.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        badgeDot.left = "14px";
+        badge.addControl(badgeDot);
+        this.hud.badgeDot = badgeDot;
+
+        const badgeText = new BABYLON.GUI.TextBlock("hudBadgeText");
+        badgeText.text = "";
+        badgeText.color = "#ffffff";
+        badgeText.fontSize = 16;
+        badgeText.fontStyle = "bold";
+        badgeText.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        badgeText.paddingLeft = "36px";
+        badge.addControl(badgeText);
+        this.modeName = badgeText;   // kept for BuildMode/PlayMode compatibility
+
+        // --- Selected-object readout (top-right, build mode only) ---
+        const objInfo = new BABYLON.GUI.Rectangle("hudObjInfo");
+        objInfo.height = "40px";
+        objInfo.adaptWidthToChildren = true;
+        objInfo.cornerRadius = 8;
+        objInfo.thickness = 2;
+        objInfo.color = HUD_BUILD_ACCENT;
+        objInfo.background = HUD_PANEL_BG;
+        objInfo.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_RIGHT;
+        objInfo.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        objInfo.left = "-18px";
+        objInfo.top = "16px";
+        objInfo.isVisible = false;
+        this.gui.addControl(objInfo);
+        const objText = new BABYLON.GUI.TextBlock("hudObjInfoText");
+        objText.resizeToFit = true;
+        objText.color = "#ffffff";
+        objText.fontSize = 15;
+        objText.paddingLeft = "16px";
+        objText.paddingRight = "16px";
+        objInfo.addControl(objText);
+        this.hud.objInfo = objInfo;
+        this.hud.objInfoText = objText;
+
+        // --- Toast / notification (top-center) ---
+        const toast = new BABYLON.GUI.Rectangle("hudToast");
+        toast.adaptWidthToChildren = true;
+        toast.height = "38px";
+        toast.cornerRadius = 19;
+        toast.thickness = 1;
+        toast.color = HUD_ACCENT;
+        toast.background = "rgba(13,20,32,0.92)";
+        toast.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+        toast.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        toast.top = "18px";
+        toast.isVisible = false;
+        this.gui.addControl(toast);
+        const toastText = new BABYLON.GUI.TextBlock("hudToastText");
+        toastText.resizeToFit = true;
+        toastText.color = "#eaf6ff";
+        toastText.fontSize = 15;
+        toastText.paddingLeft = "22px";
+        toastText.paddingRight = "22px";
+        toast.addControl(toastText);
+        this.hud.toast = toast;
+        this.message = toastText;   // kept for toasty() compatibility
+
+        // --- Control-hints bar (bottom-center) ---
+        const hintsBar = new BABYLON.GUI.Rectangle("hudHints");
+        hintsBar.adaptWidthToChildren = true;
+        hintsBar.height = "46px";
+        hintsBar.cornerRadius = 10;
+        hintsBar.thickness = 1;
+        hintsBar.color = "rgba(255,255,255,0.18)";
+        hintsBar.background = HUD_BAR_BG;
+        hintsBar.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+        hintsBar.verticalAlignment = A.VERTICAL_ALIGNMENT_BOTTOM;
+        hintsBar.top = "-18px";
+        hintsBar.isVisible = false;
+        this.gui.addControl(hintsBar);
+        const hintsPanel = new BABYLON.GUI.StackPanel("hudHintsPanel");
+        hintsPanel.isVertical = false;
+        hintsPanel.height = "46px";
+        hintsPanel.paddingLeft = "10px";
+        hintsPanel.paddingRight = "10px";
+        hintsBar.addControl(hintsPanel);
+        this.hud.hintsBar = hintsBar;
+        this.hud.hintsPanel = hintsPanel;
+
+        // --- Loading indicator (bottom-right) ---
+        const loading = new BABYLON.GUI.Rectangle("hudLoading");
+        loading.adaptWidthToChildren = true;
+        loading.height = "30px";
+        loading.cornerRadius = 15;
+        loading.thickness = 1;
+        loading.color = HUD_ACCENT;
+        loading.background = "rgba(13,20,32,0.88)";
+        loading.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_RIGHT;
+        loading.verticalAlignment = A.VERTICAL_ALIGNMENT_BOTTOM;
+        loading.left = "-18px";
+        loading.top = "-18px";
+        loading.isVisible = false;
+        this.gui.addControl(loading);
+        const loadingText = new BABYLON.GUI.TextBlock("hudLoadingText");
+        loadingText.resizeToFit = true;
+        loadingText.color = "#bfe9ff";
+        loadingText.fontSize = 13;
+        loadingText.paddingLeft = "14px";
+        loadingText.paddingRight = "14px";
+        loading.addControl(loadingText);
+        this.hud.loading = loading;
+        this.loadingText = loadingText;
+    }
+
+    // Build one "[KEY] Label" hint chip for the control-hints bar.
+    makeHintChip(key, label, spaced) {
+        const wrap = new BABYLON.GUI.StackPanel();
+        wrap.isVertical = false;
+        wrap.height = "46px";
+        wrap.adaptWidthToChildren = true;
+        if(spaced) wrap.paddingLeft = "14px";
+
+        const pill = new BABYLON.GUI.Rectangle();
+        pill.height = "24px";
+        pill.adaptWidthToChildren = true;
+        pill.cornerRadius = 5;
+        pill.thickness = 1;
+        pill.color = HUD_ACCENT;
+        pill.background = "rgba(74,214,255,0.14)";
+        const keyText = new BABYLON.GUI.TextBlock();
+        keyText.text = key;
+        keyText.resizeToFit = true;
+        keyText.color = "#dff6ff";
+        keyText.fontSize = 13;
+        keyText.fontStyle = "bold";
+        keyText.paddingLeft = "8px";
+        keyText.paddingRight = "8px";
+        pill.addControl(keyText);
+        wrap.addControl(pill);
+
+        const lbl = new BABYLON.GUI.TextBlock();
+        lbl.text = label;
+        lbl.resizeToFit = true;
+        lbl.color = "#c8d4e6";
+        lbl.fontSize = 14;
+        lbl.paddingLeft = "7px";
+        wrap.addControl(lbl);
+
+        return wrap;
+    }
+
+    // Replace the control-hints bar contents with the given [{k,label}] list.
+    setControlHints(hints) {
+        if(!this.hud) return;
+        const panel = this.hud.hintsPanel;
+        panel.children.slice().forEach((c) => { panel.removeControl(c); c.dispose(); });
+        hints.forEach((h, i) => panel.addControl(this.makeHintChip(h.k, h.label, i > 0)));
+    }
+
+    // Show/hide the loading indicator (bottom-right).
+    setLoading(on, n, total) {
+        if(!this.hud) return;
+        this.hud.loading.isVisible = !!on;
+        if(on) {
+            this.loadingText.text = 'Loading  ' + n + ' / ' + total;
+        }
+    }
+
+    // Turn an internal object id (e.g. 'pr_door', 't_cube_1x1') into a friendly
+    // display name (e.g. 'Door', 'Cube 1x1') for the selected-object readout.
+    prettyName(name) {
+        if(!name) return '';
+        let n = name.replace(/^(t|pr|al|cp|d|l)_/, '').replace(/_/g, ' ');
+        return n.replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    // Refresh the badge + control hints for the active mode (called when the
+    // mode changes).
+    refreshModeHud(mode) {
+        if(!this.hud) return;
+        if(mode === 'BuildMode') {
+            this.modeName.text = "BUILD MODE";
+            this.hud.badge.color = HUD_BUILD_ACCENT;
+            this.hud.badgeDot.background = HUD_BUILD_ACCENT;
+            // Keep to the essentials so the bar fits a typical viewport width.
+            this.setControlHints([
+                {k:'WASD',   label:'Move'},
+                {k:'Q / E',  label:'Cycle'},
+                {k:'Z / C',  label:'Rotate'},
+                {k:'R / V',  label:'Height'},
+                {k:'Space',  label:'Place'},
+                {k:'Esc',    label:'Menu'},
+            ]);
+        } else if(mode === 'PlayMode') {
+            this.modeName.text = "PLAY MODE";
+            this.hud.badge.color = HUD_PLAY_ACCENT;
+            this.hud.badgeDot.background = HUD_PLAY_ACCENT;
+            this.setControlHints([
+                {k:'WASD',  label:'Move'},
+                {k:'Shift', label:'Run'},
+                {k:'Space', label:'Jump'},
+                {k:'Esc',   label:'Menu'},
+            ]);
+        }
+    }
+
+    // Per-frame HUD refresh: toggles gameplay overlay vs. menu backdrop, and
+    // updates the build-mode selected-object readout.
+    updateHUD() {
+        if(!this.hud) return;
+        const inHud = (this.menu.state === MENU_HUD);
+        const mode = this.activeMode ? this.activeMode.constructor.name : null;
+
+        this.hud.backdrop.isVisible = !inHud;
+        this.hud.badge.isVisible = inHud && !!mode;
+        this.hud.hintsBar.isVisible = inHud && !!mode;
+
+        // Reconfigure badge/hints only when the active mode actually changes.
+        if(mode !== this._hudMode) {
+            this._hudMode = mode;
+            this.refreshModeHud(mode);
+        }
+
+        // Build-mode selected-object readout.
+        const bm = (mode === 'BuildMode') ? this.activeMode : null;
+        const showObj = !!(inHud && bm && bm.currentWorldObject);
+        this.hud.objInfo.isVisible = showObj;
+        if(showObj) {
+            const idx = (bm.selectedObjectIndex | 0) + 1;
+            const total = this.BuildableObjectList.length;
+            this.hud.objInfoText.text = this.prettyName(bm.currentWorldObject.name) + '    ' + idx + ' / ' + total;
+        }
+    }
+
     uploadLoadingMessage() {
-        if(this.manifestObjectTarget > this.manifestObjectCount) {
-            this.loadingText.text = 'Loading ' + this.manifestObjectCount + '/' + this.manifestObjectTarget;
+        // An asset is "settled" once it has either loaded or definitively failed.
+        // The indicator clears when everything has settled, so a single bad asset
+        // can no longer pin "Loading x/y" on screen permanently.
+        const settled = this.manifestObjectCount + this.manifestObjectFailed;
+        if(settled < this.manifestObjectTarget) {
+            this.setLoading(true, this.manifestObjectCount, this.manifestObjectTarget);
         } else {
-            this.loadingText.text = '';
+            this.setLoading(false);
+            if(this.manifestObjectFailed > 0) {
+                this.toasty(this.manifestObjectFailed + ' asset(s) could not be loaded.');
+            }
         }
     }
 
@@ -354,6 +620,10 @@ class App {
         this.menu.controls.forEach((button) => {
             button?.dispose();
         });
+        // Reset the list so we don't re-dispose stale controls (and leak) on
+        // every subsequent menu render.
+        this.menu.controls = [];
+        this.menu.panel = null;
     }
     renderUI() {
         const app = this;
@@ -373,44 +643,33 @@ class App {
                 this.MenuItem({
                     type: 'text',
                     name: 'menuLabel',
-                    text: 'Welcome to...',
+                    text: 'Welcome to the',
+                    fontSize: 15,
+                    color: '#9fb3c8',
                 });
-                
-                this.MenuItem({
-                    type: 'text',
-                    name: 'menuLabel',
-                    text: '',
-                });
-                
-                this.MenuItem({
-                    type: 'text',
-                    name: 'menuLabel',
-                    text: 'the',
-                });
-                
 
                 this.MenuItem({
                     type: 'text',
                     name: 'menuLabel',
-                    text: 'INFINITE',
+                    text: 'INFINITE INDIE',
+                    fontSize: 30,
+                    accent: true,
                 });
                 this.MenuItem({
                     type: 'text',
                     name: 'menuLabel',
-                    text: 'I N D I E',
+                    text: 'SANDBOX',
+                    fontSize: 34,
+                    accent: true,
                 });
-                this.MenuItem({
-                    type: 'text',
-                    name: 'menuLabel',
-                    text: 'S  A  N  D  B  O  X !',
-                });
-                
+
                 this.MenuItem({
                     type: 'text',
                     name: 'menuLabel',
                     text: '',
+                    fontSize: 8,
                 });
-                
+
                 this.MenuItem({
                     type: 'button',
                     name: 'btnNew',
@@ -453,7 +712,9 @@ class App {
                 this.MenuItem({
                     type: 'text',
                     name: 'menuLabel',
-                    text: '-- Pause Menu --',
+                    text: 'PAUSED',
+                    fontSize: 24,
+                    accent: true,
                 });
 
                 this.MenuItem({
@@ -510,7 +771,9 @@ class App {
                 this.MenuItem({
                     type: 'text',
                     name: 'menuLabel',
-                    text: (this.menu.state == MENU_SAVE ? '-- Save Game --' : '-- Load Game --'),
+                    text: (this.menu.state == MENU_SAVE ? 'SAVE GAME' : 'LOAD GAME'),
+                    fontSize: 24,
+                    accent: true,
                 });
 
                 for(let saveSlot = 1; saveSlot <= 9; saveSlot++) {
@@ -657,6 +920,12 @@ class App {
                 app.BuildableObjectList.push(woNewAsset);
                 app.manifestObjectCount++;
                 app.uploadLoadingMessage();
+            }).catch((err) => {
+                // Without this, a failed/unreachable asset would never settle and
+                // the loading indicator would be stuck on screen forever.
+                console.error('Failed to load asset `' + assetProps.filename + '`:', err);
+                app.manifestObjectFailed++;
+                app.uploadLoadingMessage();
             });
         }
 
@@ -675,7 +944,7 @@ class App {
                         depth: p.s[2]}, app.scene);
                     break;
                 case 'sphere':
-                    prim = BABYLON.MeshBuilder.CreateCube('prim.sphere', {
+                    prim = BABYLON.MeshBuilder.CreateSphere('prim.sphere', {
                         diameter: p.s[0] }, app.scene);
                     break;
                 case 'cylinder':
@@ -767,14 +1036,16 @@ class App {
 
     toasty(message) {
         let app = this;
-        this.message.text = message;
+        if(this.message) this.message.text = message;
+        if(this.hud && this.hud.toast) this.hud.toast.isVisible = !!message;
         if(this.toastyTimer) {
             clearTimeout(this.toastyTimer);
         }
         this.toastyTimer = setTimeout(() => {
             app.toastyTimer = 0;
-            app.message.text = '';
-        }, 2000);
+            if(app.message) app.message.text = '';
+            if(app.hud && app.hud.toast) app.hud.toast.isVisible = false;
+        }, 2200);
     }
 
     findWorldObject(woName) {
@@ -829,67 +1100,82 @@ class App {
         return result;
     }
 
-    // Background and frame of popup menu
+    // Popup menu panel: a centered, rounded, semi-transparent card whose height
+    // adapts to its contents. Menu items are stacked vertically inside it (no
+    // more fragile absolute-percentage positioning that overlapped).
     MenuRect(opts) {
         if(typeof opts == 'undefined') opts = {};
-        const gradient = new BABYLON.GUI.LinearGradient(500, 900, 500, 600);
-        gradient.addColorStop(0, "blue");
-        gradient.addColorStop(1, "darkBlue");
+        const A = BABYLON.GUI.Control;
 
-        const rectangle = new BABYLON.GUI.Rectangle("menuRect");
-        rectangle.left = "0%";
-        rectangle.top = (typeof opts.top == 'undefined') ? "0%" : opts.top;
-        rectangle.width = (typeof opts.width == 'undefined') ? "50%" : (opts.width + '%');
-        rectangle.height = (typeof opts.height == 'undefined') ? "50%" : (opts.height + '%');
-        rectangle.color = "#FFFFFF";
-        rectangle.fontSize = 16;
-        rectangle.backgroundGradient = gradient;
-        rectangle.thickness = 2;
-        this.gui.addControl(rectangle);
-        this.menu.controls.push(rectangle);
+        const panel = new BABYLON.GUI.Rectangle("menuRect");
+        panel.width = (typeof opts.width != 'undefined') ? (opts.width + '%') : "440px";
+        panel.adaptHeightToChildren = true;
+        panel.cornerRadius = 14;
+        panel.thickness = 2;
+        panel.color = HUD_ACCENT;
+        panel.background = "rgba(12,18,30,0.94)";
+        panel.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+        panel.verticalAlignment = A.VERTICAL_ALIGNMENT_CENTER;
+        panel.top = (typeof opts.top != 'undefined') ? opts.top : "0px";
+        this.gui.addControl(panel);
+        // Only the panel needs tracking for disposal; its children go with it.
+        this.menu.controls.push(panel);
 
-        // Reset top of menu items created with this.MenuItem
-        if(typeof opts.height != 'undefined') {
-            this.menu.nextTop = 0 - opts.height/4;
-        } else {
-            this.menu.nextTop = -23;
-        }
+        const stack = new BABYLON.GUI.StackPanel("menuStack");
+        stack.isVertical = true;
+        stack.spacing = 7;
+        stack.paddingTop = "24px";
+        stack.paddingBottom = "24px";
+        panel.addControl(stack);
+        this.menu.panel = stack;
     }
 
-    // Item within popup menu
+    // Item within popup menu. `type` is 'text' (a label/title) or 'button'.
+    // Optional opts: fontSize, color, accent (style as a title).
     MenuItem(opts) {
-        const gradient = new BABYLON.GUI.LinearGradient(500, 900, 500, 600);
-        gradient.addColorStop(0, "blue");
-        gradient.addColorStop(1, "darkBlue");
+        const A = BABYLON.GUI.Control;
+        const stack = this.menu.panel;
+        if(!stack) return;
 
         switch(opts.type) {
-        case 'text':    
+        case 'text':
             const textItem = new BABYLON.GUI.TextBlock();
-            textItem.left = "0%";
-            textItem.top = this.menu.nextTop+"%";
-            textItem.width = "48%";
-            textItem.height = "30px";
-            textItem.color = "#FFFFFF";
-            textItem.backgroundGradient = gradient;
-            textItem.thickness = 2;
             textItem.text = opts.text;
-            this.gui.addControl(textItem);
-            this.menu.controls.push(textItem);
-            this.menu.nextTop += 3;
+            textItem.color = opts.color || (opts.accent ? HUD_ACCENT : "#cdd9e8");
+            textItem.fontSize = opts.fontSize || 16;
+            if(opts.accent) textItem.fontStyle = "bold";
+            textItem.height = ((opts.fontSize || 16) + 12) + "px";
+            textItem.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+            stack.addControl(textItem);
             break;
         case 'button':
-            const buttonItem = BABYLON.GUI.Button.CreateSimpleButton(opts.name, opts.text);
-            buttonItem.left = "0%";
-            buttonItem.top = this.menu.nextTop+"%";
-            buttonItem.width = "48%";
-            buttonItem.height = "30px";
-            buttonItem.color = "#FFFFFF";
-            buttonItem.backgroundGradient = gradient;
-            buttonItem.thickness = 2;
-            buttonItem.onPointerUpObservable.add(opts.handler);
-            this.gui.addControl(buttonItem);
-            this.menu.controls.push(buttonItem);
-            this.menu.nextTop += 3;
+            const bg = "rgba(36,58,92,0.55)";
+            const btn = BABYLON.GUI.Button.CreateSimpleButton(opts.name, opts.text);
+            btn.width = "356px";
+            btn.height = "46px";
+            btn.color = "#eaf2ff";
+            btn.fontSize = 17;
+            btn.cornerRadius = 9;
+            btn.thickness = 1;
+            btn.background = bg;
+            if(btn.textBlock) {
+                btn.textBlock.color = "#eaf2ff";
+            }
+            // Hover / focus feedback so the menu feels interactive.
+            btn.onPointerEnterObservable.add(() => {
+                btn.background = HUD_ACCENT;
+                btn.color = "#0b1018";
+                if(btn.textBlock) btn.textBlock.color = "#08111c";
+            });
+            btn.onPointerOutObservable.add(() => {
+                btn.background = bg;
+                btn.color = "#eaf2ff";
+                if(btn.textBlock) btn.textBlock.color = "#eaf2ff";
+            });
+            if(typeof opts.handler == 'function') {
+                btn.onPointerUpObservable.add(opts.handler);
+            }
+            stack.addControl(btn);
             break;
         }
     }

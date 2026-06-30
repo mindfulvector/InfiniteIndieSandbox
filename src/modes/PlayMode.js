@@ -101,12 +101,24 @@ class PlayMode {
             playMode.cc.makeObstructionInvisible(false);
 
             playMode.cc.start();
+        }, null, function (scene, message) {
+            // Surface a failed avatar load instead of leaving the player frozen
+            // with no feedback.
+            console.error('Failed to load player avatar:', message);
+            playMode.app.toasty('Could not load player avatar.');
         });
     }
 
     disposePlayer() {
-        this.cc.stop();
-        this.player.dispose();
+        // The avatar loads asynchronously; if the player leaves Play mode before
+        // it finishes, cc/player are still undefined. Guard so the mode switch
+        // doesn't throw and get stuck half-completed.
+        if (this.cc) {
+            this.cc.stop();
+        }
+        if (this.player) {
+            this.player.dispose();
+        }
     }
 
     // Setup all animation ranges for player

@@ -59,7 +59,7 @@ class WorldObject {
         //          p: {}
         //      }
         //  (keys are short for storage efficiency)
-        if(typeof woInstData.ev != 'undefined') inst.event = woInstData.ev;
+        if(typeof woInstData.ev != 'undefined') inst.events = woInstData.ev;
         else inst.events = {};
 
         // Set state flags
