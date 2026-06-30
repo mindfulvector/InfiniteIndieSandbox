@@ -1,4 +1,24 @@
 class WorldObject {
+    // Rebuild a Vector3 from either a live Vector3 or a JSON-parsed plain object
+    // (Babylon serializes Vector3 with _x/_y/_z backing fields).
+    static toVector3(o) {
+        if (o instanceof BABYLON.Vector3) return o.clone();
+        const x = (o._x !== undefined) ? o._x : o.x;
+        const y = (o._y !== undefined) ? o._y : o.y;
+        const z = (o._z !== undefined) ? o._z : o.z;
+        return new BABYLON.Vector3(x || 0, y || 0, z || 0);
+    }
+
+    // Rebuild a Quaternion from a live Quaternion or a JSON-parsed plain object.
+    static toQuaternion(o) {
+        if (o instanceof BABYLON.Quaternion) return o.clone();
+        const x = (o._x !== undefined) ? o._x : o.x;
+        const y = (o._y !== undefined) ? o._y : o.y;
+        const z = (o._z !== undefined) ? o._z : o.z;
+        const w = (o._w !== undefined) ? o._w : o.w;
+        return new BABYLON.Quaternion(x || 0, y || 0, z || 0, (w === undefined ? 1 : w));
+    }
+
     constructor(app, name, mesh, nestedMeshes=false, scriptClass=null) {
         this.app = app;
         this.name = name;
@@ -80,11 +100,18 @@ class WorldObject {
             }
         ];
 
-        // Apply saved object position and rotation
-        if(typeof woInstData.po != 'undefined') inst.position = woInstData.po;
-        if(typeof woInstData.ro != 'undefined') inst.rotationQuaternion = woInstData.ro;
-        if(typeof woInstData.sc != 'undefined') {
-            inst.scaling = new BABYLON.Vector3(woInstData.sc._x,woInstData.sc._y,woInstData.sc._z);
+        // Apply saved object position, rotation and scale. These come back from
+        // JSON as plain objects (e.g. {_x,_y,_z}), NOT real Vector3/Quaternion,
+        // so they must be rebuilt -- assigning the raw object to inst.position
+        // would silently break the instance's transform on load.
+        if(typeof woInstData.po != 'undefined' && woInstData.po != null) {
+            inst.position = WorldObject.toVector3(woInstData.po);
+        }
+        if(typeof woInstData.ro != 'undefined' && woInstData.ro != null) {
+            inst.rotationQuaternion = WorldObject.toQuaternion(woInstData.ro);
+        }
+        if(typeof woInstData.sc != 'undefined' && woInstData.sc != null) {
+            inst.scaling = WorldObject.toVector3(woInstData.sc);
         }
 
         

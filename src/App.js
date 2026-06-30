@@ -631,15 +631,7 @@ class App {
             this.modeName.text = "BUILD MODE";
             this.hud.badge.color = HUD_BUILD_ACCENT;
             this.hud.badgeDot.background = HUD_BUILD_ACCENT;
-            // Keep to the essentials so the bar fits a typical viewport width.
-            this.setControlHints([
-                {k:'← / →', label:'Cycle'},
-                {k:'↑ / ↓', label:'Category'},
-                {k:'WASD',   label:'Move'},
-                {k:'Z / C',  label:'Rotate'},
-                {k:'Space',  label:'Place'},
-                {k:'Esc',    label:'Menu'},
-            ]);
+            this._buildHintMode = null;     // force updateHUD to set the right set
         } else if(mode === 'PlayMode') {
             this.modeName.text = "PLAY MODE";
             this.hud.badge.color = HUD_PLAY_ACCENT;
@@ -649,6 +641,29 @@ class App {
                 {k:'Shift', label:'Run'},
                 {k:'Space', label:'Jump'},
                 {k:'Esc',   label:'Menu'},
+            ]);
+        }
+    }
+
+    // Control hints for build mode differ between placing an object and the
+    // cursor/select sub-mode (entered with 0), which is where targeted deletes
+    // happen.
+    setBuildHints(cursorMode) {
+        if(cursorMode) {
+            this.setControlHints([
+                {k:'WASD',  label:'Move cursor'},
+                {k:'Del',   label:'Remove'},
+                {k:'← / →', label:'Object'},
+                {k:'Esc',   label:'Menu'},
+            ]);
+        } else {
+            this.setControlHints([
+                {k:'← / →', label:'Cycle'},
+                {k:'↑ / ↓', label:'Category'},
+                {k:'WASD',   label:'Move'},
+                {k:'Z / C',  label:'Rotate'},
+                {k:'Space',  label:'Place'},
+                {k:'Del',    label:'Remove'},
             ]);
         }
     }
@@ -692,6 +707,13 @@ class App {
                 const sel = bm ? bm.selectedObjectIndex : -1;
                 if(sel !== this._objBrowserSel) {
                     this.refreshObjBrowserSelection(sel);
+                }
+                // Swap control hints between placement and cursor/select sub-mode.
+                const cursorMode = !(bm && bm.currentInstance);
+                const wantMode = cursorMode ? 'cursor' : 'place';
+                if(wantMode !== this._buildHintMode) {
+                    this._buildHintMode = wantMode;
+                    this.setBuildHints(cursorMode);
                 }
             }
             this.hud.hintsBar.top = buildHud ? ('-' + (this.hud.objBarHeight + 12) + 'px') : '-18px';

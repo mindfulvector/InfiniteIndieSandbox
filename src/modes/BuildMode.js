@@ -5,6 +5,7 @@ class BuildMode {
         this.app = app;
         this.selectedObjectIndex = 0; // Index of the selected object in BuildableObjectList
         this.currentInstance = null; // Currently placed/selected instance in the world
+        this.placedInstances = [];   // stack of {wo, inst} placed this session, for undo/delete
         this.gridSize = 10;
         this.lastUndoInstanceIndex = -1;
         this.lockMenuButtons = false;
@@ -41,6 +42,41 @@ class BuildMode {
     dispose() {
         this.app.modeName.text = "Exiting BuildMode...";
         this.disposeCurrentInstance();
+    }
+
+    // Remove objects. In cursor mode (0) with the cursor over object(s), delete
+    // those; otherwise undo the most recently placed object.
+    deleteAction() {
+        if (typeof this.selection != 'undefined' && this.selection.length > 0) {
+            let n = 0;
+            this.selection.slice().forEach((node) => {
+                this.app.showBoundingBoxAll(node, false);
+                this.removePlacedInstance(node);
+                n++;
+            });
+            this.selection = [];
+            this.app.toasty('Removed ' + n + ' object' + (n === 1 ? '' : 's') + '.');
+        } else if (this.placedInstances.length > 0) {
+            const last = this.placedInstances.pop();
+            if (last && last.inst) {
+                this.app.showBoundingBoxAll(last.inst, false);
+                this.removePlacedInstance(last.inst);
+            }
+            this.app.toasty('Removed last placed object.');
+        } else {
+            this.app.toasty('Nothing to remove. Press 0 to select placed objects.');
+        }
+    }
+
+    // Dispose an instance and drop it from the undo stack.
+    removePlacedInstance(node) {
+        if (!node) return;
+        this.placedInstances = this.placedInstances.filter((p) => p.inst !== node);
+        if (node.worldObject) {
+            node.worldObject.disposeInstance(node);
+        } else {
+            node.dispose();
+        }
     }
 
     // Ask BuildMode to switch the active placement object to a given index in
@@ -186,7 +222,7 @@ class BuildMode {
         }
 
         // Programmatic selection request (e.g. clicking a tile in the object
-        // browser). Reuses the same object-changed path as Q/E.
+        // browser). Reuses the same object-changed path as the arrow keys.
         if (this._selectRequested) {
             this._selectRequested = false;
             if (this.selectedObjectIndex >= 0) {
@@ -194,10 +230,11 @@ class BuildMode {
             }
         }
 
-        // Handling Backspace key to clear currentInstance
-        //if (this.app.keyPressed('BACKSPACE')) {
-        //    this.disposeCurrentInstance();
-        //}
+        // Delete / Backspace removes objects: the cursor selection if any,
+        // otherwise the most recently placed object (quick undo).
+        if (this.app.keyPressed('DELETE') || this.app.keyPressed('BACKSPACE')) {
+            this.deleteAction();
+        }
 
         let placementPosition = false;
         let objectPlaced = false;
@@ -206,10 +243,9 @@ class BuildMode {
         if (this.currentInstance) {
             placementPosition = this.currentInstance.position.clone();
             if(this.app.keyPressed(' ')) {
-                //const clone = this.currentInstance.clone();
-                //clone.checkCollisions = true;
-                //this.app.scene.addMesh(clone);
                 this.app.showBoundingBoxAll(this.currentInstance, false);
+                // Remember it so Delete can undo placements in order.
+                this.placedInstances.push({ wo: this.currentWorldObject, inst: this.currentInstance });
                 this.currentInstance = null;
                 objectChanged = true;
                 objectPlaced = true;
