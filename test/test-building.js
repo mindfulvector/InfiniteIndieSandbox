@@ -105,7 +105,7 @@ async function main() {
             window.__targetIdx = idx;
             window.app.activeMode.selectedObjectIndex = (idx - 1 + list.length) % list.length;
         }, BUILD_OBJECT);
-        await h.tapUntil('e', () => window.app.activeMode.currentInstance &&
+        await h.tapUntil('ArrowRight', () => window.app.activeMode.currentInstance &&
             window.app.activeMode.selectedObjectIndex === window.__targetIdx);
         await h.waitFrames(5);
         s = await h.getState();

@@ -81,6 +81,12 @@ class App {
         this.camera = new BABYLON.ArcRotateCamera("Camera", 0-Math.PI / 3, Math.PI / 3, 20, BABYLON.Vector3.Zero(), this.scene);
         this.camera.wheelPrecision = 50;
         this.camera.attachControl(canvas, true);
+        // Free the arrow keys for gameplay (object cycling / category switching);
+        // the orbit camera binds them to rotation by default.
+        this.camera.keysUp = [];
+        this.camera.keysDown = [];
+        this.camera.keysLeft = [];
+        this.camera.keysRight = [];
 
         /*
         this.camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 10, -10), this.scene);
@@ -627,10 +633,10 @@ class App {
             this.hud.badgeDot.background = HUD_BUILD_ACCENT;
             // Keep to the essentials so the bar fits a typical viewport width.
             this.setControlHints([
+                {k:'← / →', label:'Cycle'},
+                {k:'↑ / ↓', label:'Category'},
                 {k:'WASD',   label:'Move'},
-                {k:'Q / E',  label:'Cycle'},
                 {k:'Z / C',  label:'Rotate'},
-                {k:'R / V',  label:'Height'},
                 {k:'Space',  label:'Place'},
                 {k:'Esc',    label:'Menu'},
             ]);

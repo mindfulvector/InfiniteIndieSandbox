@@ -51,6 +51,31 @@ class BuildMode {
         this._selectRequested = true;
     }
 
+    // Return the index of the first object in the previous/next category
+    // (dir = -1 / +1), relative to the currently selected object's category.
+    categoryJumpIndex(dir) {
+        const list = this.app.BuildableObjectList;
+        if (list.length === 0) return this.selectedObjectIndex;
+
+        // Ordered list of unique categories, by first appearance.
+        const cats = [];
+        list.forEach((wo) => {
+            const c = this.app.objectCategory(wo.name);
+            if (cats.indexOf(c) === -1) cats.push(c);
+        });
+        if (cats.length === 0) return this.selectedObjectIndex;
+
+        const curIdx = (this.selectedObjectIndex >= 0 && this.selectedObjectIndex < list.length)
+            ? this.selectedObjectIndex : 0;
+        const curCat = this.app.objectCategory(list[curIdx].name);
+        let ci = cats.indexOf(curCat);
+        ci = (ci + dir + cats.length) % cats.length;
+        const targetCat = cats[ci];
+
+        const idx = list.findIndex((wo) => this.app.objectCategory(wo.name) === targetCat);
+        return idx >= 0 ? idx : this.selectedObjectIndex;
+    }
+
     disposeCurrentInstance() {
         //this.app.camera.lockedTarget = this.app.defaultSphere;
         if(typeof this.currentWorldObject != 'undefined' && this.currentWorldObject != null) {
@@ -126,19 +151,29 @@ class BuildMode {
         let objectChanged = false;
         let cursorMode = false;
 
-        // User input for changing the build menu selection
-        if (this.app.keyPressed('Q')) {
-            console.log('Q key is pressed; prev object');
+        const objectCount = this.app.BuildableObjectList.length;
+
+        // Left/Right arrows cycle through the buildable objects.
+        if (this.app.keyPressed('ArrowLeft')) {
             this.selectedObjectIndex--;
             if (this.selectedObjectIndex < 0) {
-                this.selectedObjectIndex = this.app.BuildableObjectList.length - 1; // Wrap around
+                this.selectedObjectIndex = objectCount - 1; // Wrap around
             }
             objectChanged = true;
         }
 
-        if (this.app.keyPressed('E')) {
-            console.log('E key is pressed; next object');
-            this.selectedObjectIndex = (this.selectedObjectIndex + 1) % this.app.BuildableObjectList.length;
+        if (this.app.keyPressed('ArrowRight')) {
+            this.selectedObjectIndex = (this.selectedObjectIndex + 1) % objectCount;
+            objectChanged = true;
+        }
+
+        // Up/Down arrows jump between object categories.
+        if (this.app.keyPressed('ArrowUp')) {
+            this.selectedObjectIndex = this.categoryJumpIndex(-1);
+            objectChanged = true;
+        }
+        if (this.app.keyPressed('ArrowDown')) {
+            this.selectedObjectIndex = this.categoryJumpIndex(1);
             objectChanged = true;
         }
 
