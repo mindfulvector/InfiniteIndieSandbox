@@ -1,0 +1,2 @@
+# Screenshots are regenerated on every run; don't track them.
+screenshots/*.png
