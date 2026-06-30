@@ -92,7 +92,11 @@ class ThumbnailRenderer {
             if (cam) cam.dispose();
             if (key) key.dispose();
             if (fill) fill.dispose();
-            if (clone) clone.dispose(false, true);
+            // IMPORTANT: dispose the clone and its child clones, but NOT the
+            // material/textures — a cloned mesh shares those by reference with the
+            // real template, so disposing them here would strip textures off every
+            // live object in the scene. (signature: dispose(doNotRecurse, disposeMaterialAndTextures))
+            if (clone) clone.dispose(false, false);
         }
     }
 

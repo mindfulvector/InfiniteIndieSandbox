@@ -17,6 +17,8 @@ with no GPU.
 | `harness.js` | Reusable `GameHarness` class: starts the PHP server, launches Chromium, waits for the game to be ready, and provides input / state / screenshot helpers. |
 | `test-building.js` | The building-feature test: create a new sandbox and place objects in it. |
 | `test-object-browser.js` | The object-browser test: bottom bar shows a runtime thumbnail per object and click-to-select works. |
+| `test-placement-consistency.js` | Verifies every object base-aligns, centres on the anchor, and stays framed by the camera. |
+| `test-textures-survive-baking.js` | Regression guard: thumbnail baking must not dispose the shared textures of live objects. |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
 

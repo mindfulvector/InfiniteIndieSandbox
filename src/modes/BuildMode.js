@@ -29,6 +29,11 @@ class BuildMode {
         this.app.scene.getBoundingBoxRenderer().backColor.set(0, 0, 0.5);
         this.selectionColorIndex = 0;
 
+        // An invisible node the camera locks onto, kept at the current object's
+        // visual (bounding-box) centre so every object stays framed consistently
+        // regardless of where its mesh pivot happens to sit.
+        this.camFocus = new BABYLON.TransformNode('buildCamFocus', this.app.scene);
+
         // Set static UI strings once on mode load
         this.app.modeName.text = "BuildMode";
     }
@@ -55,9 +60,60 @@ class BuildMode {
         this.guideMesh?.dispose();
         this.cursor?.dispose();
         this.selectionMesh?.dispose();
+        this.camFocus?.dispose();
         this.currentInstance = null;
         this.currentWorldObject = null;
         this.guideMesh = null;
+        this.camFocus = null;
+    }
+
+    // Union world-space bounding box over an instance and all of its sub-meshes.
+    // Returns {min,max,center,size} or null if there is no renderable geometry.
+    computeWorldBBox(inst) {
+        const nodes = [inst].concat(inst.getChildMeshes ? inst.getChildMeshes() : []);
+        let min = null, max = null;
+        nodes.forEach((m) => {
+            if (m.getBoundingInfo && m.getTotalVertices && m.getTotalVertices() > 0) {
+                m.computeWorldMatrix(true);
+                const bb = m.getBoundingInfo().boundingBox;
+                if (!min) { min = bb.minimumWorld.clone(); max = bb.maximumWorld.clone(); }
+                else {
+                    min = BABYLON.Vector3.Minimize(min, bb.minimumWorld);
+                    max = BABYLON.Vector3.Maximize(max, bb.maximumWorld);
+                }
+            }
+        });
+        if (!min) return null;
+        return { min, max, center: min.add(max).scale(0.5), size: max.subtract(min) };
+    }
+
+    // Position an instance so that its footprint is centred on `anchor` (x,z) and
+    // its base sits exactly on `anchor.y`, whatever its pivot is. Returns the
+    // resulting world-space centre (for the camera focus).
+    anchorInstance(inst, anchor) {
+        inst.position.copyFrom(anchor);
+        inst.computeWorldMatrix(true);
+        const bb = this.computeWorldBBox(inst);
+        if (!bb) return anchor.clone();   // no geometry: leave pivot at anchor
+        const shift = new BABYLON.Vector3(
+            anchor.x - bb.center.x,   // centre footprint over anchor
+            anchor.y - bb.min.y,      // drop base onto anchor height
+            anchor.z - bb.center.z
+        );
+        inst.position.addInPlace(shift);
+        return new BABYLON.Vector3(anchor.x, anchor.y + (bb.center.y - bb.min.y), anchor.z);
+    }
+
+    // Point the orbit camera at the object's centre and pull back enough that the
+    // whole object is framed at a consistent on-screen size.
+    frameCameraToInstance(inst) {
+        inst.computeWorldMatrix(true);
+        const bb = this.computeWorldBBox(inst);
+        if (!bb) return;
+        const maxDim = Math.max(bb.size.x, bb.size.y, bb.size.z, 0.5);
+        this.app.camera.radius = Math.min(Math.max(maxDim * 2.4, 4), 60);
+        this.camFocus.position.copyFrom(bb.center);
+        this.app.camera.lockedTarget = this.camFocus;
     }
 
     update() {
@@ -183,6 +239,10 @@ class BuildMode {
                 if (placementPosition) {
                     this.currentInstance.position = placementPosition;
                 }
+
+                // Frame the camera to this object so it appears centred and at a
+                // consistent size whatever the player just switched from.
+                this.frameCameraToInstance(this.currentInstance);
             }
         }
 
@@ -368,48 +428,29 @@ class BuildMode {
             gridSize = Math.abs(gridSize * this.targetScale);
             if(gridSize > 1.0) gridSize = 1.0;
 
-            // If actually moved...
-            if (moved) {
-                // Update the position
-                this.currentInstance.position = this.targetPosition.clone(); //BABYLON.Vector3.Lerp(this.currentInstance.position, this.targetPosition, lerpRate);
-                this.currentInstance.position.y -= 0.02
-                // If scaling isn't already correct, update the scaling
-                if(this.currentInstance.scaling.x != this.targetScale.x || this.currentInstance.scaling.y != this.targetScale.y || this.currentInstance.scaling.z != this.targetScale.z) {
-                    this.currentInstance.scaling = this.makeBuildableObjectScale(this.targetScale);
-                    //console.log('update this.currentInstance.scaling=',this.currentInstance.scaling);
-                }
-
-            } else {
-                // User has stopped moving the object, lerp towards the nearest snapped position
-                let snappedPosition = new BABYLON.Vector3(
-                    Math.round((this.targetPosition.x + Number.EPSILON) / gridSize) * gridSize,
-                    Math.round((this.targetPosition.y + Number.EPSILON) / gridSize) * gridSize,
-                    Math.round((this.targetPosition.z + Number.EPSILON) / gridSize) * gridSize
+            // `targetPosition` is the anchor: the ground point the object's base
+            // should rest on. Snap it horizontally to the grid when the player
+            // isn't actively dragging the object.
+            let anchor = this.targetPosition.clone();
+            if (!moved) {
+                const snapped = new BABYLON.Vector3(
+                    Math.round((anchor.x + Number.EPSILON) / gridSize) * gridSize,
+                    anchor.y,
+                    Math.round((anchor.z + Number.EPSILON) / gridSize) * gridSize
                 );
-                
-                // Gradually move the placement object towards the snapped position
-                this.currentInstance.position = BABYLON.Vector3.Lerp(this.currentInstance.position, snappedPosition, lerpRate);
-
-                // Check if the movement has effectively stopped via a threshold
-                let distanceToTarget = BABYLON.Vector3.Distance(this.currentInstance.position, snappedPosition);
-                if (distanceToTarget < lerpStopThreshold) {
-                    // This helps to prevent z-fighting (though not completely)
-                    if(typeof this.placementJitter == 'undefined' || this.placementJitter == -0.002) {
-                        this.placementJitter = 0.002;
-                    } else if(this.placementJitter == 0.002) {
-                        this.placementJitter = 0.000;
-                    } else if(this.placementJitter == 0.000) {
-                        this.placementJitter = -0.002;
-                    }
-                    this.currentInstance.position.y += this.placementJitter;
-                    this.currentInstance.position.x += this.placementJitter;
-                    this.currentInstance.position.z += this.placementJitter;
-                    // so that changes start from the grid snapped position of the actual object
-                    this.targetPosition = this.currentInstance.position.clone();
-                }
+                this.targetPosition = BABYLON.Vector3.Lerp(this.targetPosition, snapped, lerpRate);
+                anchor = this.targetPosition.clone();
             }
 
-            this.app.camera.lockedTarget = this.currentInstance;
+            // Keep the scale current, then place the object so its base rests on
+            // the anchor and its footprint is centred on it -- identical handling
+            // for every object regardless of its pivot.
+            this.currentInstance.scaling = this.makeBuildableObjectScale(this.targetScale);
+            const center = this.anchorInstance(this.currentInstance, anchor);
+
+            // Keep the camera trained on the object's visual centre.
+            this.camFocus.position.copyFrom(center);
+            this.app.camera.lockedTarget = this.camFocus;
         }
 
         this.updateObjectsInBuildMode();
