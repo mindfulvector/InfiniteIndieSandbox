@@ -19,6 +19,8 @@ with no GPU.
 | `test-object-browser.js` | The object-browser test: bottom bar shows a runtime thumbnail per object and click-to-select works. |
 | `test-placement-consistency.js` | Verifies every object base-aligns, centres on the anchor, and stays framed by the camera. |
 | `test-textures-survive-baking.js` | Regression guard: thumbnail baking must not dispose the shared textures of live objects. |
+| `test-save-load.js` | A world survives save → clear → load with transforms intact and no duplicate cube. |
+| `test-delete.js` | Placed objects can be removed with Delete (quick undo). |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
 
@@ -37,14 +39,33 @@ The harness auto-discovers the Chromium binary under `PLAYWRIGHT_BROWSERS_PATH`
 
 ## Running
 
+Run the whole suite (what CI runs):
+
 ```bash
-./test/run.sh
-# or
+npm test                 # = node test/run-all.js
+node test/run-all.js test-building test-delete   # run a subset
+```
+
+Or a single test directly:
+
+```bash
+./test/run.sh            # the building test
 node test/test-building.js
 ```
 
-Exit code `0` = all assertions passed, non-zero = failure. Screenshots land in
-`test/screenshots/`.
+Exit code `0` = all assertions passed, non-zero = failure. `run-all.js` writes
+each test's screenshots to `test/screenshots/<test-name>/`; a single test writes
+to `test/screenshots/`.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs the full suite on every push and pull request:
+it installs PHP and a Playwright Chromium (`--with-deps`), runs `npm test`, and
+uploads `test/screenshots/` as a build artifact. Note that in CI the four
+village-pack objects load from `assets.babylonjs.com` (there's outbound
+network), so the buildable-object count is higher than in a network-restricted
+sandbox; the tests don't hard-code that count, and `waitForReady` blocks until
+the manifest fully settles so the object list is stable before assertions run.
 
 Environment variables:
 

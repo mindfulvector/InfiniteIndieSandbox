@@ -62,7 +62,7 @@ class GameHarness {
         this.port = opts.port || 7011; // avoid clashing with a dev server on 7001
         this.headless = opts.headless !== false;
         this.viewport = opts.viewport || { width: 1280, height: 720 };
-        this.shotDir = opts.shotDir || SHOT_DIR;
+        this.shotDir = opts.shotDir || process.env.IIS_SHOT_DIR || SHOT_DIR;
         this.server = null;
         this.browser = null;
         this.page = null;
@@ -149,15 +149,23 @@ class GameHarness {
 
     // Wait until the App has booted and the objects we depend on for the build
     // test have finished (synchronously or asynchronously) registering.
-    async waitForReady(requiredObjects = ['t_cube_1x1', 'pr_door'], timeoutMs = 30000) {
+    async waitForReady(requiredObjects = ['t_cube_1x1', 'pr_door'], timeoutMs = 45000) {
         this.log('waiting for game + objects: ' + requiredObjects.join(', '));
+        // Wait for the named objects AND for the whole manifest to settle (every
+        // asset either loaded or definitively failed). This keeps the object
+        // list stable before a test runs — important in CI, where the remote
+        // village-pack assets actually load (vs. failing in a sandboxed env).
         await this.page.waitForFunction((names) => {
-            if (!window.app || !Array.isArray(window.app.BuildableObjectList)) return false;
-            return names.every((n) => !!window.app.findWorldObject(n));
+            const app = window.app;
+            if (!app || !Array.isArray(app.BuildableObjectList)) return false;
+            if (!names.every((n) => !!app.findWorldObject(n))) return false;
+            const settled = (app.manifestObjectCount || 0) + (app.manifestObjectFailed || 0);
+            return settled >= (app.manifestObjectTarget || 0);
         }, requiredObjects, { timeout: timeoutMs, polling: 100 });
         // Give the render loop a few frames to draw the first menu.
         await this.waitFrames(5);
-        this.log('game ready');
+        const n = await this.page.evaluate(() => window.app.BuildableObjectList.length);
+        this.log('game ready (' + n + ' objects)');
     }
 
     // ---- input helpers ------------------------------------------------------
