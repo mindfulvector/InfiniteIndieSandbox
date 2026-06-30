@@ -334,6 +334,225 @@ class App {
         loading.addControl(loadingText);
         this.hud.loading = loading;
         this.loadingText = loadingText;
+
+        // Build-mode object browser (bottom bar with runtime thumbnails).
+        this.buildObjectBrowser();
+    }
+
+    // Disney-Infinity-style object browser: a bottom bar that lets the player
+    // scroll through every buildable object as a thumbnail tile and click to
+    // select it for placement. Thumbnails are rendered at runtime and cached.
+    buildObjectBrowser() {
+        const A = BABYLON.GUI.Control;
+        this.thumbRenderer = new ThumbnailRenderer(this, 112);
+        this._objTiles = [];          // {index, wo, tile, image, placeholder}
+        this._objBrowserCount = -1;   // BuildableObjectList length the bar was built for
+        this._objBrowserSel = -2;     // currently highlighted index
+        this._bakeQueue = [];
+        this._baking = false;
+
+        const BAR_H = 152;
+
+        const bar = new BABYLON.GUI.Rectangle("hudObjBar");
+        bar.width = "100%";
+        bar.height = BAR_H + "px";
+        bar.thickness = 0;
+        bar.background = "rgba(9,14,22,0.86)";
+        bar.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+        bar.verticalAlignment = A.VERTICAL_ALIGNMENT_BOTTOM;
+        bar.isVisible = false;
+        bar.isPointerBlocker = true;
+        this.gui.addControl(bar);
+        this.hud.objBar = bar;
+        this.hud.objBarHeight = BAR_H;
+
+        // Accent line along the top edge.
+        const topLine = new BABYLON.GUI.Rectangle("hudObjBarTop");
+        topLine.width = "100%";
+        topLine.height = "3px";
+        topLine.thickness = 0;
+        topLine.background = HUD_BUILD_ACCENT;
+        topLine.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        bar.addControl(topLine);
+
+        // Category chip (top-left).
+        const cat = new BABYLON.GUI.TextBlock("hudObjCat");
+        cat.text = "";
+        cat.color = HUD_BUILD_ACCENT;
+        cat.fontSize = 14;
+        cat.fontStyle = "bold";
+        cat.height = "26px";
+        cat.paddingLeft = "22px";
+        cat.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        cat.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        cat.top = "8px";
+        bar.addControl(cat);
+        this.hud.objCat = cat;
+
+        // Selected-object name (top-center, like the Disney Infinity caption).
+        const name = new BABYLON.GUI.TextBlock("hudObjName");
+        name.text = "";
+        name.color = "#ffffff";
+        name.fontSize = 18;
+        name.fontStyle = "bold";
+        name.height = "26px";
+        name.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+        name.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        name.top = "8px";
+        bar.addControl(name);
+        this.hud.objName = name;
+
+        // Horizontal scroller holding the thumbnail tiles.
+        const scroll = new BABYLON.GUI.ScrollViewer("hudObjScroll");
+        scroll.width = "96%";
+        scroll.height = "104px";
+        scroll.thickness = 0;
+        scroll.background = "rgba(0,0,0,0)";
+        scroll.barColor = HUD_BUILD_ACCENT;
+        scroll.barBackground = "rgba(255,255,255,0.08)";
+        scroll.barSize = 8;
+        scroll.verticalAlignment = A.VERTICAL_ALIGNMENT_BOTTOM;
+        scroll.top = "-8px";
+        bar.addControl(scroll);
+        this.hud.objScroll = scroll;
+
+        const stack = new BABYLON.GUI.StackPanel("hudObjStack");
+        stack.isVertical = false;
+        stack.height = "96px";
+        stack.paddingLeft = "8px";
+        stack.paddingRight = "8px";
+        scroll.addControl(stack);
+        this.hud.objStack = stack;
+    }
+
+    // (Re)build the tile row from the current buildable object list.
+    populateObjectBrowser() {
+        if(!this.hud || !this.hud.objStack) return;
+        const stack = this.hud.objStack;
+        stack.children.slice().forEach((c) => { stack.removeControl(c); c.dispose(); });
+        this._objTiles = [];
+        this._bakeQueue = [];
+
+        this.BuildableObjectList.forEach((wo, index) => {
+            const tile = this.makeObjectTile(wo, index);
+            stack.addControl(tile.tile);
+            this._objTiles.push(tile);
+            // Use a cached thumbnail if we already baked one this session.
+            if(wo.thumbUrl) {
+                tile.image.source = wo.thumbUrl;
+                tile.image.isVisible = true;
+                tile.placeholder.isVisible = false;
+            } else {
+                this._bakeQueue.push(tile);
+            }
+        });
+        this._objBrowserCount = this.BuildableObjectList.length;
+        this._objBrowserSel = -2;     // force a highlight refresh
+        this._bakeThumbnails();
+    }
+
+    makeObjectTile(wo, index) {
+        const A = BABYLON.GUI.Control;
+        const app = this;
+
+        const tile = new BABYLON.GUI.Rectangle("objTile_" + index);
+        tile.width = "84px";
+        tile.height = "84px";
+        tile.paddingLeft = "6px";
+        tile.paddingRight = "6px";
+        tile.thickness = 2;
+        tile.cornerRadius = 10;
+        tile.color = "rgba(255,255,255,0.18)";
+        tile.background = "rgba(255,255,255,0.04)";
+        tile.isPointerBlocker = true;
+
+        const placeholder = new BABYLON.GUI.TextBlock("objTilePh_" + index);
+        placeholder.text = this.prettyName(wo.name);
+        placeholder.color = "#7f8ea3";
+        placeholder.fontSize = 11;
+        placeholder.textWrapping = true;
+        tile.addControl(placeholder);
+
+        const image = new BABYLON.GUI.Image("objTileImg_" + index);
+        image.width = "72px";
+        image.height = "72px";
+        image.stretch = BABYLON.GUI.Image.STRETCH_UNIFORM;
+        image.isVisible = false;
+        tile.addControl(image);
+
+        tile.onPointerEnterObservable.add(() => {
+            if(index !== app._objBrowserSel) tile.color = HUD_BUILD_ACCENT;
+        });
+        tile.onPointerOutObservable.add(() => {
+            if(index !== app._objBrowserSel) tile.color = "rgba(255,255,255,0.18)";
+        });
+        tile.onPointerUpObservable.add(() => app.selectBuildObject(index));
+
+        return { index: index, wo: wo, tile: tile, image: image, placeholder: placeholder };
+    }
+
+    // Bake thumbnails one at a time so we never run several render targets at
+    // once; tiles fill in progressively and results are cached on the object.
+    async _bakeThumbnails() {
+        if(this._baking) return;
+        this._baking = true;
+        try {
+            while(this._bakeQueue.length > 0) {
+                const tile = this._bakeQueue.shift();
+                if(!tile || !tile.wo || !tile.wo.mesh) continue;
+                if(tile.wo.thumbUrl) {
+                    tile.image.source = tile.wo.thumbUrl;
+                    tile.image.isVisible = true;
+                    tile.placeholder.isVisible = false;
+                    continue;
+                }
+                const url = await this.thumbRenderer.generate(tile.wo.mesh);
+                if(url) {
+                    tile.wo.thumbUrl = url;
+                    // The tile row may have been rebuilt while we awaited; only
+                    // touch the tile if it's still the current one.
+                    if(this._objTiles.indexOf(tile) >= 0) {
+                        tile.image.source = url;
+                        tile.image.isVisible = true;
+                        tile.placeholder.isVisible = false;
+                    }
+                }
+            }
+        } finally {
+            this._baking = false;
+        }
+    }
+
+    // Select an object for placement from the browser.
+    selectBuildObject(index) {
+        if(!this.activeMode || this.activeMode.constructor.name !== 'BuildMode') return;
+        this.activeMode.requestSelectIndex(index);
+        this.refreshObjBrowserSelection(index);
+    }
+
+    // Highlight the given tile and update the caption/category.
+    refreshObjBrowserSelection(index) {
+        if(!this.hud || !this._objTiles) return;
+        this._objBrowserSel = index;
+        this._objTiles.forEach((t) => {
+            const on = (t.index === index);
+            t.tile.color = on ? HUD_BUILD_ACCENT : "rgba(255,255,255,0.18)";
+            t.tile.thickness = on ? 3 : 2;
+            t.tile.background = on ? "rgba(255,177,74,0.18)" : "rgba(255,255,255,0.04)";
+        });
+        const wo = this.BuildableObjectList[index];
+        if(wo) {
+            this.hud.objName.text = this.prettyName(wo.name);
+            this.hud.objCat.text = this.objectCategory(wo.name);
+        }
+    }
+
+    objectCategory(name) {
+        const p = (name || '').split('_')[0];
+        return ({
+            t: 'TERRAIN', pr: 'PROPS', al: 'ARCHITECTURE',
+            cp: 'CYBERPUNK', d: 'DECOR', l: 'LOGIC'
+        })[p] || 'OBJECTS';
     }
 
     // Build one "[KEY] Label" hint chip for the control-hints bar.
@@ -453,6 +672,23 @@ class App {
             const idx = (bm.selectedObjectIndex | 0) + 1;
             const total = this.BuildableObjectList.length;
             this.hud.objInfoText.text = this.prettyName(bm.currentWorldObject.name) + '    ' + idx + ' / ' + total;
+        }
+
+        // Build-mode object browser: show it, keep it populated as objects load,
+        // mirror the active selection, and lift the control-hints bar above it.
+        const buildHud = inHud && (mode === 'BuildMode');
+        if(this.hud.objBar) {
+            this.hud.objBar.isVisible = buildHud;
+            if(buildHud) {
+                if(this._objBrowserCount !== this.BuildableObjectList.length) {
+                    this.populateObjectBrowser();
+                }
+                const sel = bm ? bm.selectedObjectIndex : -1;
+                if(sel !== this._objBrowserSel) {
+                    this.refreshObjBrowserSelection(sel);
+                }
+            }
+            this.hud.hintsBar.top = buildHud ? ('-' + (this.hud.objBarHeight + 12) + 'px') : '-18px';
         }
     }
 
@@ -877,44 +1113,38 @@ class App {
                     parent.dispose();                           // Get rid of the __root__ node
                     object.isVisible = false;
                 } else {
-                    // Otherwise the model is more complex so we keep the root node and mark
-                    // the world object as having nested meshes, this means it will be deep cloned
-                    // wheen an instance is needed instead of a true instance being used (this
-                    // still shared geometry though).
-                    var object = result.meshes[0];
-                    
-                    let childMeshes = parent.getChildMeshes();
-                    if(typeof childMeshes[0] != 'undefined') {
-                        //let min = childMeshes[0].getBoundingInfo().boundingBox.minimumWorld;
-                        //let max = childMeshes[0].getBoundingInfo().boundingBox.maximumWorld;
-                            if(typeof assetProps.colliderMeshes != 'undefined') {
-                                for(let i = 0; i<childMeshes.length; i++){
-                                    if(-1 != assetProps.colliderMeshes.indexOf(childMeshes[i].name)) {
-                                        childMeshes[i].checkCollisions = true;
-                                        console.log('enabled collisions on childMesh #'+i+' in '+assetProps.filename, childMeshes[i]);
-                                        //childMeshes[i].showBoundingBox = true;
-                                    }
-                                }
-                            }
-                            //let meshMin = childMeshes[i].getBoundingInfo().boundingBox.minimumWorld;
-                            //let meshMax = childMeshes[i].getBoundingInfo().boundingBox.maximumWorld;
-
-                            //min = BABYLON.Vector3.Minimize(min, meshMin);
-                            //max = BABYLON.Vector3.Maximize(max, meshMax);
-                            for(let i=0; i<childMeshes.length; i++){
-                                childMeshes[i].isVisible = false;
-                            }
-
-                            //console.log('i', [childMeshes[i], min, max]);
-                        
-                        //object.setBoundingInfo(new BABYLON.BoundingInfo(min, max));
-
-                        //object.showBoundingBox = true;
-                        var nestedMeshes = true;
+                    // Multi-part model. If the loader handed us a single __root__
+                    // container, keep using it. Otherwise (e.g. a multi-submesh OBJ
+                    // with a flat mesh list and no shared root) the parts are
+                    // siblings, so group them all under one holder node. Without
+                    // this only the first submesh became the object and the rest
+                    // were left orphaned and visible at the world origin.
+                    var object;
+                    if(parent.name == '__root__') {
+                        object = parent;
                     } else {
-                        // but are there?
-                        var nestedMeshes = true;
+                        object = new BABYLON.TransformNode(objectName + '__root', app.scene);
+                        result.meshes.slice().forEach((m) => {
+                            if(m !== object && m.parent == null) {
+                                m.setParent(object);    // preserves world transform
+                            }
+                        });
                     }
+
+                    // The instance is built by deep-cloning this template (nested),
+                    // so geometry is still shared but the whole model travels together.
+                    let childMeshes = object.getChildMeshes();
+                    if(typeof assetProps.colliderMeshes != 'undefined') {
+                        for(let i = 0; i < childMeshes.length; i++) {
+                            if(-1 != assetProps.colliderMeshes.indexOf(childMeshes[i].name)) {
+                                childMeshes[i].checkCollisions = true;
+                            }
+                        }
+                    }
+                    for(let i = 0; i < childMeshes.length; i++) {
+                        childMeshes[i].isVisible = false;
+                    }
+                    var nestedMeshes = true;
                 }
                 let woNewAsset = new WorldObject(app, objectName, object, nestedMeshes, scriptClass);
                 app.BuildableObjectList.push(woNewAsset);

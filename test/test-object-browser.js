@@ -1,0 +1,103 @@
+/*
+ * Object-browser test
+ * -------------------
+ * Verifies the build-mode object browser: it appears in build mode, shows one
+ * tile per buildable object, bakes a runtime thumbnail for each, and clicking a
+ * tile selects that object for placement (spawning a preview of the correct
+ * model). Captures screenshots along the way.
+ *
+ * Exit code 0 = all assertions passed.
+ */
+
+const { GameHarness } = require('./harness');
+
+let failures = 0;
+function check(label, cond, extra) {
+    if (cond) {
+        console.log(`  PASS  ${label}`);
+    } else {
+        failures += 1;
+        console.log(`  FAIL  ${label}${extra ? '  ::  ' + JSON.stringify(extra) : ''}`);
+    }
+}
+
+async function main() {
+    const h = new GameHarness({ headless: process.env.IIS_HEADLESS !== '0' });
+    try {
+        await h.start();
+        await h.waitForReady(['t_cube_1x1', 'pr_door', 'd_christmas_tree']);
+
+        // Get into build mode the way a player does.
+        await h.tapUntil('1', () => window.app.activeMode &&
+            window.app.activeMode.constructor.name === 'PlayMode' && window.app.menu.state === 0);
+        await h.waitFor(() => window.app.activeMode && !!window.app.activeMode.cc, null, 20000);
+        await h.tapUntil('Escape', () => window.app.menu.state === 2);
+        await h.tapUntil('1', () => window.app.activeMode &&
+            window.app.activeMode.constructor.name === 'BuildMode' && window.app.menu.state === 0);
+        await h.waitFrames(5);
+
+        // --- browser is present and populated ---
+        const info = await h.evaluate(() => ({
+            visible: window.app.hud.objBar.isVisible,
+            tiles: window.app._objTiles ? window.app._objTiles.length : 0,
+            objects: window.app.BuildableObjectList.length,
+        }));
+        console.log('\n[1] Object browser', info);
+        check('object browser is visible in build mode', info.visible === true, info);
+        check('one tile per buildable object', info.tiles === info.objects && info.tiles > 0, info);
+
+        // --- every object gets a runtime thumbnail ---
+        await h.waitFor(() => window.app._baking === false &&
+            window.app.BuildableObjectList.every((wo) => typeof wo.thumbUrl === 'string'),
+            null, 30000).catch(() => {});
+        const thumbs = await h.evaluate(() => window.app.BuildableObjectList.map((wo) => ({
+            name: wo.name,
+            ok: typeof wo.thumbUrl === 'string' && wo.thumbUrl.startsWith('data:image/png'),
+        })));
+        console.log('\n[2] Thumbnails', thumbs);
+        const baked = thumbs.filter((t) => t.ok).length;
+        check('a PNG thumbnail was baked for every object', baked === thumbs.length, { baked, total: thumbs.length });
+        await h.screenshot('object-browser');
+
+        // --- clicking a tile selects that object and spawns its preview ---
+        const treeIdx = await h.evaluate(() =>
+            window.app.BuildableObjectList.findIndex((w) => w.name === 'd_christmas_tree'));
+        const before = await h.instanceCount('d_christmas_tree');
+        await h.evaluate((i) => window.app.selectBuildObject(i), treeIdx); // same path as a tile click
+        await h.waitFor((i) => window.app.activeMode.currentWorldObject &&
+            window.app.activeMode.currentWorldObject.name === 'd_christmas_tree' &&
+            window.app.activeMode.selectedObjectIndex === i, treeIdx, 8000);
+        await h.waitFrames(6);
+        const after = await h.instanceCount('d_christmas_tree');
+        const caption = await h.evaluate(() => ({
+            name: window.app.hud.objName.text,
+            cat: window.app.hud.objCat.text,
+            sel: window.app._objBrowserSel,
+        }));
+        console.log('\n[3] Tile selection', { before, after, ...caption });
+        check('selecting the tile made it the active build object',
+            (await h.evaluate(() => window.app.activeMode.currentWorldObject.name)) === 'd_christmas_tree');
+        check('a placement preview of the selected object was spawned', after === before + 1, { before, after });
+        check('caption + category updated to the selection',
+            caption.name === 'Christmas Tree' && caption.cat === 'DECOR', caption);
+        check('the clicked tile is highlighted', caption.sel === treeIdx, caption);
+        await h.screenshot('object-browser-tile-selected');
+
+        console.log('\n========================================');
+        console.log(failures === 0
+            ? `RESULT: PASS — browser shows ${baked} thumbnailed objects and click-to-select works.`
+            : `RESULT: FAIL — ${failures} assertion(s) failed.`);
+        console.log('========================================');
+        if (h.pageErrors.length) h.dumpDiagnostics();
+    } catch (err) {
+        failures += 1;
+        console.error('\nHARNESS ERROR:', err && err.stack ? err.stack : err);
+        try { await h.screenshot('error-state'); } catch (_) {}
+        h.dumpDiagnostics();
+    } finally {
+        await h.stop();
+    }
+    process.exit(failures === 0 ? 0 : 1);
+}
+
+main();

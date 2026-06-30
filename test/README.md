@@ -16,6 +16,7 @@ with no GPU.
 |------|---------|
 | `harness.js` | Reusable `GameHarness` class: starts the PHP server, launches Chromium, waits for the game to be ready, and provides input / state / screenshot helpers. |
 | `test-building.js` | The building-feature test: create a new sandbox and place objects in it. |
+| `test-object-browser.js` | The object-browser test: bottom bar shows a runtime thumbnail per object and click-to-select works. |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
 

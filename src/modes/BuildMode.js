@@ -38,6 +38,14 @@ class BuildMode {
         this.disposeCurrentInstance();
     }
 
+    // Ask BuildMode to switch the active placement object to a given index in
+    // the buildable list (consumed on the next update tick).
+    requestSelectIndex(index) {
+        if (index < 0 || index >= this.app.BuildableObjectList.length) return;
+        this.selectedObjectIndex = index;
+        this._selectRequested = true;
+    }
+
     disposeCurrentInstance() {
         //this.app.camera.lockedTarget = this.app.defaultSphere;
         if(typeof this.currentWorldObject != 'undefined' && this.currentWorldObject != null) {
@@ -84,6 +92,15 @@ class BuildMode {
             this.selectedObjectIndex = -1;
             this.disposeCurrentInstance();
             objectChanged = true;
+        }
+
+        // Programmatic selection request (e.g. clicking a tile in the object
+        // browser). Reuses the same object-changed path as Q/E.
+        if (this._selectRequested) {
+            this._selectRequested = false;
+            if (this.selectedObjectIndex >= 0) {
+                objectChanged = true;
+            }
         }
 
         // Handling Backspace key to clear currentInstance
