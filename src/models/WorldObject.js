@@ -82,6 +82,13 @@ class WorldObject {
         if(typeof woInstData.ev != 'undefined') inst.events = woInstData.ev;
         else inst.events = {};
 
+        // Event wiring: outgoing links from this instance's output events to
+        // other instances' input actions. Each wire is a plain object:
+        //      { event: 'entered', toWo: 'l_spawner', toId: 3, action: 'spawn' }
+        // ('wi' key for storage efficiency). Built and edited in the wiring view.
+        if(typeof woInstData.wi != 'undefined' && woInstData.wi) inst.wires = woInstData.wi;
+        else inst.wires = [];
+
         // Set state flags
         if(typeof woInstData.s1 != 'undefined') inst.isOpened = woInstData.s1;
         else inst.isOpened = null;
@@ -194,7 +201,8 @@ class WorldObject {
                 'sc': inst.scaling,
                 's1': inst.isOpened,
                 'ev': inst.events,
-                'pr': inst.params        // editable parameter values
+                'pr': inst.params,       // editable parameter values
+                'wi': inst.wires         // event wiring (see createInstance)
             });
         });
         console.log(result);

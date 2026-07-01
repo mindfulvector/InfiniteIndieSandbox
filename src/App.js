@@ -8,6 +8,7 @@ const MENU_OBJ_EVENT_BINDINGS = 6;
 const MENU_OBJ_EVENT_BINDING_EDIT = 7;
 const MENU_SHOP = 8;
 const MENU_OBJ_PARAMS = 9;
+const MENU_WIRING = 10;
 
 // HUD / menu theme
 const HUD_ACCENT       = "#4ad6ff";   // default cyan accent
@@ -196,6 +197,11 @@ class App {
                 if(null != this.activeMode) {
                     this.activeMode.renderUI();
                 }
+            }
+
+            // Drive the overhead wiring view (camera transition + interaction).
+            if(this.menu.state == MENU_WIRING && this.wiring) {
+                this.wiring.update();
             }
 
             // pump messages between objects
@@ -809,7 +815,9 @@ class App {
         const inHud = (this.menu.state === MENU_HUD);
         const mode = this.activeMode ? this.activeMode.constructor.name : null;
 
-        this.hud.backdrop.isVisible = !inHud;
+        // The wiring view is a full 3D overhead view, so it must not be dimmed by
+        // the menu backdrop even though it isn't the gameplay HUD.
+        this.hud.backdrop.isVisible = !inHud && this.menu.state !== MENU_WIRING;
         this.hud.badge.isVisible = inHud && !!mode;
         this.hud.hintsBar.isVisible = inHud && !!mode;
 
@@ -982,7 +990,15 @@ class App {
                 app.menu.prevState = MENU_PAUSE;
                 app.menu.state = MENU_SHOP;
                 break;
+            case 7:                                 // Wiring
+                app.openWiring();
+                break;
             }
+            break;
+        case MENU_WIRING:
+            // Any cancel/back action leaves the wiring view.
+            if(app.wiring) app.wiring.exit();
+            app.menu.state = app.menu.prevState || MENU_PAUSE;
             break;
         case MENU_SHOP:
             if(menuItem == 0) {
@@ -1213,6 +1229,15 @@ class App {
                     }
                 });
 
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnWiring',
+                    text: '7. Wiring',
+                    handler: () => {
+                        app.triggerMenuItem(MENU_PAUSE, 7);
+                    }
+                });
+
 
                 break;
             case MENU_SHOP:
@@ -1318,6 +1343,11 @@ class App {
                         app.triggerMenuItem(this.menu.state, 0);
                     }
                 });
+                break;
+            case MENU_WIRING:
+                // The wiring view owns its own GUI (title, hint, node labels),
+                // built in WiringView.enter() and disposed in exit(). Nothing to
+                // build through the menu system here.
                 break;
             case MENU_OBJ_PROPS:
             case MENU_OBJ_EVENT_BINDINGS:
@@ -1668,6 +1698,95 @@ class App {
             }
         });
         return result;
+    }
+
+    // ---- Event wiring ----------------------------------------------------
+    // A wire connects one instance's output event to another instance's input
+    // action. Triggers expose outputs (script.outputs); spawners expose inputs
+    // (script.inputs) with an onInput(action, from) handler. Wires live on the
+    // source instance (inst.wires) and are serialized with the world.
+
+    // Find a live instance by world-object name and instance id.
+    findInstance(woName, id) {
+        const wo = this.findWorldObject(woName);
+        if(!wo) return null;
+        let found = null;
+        wo.instances.forEach((inst) => {
+            if(inst && inst.worldId == id) found = inst;
+        });
+        return found;
+    }
+
+    // Every live instance whose script participates in wiring (has outputs or
+    // inputs). Used by the wiring view to draw the interactive-object graph.
+    interactiveInstances() {
+        const out = [];
+        this.BuildableObjectList.forEach((wo) => {
+            wo.instances.forEach((inst) => {
+                if(inst && inst.script &&
+                   ((inst.script.outputs && inst.script.outputs.length) ||
+                    (inst.script.inputs && inst.script.inputs.length))) {
+                    out.push(inst);
+                }
+            });
+        });
+        return out;
+    }
+
+    // Fire an output event from an instance: deliver it to every wired target's
+    // input handler. Called by scripts (e.g. TriggerScript on player enter).
+    fireEvent(inst, event) {
+        if(!inst || !inst.wires) return;
+        inst.wires.forEach((w) => {
+            if(w.event !== event) return;
+            const target = this.findInstance(w.toWo, w.toId);
+            if(target && target.script && typeof target.script.onInput === 'function') {
+                target.script.onInput(w.action, inst);
+            }
+        });
+    }
+
+    hasWire(inst, event, toWo, toId, action) {
+        if(!inst || !inst.wires) return false;
+        return inst.wires.some((w) => w.event === event && w.toWo === toWo &&
+            w.toId == toId && w.action === action);
+    }
+
+    addWire(inst, event, toWo, toId, action) {
+        if(!inst) return;
+        if(!inst.wires) inst.wires = [];
+        if(this.hasWire(inst, event, toWo, toId, action)) return;
+        inst.wires.push({ event: event, toWo: toWo, toId: toId, action: action });
+    }
+
+    removeWire(inst, event, toWo, toId, action) {
+        if(!inst || !inst.wires) return;
+        inst.wires = inst.wires.filter((w) => !(w.event === event && w.toWo === toWo &&
+            w.toId == toId && w.action === action));
+    }
+
+    // Add the wire if absent, remove it if present. Returns true if now wired.
+    toggleWire(inst, event, toWo, toId, action) {
+        if(this.hasWire(inst, event, toWo, toId, action)) {
+            this.removeWire(inst, event, toWo, toId, action);
+            return false;
+        }
+        this.addWire(inst, event, toWo, toId, action);
+        return true;
+    }
+
+    // Enter the overhead wiring view. Requires a world with at least one
+    // interactive object (a trigger or a spawner).
+    openWiring() {
+        if(!this.world) { this.toasty('Start or load a world first.'); return; }
+        if(this.interactiveInstances().length === 0) {
+            this.toasty('Place interactive objects (a Trigger and a Spawner) first.');
+            return;
+        }
+        if(!this.wiring) this.wiring = new WiringView(this);
+        this.menu.prevState = MENU_PAUSE;
+        this.menu.state = MENU_WIRING;
+        this.wiring.enter();
     }
 
     showAll(node) {

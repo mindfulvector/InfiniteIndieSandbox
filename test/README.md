@@ -27,6 +27,7 @@ with no GPU.
 | `test-bipedal-enemy.js` | The bipedal TRON walker uses the shared GravityBody (falls/lands on terrain), walks, does melee + ranged attacks, and drops pixels. |
 | `test-spawner.js` | The spawner object auto-opens a parameters popup, edits/persists its params, and spawns the chosen enemy type at its frequency up to the limit. |
 | `test-shop-gating.js` | Premium objects are locked in build mode and unlock via the shop for pixels. |
+| `test-wiring.js` | Trigger volumes fire wired output events into a spawner's inputs (directly and on player entry), wires persist through save/load, and the overhead 3D wiring view lifts the camera, shows the interactive objects, draws 3D wire meshes, and connects objects on click. |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
 

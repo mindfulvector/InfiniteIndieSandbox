@@ -63,6 +63,23 @@ parameters popup opens automatically so you can choose the enemy type, spawn
 frequency and max-alive limit. To edit a placed object's settings later, enter
 cursor mode (`0`), move the cursor over it and press `Space`.
 
+#### Wiring: triggers → spawners
+
+You can build simple gameplay by wiring interactive objects together. Place a
+**Trigger** volume (Logic category) and a **Spawner**, then press `Esc` and
+choose **Wiring**. The camera smoothly lifts to an overhead view showing only
+the interactive objects, with 3D arrows drawn between wired objects:
+
+* **Click a trigger** to start a wire (click it again to switch between its
+  *Player Enters* / *Player Exits* events).
+* **Click a spawner** to connect the trigger's event to it. Clicking the same
+  spawner again cycles the action it performs (*Spawn One* → *Turn On* →
+  *Turn Off* → *Toggle* → disconnect).
+
+For example, wire a trigger's *Player Enters* to a spawner's *Spawn One* and set
+the spawner to *Start on: no* — enemies then appear only when the player walks
+into the trigger. Wires are saved with the world.
+
 #### Select / move placed objects
 
 * Press `0` to enter cursor (select) mode
