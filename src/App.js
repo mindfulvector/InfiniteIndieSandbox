@@ -26,6 +26,13 @@ class App {
         };
         this.loadedScripts = [];
 
+        // Economy: "pixels" are the currency dropped by defeated enemies and
+        // spent in the shop to unlock objects for building.
+        this.pixels = 0;
+        this.purchasedSet = null;   // Set of object names the player owns
+        this.objectPrices = {};     // name -> price (absent/0 = free)
+        this.loadEconomy();
+
         // Keyboard bindings
         this.keysPressed = {};
         window.addEventListener("keydown", (event) => {
@@ -259,7 +266,7 @@ class App {
         objInfo.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_RIGHT;
         objInfo.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
         objInfo.left = "-18px";
-        objInfo.top = "16px";
+        objInfo.top = "62px";   // sits below the pixel counter
         objInfo.isVisible = false;
         this.gui.addControl(objInfo);
         const objText = new BABYLON.GUI.TextBlock("hudObjInfoText");
@@ -271,6 +278,52 @@ class App {
         objInfo.addControl(objText);
         this.hud.objInfo = objInfo;
         this.hud.objInfoText = objText;
+
+        // --- Pixel counter (top-right) ---
+        const pixelPill = new BABYLON.GUI.Rectangle("hudPixels");
+        pixelPill.height = "34px";
+        pixelPill.adaptWidthToChildren = true;
+        pixelPill.cornerRadius = 17;
+        pixelPill.thickness = 2;
+        pixelPill.color = "#ff5bd0";
+        pixelPill.background = HUD_PANEL_BG;
+        pixelPill.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_RIGHT;
+        pixelPill.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        pixelPill.left = "-18px";
+        pixelPill.top = "16px";
+        pixelPill.isVisible = false;
+        this.gui.addControl(pixelPill);
+        const pixelRow = new BABYLON.GUI.StackPanel("hudPixelsRow");
+        pixelRow.isVertical = false;
+        pixelRow.height = "34px";
+        pixelPill.addControl(pixelRow);
+        // A little 2x2 cluster of colored squares as the "pixels" icon.
+        const iconWrap = new BABYLON.GUI.Rectangle("hudPixelIcon");
+        iconWrap.width = "20px"; iconWrap.height = "20px"; iconWrap.thickness = 0;
+        iconWrap.paddingLeft = "12px";
+        const iconColors = ['#ff5bd0', '#5bd0ff', '#ffe14a', '#7dff6b'];
+        for (let i = 0; i < 4; i++) {
+            const sq = new BABYLON.GUI.Rectangle();
+            sq.width = "8px"; sq.height = "8px"; sq.thickness = 0;
+            sq.background = iconColors[i];
+            sq.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+            sq.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+            sq.left = (i % 2) * 9 + "px";
+            sq.top = Math.floor(i / 2) * 9 + "px";
+            iconWrap.addControl(sq);
+        }
+        pixelRow.addControl(iconWrap);
+        const pixelText = new BABYLON.GUI.TextBlock("hudPixelsText");
+        pixelText.text = "0";
+        pixelText.color = "#ffffff";
+        pixelText.fontSize = 16;
+        pixelText.fontStyle = "bold";
+        pixelText.resizeToFit = true;
+        pixelText.paddingLeft = "8px";
+        pixelText.paddingRight = "14px";
+        pixelRow.addControl(pixelText);
+        this.hud.pixelPill = pixelPill;
+        this.hud.pixelText = pixelText;
 
         // --- Toast / notification (top-center) ---
         const toast = new BABYLON.GUI.Rectangle("hudToast");
@@ -557,7 +610,7 @@ class App {
         const p = (name || '').split('_')[0];
         return ({
             t: 'TERRAIN', pr: 'PROPS', al: 'ARCHITECTURE',
-            cp: 'CYBERPUNK', d: 'DECOR', l: 'LOGIC'
+            cp: 'CYBERPUNK', d: 'DECOR', l: 'LOGIC', en: 'ENEMIES'
         })[p] || 'OBJECTS';
     }
 
@@ -678,6 +731,12 @@ class App {
         this.hud.backdrop.isVisible = !inHud;
         this.hud.badge.isVisible = inHud && !!mode;
         this.hud.hintsBar.isVisible = inHud && !!mode;
+
+        // Pixel counter is shown whenever we're in a gameplay mode.
+        if(this.hud.pixelPill) {
+            this.hud.pixelPill.isVisible = inHud && !!mode;
+            this.hud.pixelText.text = String(this.pixels);
+        }
 
         // Reconfigure badge/hints only when the active mode actually changes.
         if(mode !== this._hudMode) {
@@ -1290,6 +1349,56 @@ class App {
         if(typeof this.keysPressed[key.toUpperCase()] != 'undefined') {
             return this.keysPressed[key.toUpperCase()];
         }
+    }
+
+    // ---- economy (pixels + purchases) --------------------------------------
+
+    loadEconomy() {
+        try {
+            const p = window.localStorage.getItem('iis_pixels');
+            this.pixels = p ? (parseInt(p, 10) || 0) : 0;
+            const owned = JSON.parse(window.localStorage.getItem('iis_purchased') || '[]');
+            this.purchasedSet = new Set(Array.isArray(owned) ? owned : []);
+        } catch (e) {
+            this.pixels = 0;
+            this.purchasedSet = new Set();
+        }
+    }
+
+    saveEconomy() {
+        try {
+            window.localStorage.setItem('iis_pixels', String(this.pixels));
+            window.localStorage.setItem('iis_purchased', JSON.stringify([...this.purchasedSet]));
+        } catch (e) { /* storage may be unavailable */ }
+    }
+
+    addPixels(n) {
+        this.pixels = Math.max(0, this.pixels + n);
+        this.saveEconomy();
+    }
+
+    priceOf(name) {
+        return this.objectPrices[name] || 0;
+    }
+
+    // Free objects (price 0) are always owned; otherwise check the purchased set.
+    isPurchased(name) {
+        return this.priceOf(name) === 0 || (this.purchasedSet && this.purchasedSet.has(name));
+    }
+
+    // Attempt to buy an object with pixels. Returns true on success.
+    buy(name) {
+        if (this.isPurchased(name)) return true;
+        const price = this.priceOf(name);
+        if (this.pixels < price) {
+            this.toasty('Not enough pixels — need ' + price + '.');
+            return false;
+        }
+        this.pixels -= price;
+        this.purchasedSet.add(name);
+        this.saveEconomy();
+        this.toasty('Purchased ' + this.prettyName(name) + '!');
+        return true;
     }
 
     toasty(message) {

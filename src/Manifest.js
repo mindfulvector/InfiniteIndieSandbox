@@ -24,7 +24,20 @@ class Manifest {
                   ]
         }, 'TriggerScript');
 
+        // A basic enemy: a red blob that can be attacked in play mode and, when
+        // defeated, bursts into collectable pixels.
+        app.createWorldObject('en_blob', {
+            prims: [
+                     {ty: 'sphere',    s: [1.2], p: [0,0,0]},
+                  ]
+        }, 'EnemyScript');
+
         new CyberpunkManifest(app, assetsBaseUrl);
         new ChristmasManifest(app, assetsBaseUrl);
+
+        // Premium objects: buyable in the shop with pixels. Everything else is
+        // free. (Kept to reliably-local assets so the shop always has stock.)
+        app.objectPrices['cp_platform_2x2'] = 40;
+        app.objectPrices['d_christmas_tree'] = 25;
     }
 }

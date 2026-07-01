@@ -3,7 +3,12 @@ class PlayMode {
     // the dispose method when exiting a mode.
     constructor(app) {
         this.app = app;
-        
+
+        // Combat / pixel-collection state.
+        this.pixelBursts = [];   // {mesh, vel, delay, spin} tiny cubes homing to the player
+        this.attackFxList = [];  // {mesh, life} transient swing effects
+        this.attackCooldown = 0;
+
         // Set static UI strings once on mode load
         this.app.modeName.text = "PlayMode";
 
@@ -13,6 +18,10 @@ class PlayMode {
     dispose() {
         this.app.modeName.text = "Exiting PlayMode...";
         this.disposePlayer();
+        this.pixelBursts.forEach((pb) => pb.mesh && pb.mesh.dispose());
+        this.attackFxList.forEach((fx) => fx.mesh && fx.mesh.dispose());
+        this.pixelBursts = [];
+        this.attackFxList = [];
     }
 
     initPlayer() {
@@ -149,16 +158,144 @@ class PlayMode {
     }
 
     update() {
-        const playMode = this;
         const app = this.app;
-        
+
         // run update for all active object scripts
         app.BuildableObjectList.forEach((wo) => {
             wo.updateAllInstances(true, this);
         });
+
+        this.handleCombat();
+        this.updatePixelBursts();
+        this.updateAttackFx();
     }
 
     renderUI() {
 
+    }
+
+    // ---- combat -------------------------------------------------------------
+
+    handleCombat() {
+        if (!this.player) return;
+        if (this.attackCooldown > 0) this.attackCooldown--;
+        // F swings a melee attack that damages nearby enemies.
+        if (this.attackCooldown === 0 && this.app.keyPressed('F')) {
+            this.attack();
+            this.attackCooldown = 12;
+        }
+    }
+
+    attack() {
+        const p = this.player.position;
+        const range = 3.4;
+        this.spawnAttackFx(p);
+        this.app.BuildableObjectList.forEach((wo) => {
+            wo.instances.forEach((inst) => {
+                if (inst && inst.isEnemy && !inst.defeated) {
+                    const ip = inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position;
+                    if (BABYLON.Vector3.Distance(ip, p) <= range) {
+                        inst.hp -= 1;
+                        if (inst.hp <= 0) this.defeatEnemy(inst, wo);
+                    }
+                }
+            });
+        });
+    }
+
+    defeatEnemy(inst, wo) {
+        inst.defeated = true;
+        const pos = (inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position).clone();
+        this.spawnPixelBurst(pos, 14);
+        wo.disposeInstance(inst);
+    }
+
+    randomBrightColor() {
+        const palette = [
+            new BABYLON.Color3(1.00, 0.36, 0.82),
+            new BABYLON.Color3(0.36, 0.82, 1.00),
+            new BABYLON.Color3(1.00, 0.88, 0.29),
+            new BABYLON.Color3(0.49, 1.00, 0.42),
+            new BABYLON.Color3(1.00, 0.55, 0.20),
+            new BABYLON.Color3(0.70, 0.50, 1.00),
+        ];
+        return palette[Math.floor(Math.random() * palette.length)];
+    }
+
+    // Burst of tiny multi-coloured cubes from `pos` that will home to the player.
+    spawnPixelBurst(pos, count) {
+        for (let i = 0; i < count; i++) {
+            const box = BABYLON.MeshBuilder.CreateBox('pixel', { size: 0.14 + Math.random() * 0.06 }, this.app.scene);
+            box.position = pos.add(new BABYLON.Vector3(
+                (Math.random() - 0.5) * 0.4,
+                (Math.random() - 0.5) * 0.4 + 0.5,
+                (Math.random() - 0.5) * 0.4));
+            const mat = new BABYLON.StandardMaterial('pixMat', this.app.scene);
+            const c = this.randomBrightColor();
+            mat.diffuseColor = c;
+            mat.emissiveColor = c.scale(0.8);
+            mat.disableLighting = true;
+            box.material = mat;
+            box.isPickable = false;
+            box.checkCollisions = false;
+            const vel = new BABYLON.Vector3(Math.random() - 0.5, Math.random() * 0.6 + 0.3, Math.random() - 0.5).scale(0.18);
+            this.pixelBursts.push({ mesh: box, vel: vel, delay: 6 + Math.floor(Math.random() * 6), spin: (Math.random() - 0.5) * 0.3 });
+        }
+    }
+
+    updatePixelBursts() {
+        if (!this.player || this.pixelBursts.length === 0) return;
+        const target = this.player.position.add(new BABYLON.Vector3(0, 1.2, 0));
+        const collectDist = 0.7, homeAccel = 0.06, maxSpeed = 0.9;
+        for (let i = this.pixelBursts.length - 1; i >= 0; i--) {
+            const pb = this.pixelBursts[i];
+            pb.mesh.rotation.y += pb.spin;
+            pb.mesh.rotation.x += pb.spin * 0.7;
+            if (pb.delay > 0) {
+                pb.delay--;
+                pb.vel.scaleInPlace(0.92);
+                pb.mesh.position.addInPlace(pb.vel);
+            } else {
+                const dir = target.subtract(pb.mesh.position);
+                const dist = dir.length();
+                if (dist < collectDist) {
+                    pb.mesh.dispose();
+                    this.pixelBursts.splice(i, 1);
+                    this.app.addPixels(1);
+                    continue;
+                }
+                dir.normalize();
+                pb.vel.addInPlace(dir.scale(homeAccel + (3.0 / (dist + 1)) * 0.02));
+                if (pb.vel.length() > maxSpeed) pb.vel.normalize().scaleInPlace(maxSpeed);
+                pb.mesh.position.addInPlace(pb.vel);
+            }
+        }
+    }
+
+    spawnAttackFx(p) {
+        const fx = BABYLON.MeshBuilder.CreateSphere('attackFx', { diameter: 1.2, segments: 8 }, this.app.scene);
+        fx.position = p.add(new BABYLON.Vector3(0, 1.0, 0));
+        const mat = new BABYLON.StandardMaterial('attackFxMat', this.app.scene);
+        mat.emissiveColor = new BABYLON.Color3(0.6, 0.9, 1.0);
+        mat.alpha = 0.35;
+        mat.disableLighting = true;
+        fx.material = mat;
+        fx.isPickable = false;
+        fx.checkCollisions = false;
+        this.attackFxList.push({ mesh: fx, life: 10 });
+    }
+
+    updateAttackFx() {
+        for (let i = this.attackFxList.length - 1; i >= 0; i--) {
+            const fx = this.attackFxList[i];
+            fx.life--;
+            const s = 1 + (10 - fx.life) * 0.28;
+            fx.mesh.scaling.setAll(s);
+            fx.mesh.material.alpha = Math.max(0, 0.35 * (fx.life / 10));
+            if (fx.life <= 0) {
+                fx.mesh.dispose();
+                this.attackFxList.splice(i, 1);
+            }
+        }
     }
 }
