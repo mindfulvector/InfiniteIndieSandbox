@@ -652,8 +652,8 @@ class App {
         if(cursorMode) {
             this.setControlHints([
                 {k:'WASD',  label:'Move cursor'},
+                {k:'Enter', label:'Move object'},
                 {k:'Del',   label:'Remove'},
-                {k:'← / →', label:'Object'},
                 {k:'Esc',   label:'Menu'},
             ]);
         } else {
@@ -663,7 +663,7 @@ class App {
                 {k:'WASD',   label:'Move'},
                 {k:'Z / C',  label:'Rotate'},
                 {k:'Space',  label:'Place'},
-                {k:'Del',    label:'Remove'},
+                {k:'0',      label:'Select'},
             ]);
         }
     }

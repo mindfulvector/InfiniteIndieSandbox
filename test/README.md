@@ -21,6 +21,7 @@ with no GPU.
 | `test-textures-survive-baking.js` | Regression guard: thumbnail baking must not dispose the shared textures of live objects. |
 | `test-save-load.js` | A world survives save → clear → load with transforms intact and no duplicate cube. |
 | `test-delete.js` | Placed objects can be removed with Delete (quick undo). |
+| `test-move-object.js` | A previously-placed object can be grabbed, moved and dropped (not duplicated). |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
 

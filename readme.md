@@ -47,15 +47,26 @@ To switch between modes, press the `Esc` key then to enter a new mode:
 
 ### Build Mode
 
-* Press `Q` or `E` to move through the buildable objects list
+* Press the `Left`/`Right` arrow keys to cycle through the buildable objects
+* Press the `Up`/`Down` arrow keys to switch object categories
 * Press `W`,`A`,`S`,`D` to move the object around the world
 * Press `R` or `V` to raise or lower the object
 * Press `Z` or `C` to rotate the object
-* Press Space key to place the object
+* Press `[` or `]` to scale the object
+* Press `Space` to place the object
+* Press `Delete` to remove the last placed object
 
-Object snapping/alignment is currently a work in progress.
+Objects are placed sitting on the surface and centred under the cursor.
 
-**Note:** There is no way to save a world yet.
+#### Select / move placed objects
+
+* Press `0` to enter cursor (select) mode
+* Move the cursor (`W`,`A`,`S`,`D`) over a placed object to highlight it
+* Press `Enter` to pick it up and move it (then `Space` to drop it back)
+* Press `Delete` to remove the highlighted object
+
+**Saving:** Press `Esc` and choose Save Game / Load Game to store worlds in
+save slots.
 
 ### Play Mode
 In play mode, a default avatar will be dropped into the world at the origin `(0,0,0)`.

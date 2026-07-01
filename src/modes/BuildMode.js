@@ -6,6 +6,7 @@ class BuildMode {
         this.selectedObjectIndex = 0; // Index of the selected object in BuildableObjectList
         this.currentInstance = null; // Currently placed/selected instance in the world
         this.placedInstances = [];   // stack of {wo, inst} placed this session, for undo/delete
+        this.grabbed = false;        // true while moving a previously-placed object
         this.gridSize = 10;
         this.lastUndoInstanceIndex = -1;
         this.lockMenuButtons = false;
@@ -42,6 +43,61 @@ class BuildMode {
     dispose() {
         this.app.modeName.text = "Exiting BuildMode...";
         this.disposeCurrentInstance();
+        // camFocus lives for the whole mode (not per-instance), so tear it down
+        // here rather than in disposeCurrentInstance.
+        this.camFocus?.dispose();
+        this.camFocus = null;
+    }
+
+    // Commit the current instance into the world: hide its highlight, record it
+    // for undo, and clear it as the active instance. Clears the grabbed flag.
+    placeCurrent() {
+        if (!this.currentInstance) return;
+        this.app.showBoundingBoxAll(this.currentInstance, false);
+        this.placedInstances.push({ wo: this.currentWorldObject, inst: this.currentInstance });
+        this.currentInstance = null;
+        this.grabbed = false;
+    }
+
+    // Pick up the object currently highlighted by the cursor so it can be moved.
+    // It becomes the active instance and reuses the normal move/rotate/scale and
+    // base-align/camera logic; Space drops it back into the world.
+    grabSelectedObject() {
+        if (typeof this.selection == 'undefined' || this.selection.length === 0) {
+            this.app.toasty('Move the cursor over an object first, then Enter to move it.');
+            return;
+        }
+        const node = this.selection[0];
+        if (!node.worldObject) {
+            this.app.toasty("That object can't be moved.");
+            return;
+        }
+
+        // It's being moved, not duplicated -- take it off the undo stack.
+        this.placedInstances = this.placedInstances.filter((p) => p.inst !== node);
+
+        // Leave cursor mode and make the object the active (moving) instance.
+        this.clearSelection();
+        this.cursor?.dispose();
+        this.cursor = null;
+        this.currentInstance = node;
+        this.currentWorldObject = node.worldObject;
+        this.selectedObjectIndex = this.app.BuildableObjectList.indexOf(node.worldObject);
+        this.grabbed = true;
+
+        // Anchor at its present base-centre so it doesn't jump, and carry its
+        // current scale/rotation.
+        const bb = this.computeWorldBBox(node);
+        if (bb) {
+            this.targetPosition = new BABYLON.Vector3(bb.center.x, bb.min.y, bb.center.z);
+        }
+        this.targetScale = node.scaling.x;
+        this.initialScale = node.scaling.x;
+        if (node.rotationQuaternion) this.targetRotation = node.rotationQuaternion.clone();
+
+        this.app.showBoundingBoxAll(node, true);
+        this.frameCameraToInstance(node);
+        this.app.toasty('Moving object — Space to drop it.');
     }
 
     // Remove objects. In cursor mode (0) with the cursor over object(s), delete
@@ -121,11 +177,9 @@ class BuildMode {
         this.guideMesh?.dispose();
         this.cursor?.dispose();
         this.selectionMesh?.dispose();
-        this.camFocus?.dispose();
         this.currentInstance = null;
         this.currentWorldObject = null;
         this.guideMesh = null;
-        this.camFocus = null;
     }
 
     // Union world-space bounding box over an instance and all of its sub-meshes.
@@ -217,7 +271,11 @@ class BuildMode {
             console.log('0 key is pressed; cursor mode');
             cursorMode = true;
             this.selectedObjectIndex = -1;
-            this.disposeCurrentInstance();
+            if (this.grabbed) {
+                this.placeCurrent();   // drop a grabbed object rather than deleting it
+            } else {
+                this.disposeCurrentInstance();
+            }
             objectChanged = true;
         }
 
@@ -236,6 +294,13 @@ class BuildMode {
             this.deleteAction();
         }
 
+        // Enter (in cursor mode, over a highlighted object) grabs it to move it.
+        // Handled here, before the cursor/placement split, because grabbing makes
+        // it the active instance and tears down the cursor.
+        if (!this.currentInstance && this.app.keyPressed('ENTER')) {
+            this.grabSelectedObject();
+        }
+
         let placementPosition = false;
         let objectPlaced = false;
 
@@ -243,12 +308,16 @@ class BuildMode {
         if (this.currentInstance) {
             placementPosition = this.currentInstance.position.clone();
             if(this.app.keyPressed(' ')) {
-                this.app.showBoundingBoxAll(this.currentInstance, false);
-                // Remember it so Delete can undo placements in order.
-                this.placedInstances.push({ wo: this.currentWorldObject, inst: this.currentInstance });
-                this.currentInstance = null;
+                const wasGrabbed = this.grabbed;
+                this.placeCurrent();
                 objectChanged = true;
                 objectPlaced = true;
+                // After moving an existing object, drop it and return to select
+                // mode (rather than spawning a fresh preview to place more).
+                if(wasGrabbed) {
+                    cursorMode = true;
+                    this.selectedObjectIndex = -1;
+                }
             }
         } else {
             // Handling Space key to open properties menu for a selected object or group of objects in cursor mode
@@ -267,6 +336,11 @@ class BuildMode {
         }
 
         if (objectChanged) {
+            // If the player switches objects while moving a grabbed one, drop it
+            // back into the world instead of deleting it.
+            if(this.grabbed && this.currentInstance) {
+                this.placeCurrent();
+            }
             if(!objectPlaced) {
                 if(typeof this.currentWorldObject != 'undefined' && this.currentWorldObject) {
                     this.currentWorldObject.disposeInstance(this.currentInstance);
