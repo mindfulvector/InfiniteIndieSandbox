@@ -60,15 +60,17 @@ async function main() {
         await h.screenshot('object-browser');
 
         // --- clicking a tile selects that object and spawns its preview ---
-        const treeIdx = await h.evaluate(() =>
-            window.app.BuildableObjectList.findIndex((w) => w.name === 'd_christmas_tree'));
-        const before = await h.instanceCount('d_christmas_tree');
-        await h.evaluate((i) => window.app.selectBuildObject(i), treeIdx); // same path as a tile click
-        await h.waitFor((i) => window.app.activeMode.currentWorldObject &&
-            window.app.activeMode.currentWorldObject.name === 'd_christmas_tree' &&
-            window.app.activeMode.selectedObjectIndex === i, treeIdx, 8000);
+        // Use a free object (a premium/locked one couldn't be selected without buying).
+        const TARGET = 't_cube_1x1';
+        const objIdx = await h.evaluate((n) =>
+            window.app.BuildableObjectList.findIndex((w) => w.name === n), TARGET);
+        const before = await h.instanceCount(TARGET);
+        await h.evaluate((i) => window.app.selectBuildObject(i), objIdx); // same path as a tile click
+        await h.waitFor((a) => window.app.activeMode.currentWorldObject &&
+            window.app.activeMode.currentWorldObject.name === a.name &&
+            window.app.activeMode.selectedObjectIndex === a.i, { i: objIdx, name: TARGET }, 8000);
         await h.waitFrames(6);
-        const after = await h.instanceCount('d_christmas_tree');
+        const after = await h.instanceCount(TARGET);
         const caption = await h.evaluate(() => ({
             name: window.app.hud.objName.text,
             cat: window.app.hud.objCat.text,
@@ -76,11 +78,11 @@ async function main() {
         }));
         console.log('\n[3] Tile selection', { before, after, ...caption });
         check('selecting the tile made it the active build object',
-            (await h.evaluate(() => window.app.activeMode.currentWorldObject.name)) === 'd_christmas_tree');
+            (await h.evaluate(() => window.app.activeMode.currentWorldObject.name)) === TARGET);
         check('a placement preview of the selected object was spawned', after === before + 1, { before, after });
         check('caption + category updated to the selection',
-            caption.name === 'Christmas Tree' && caption.cat === 'DECOR', caption);
-        check('the clicked tile is highlighted', caption.sel === treeIdx, caption);
+            caption.name === 'Cube 1x1' && caption.cat === 'TERRAIN', caption);
+        check('the clicked tile is highlighted', caption.sel === objIdx, caption);
         await h.screenshot('object-browser-tile-selected');
 
         console.log('\n========================================');

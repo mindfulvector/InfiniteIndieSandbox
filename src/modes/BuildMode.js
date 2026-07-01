@@ -72,6 +72,11 @@ class BuildMode {
             this.app.toasty("That object can't be moved.");
             return;
         }
+        if (!this.app.isPurchased(node.worldObject.name)) {
+            this.app.toasty('Locked — buy ' + this.app.prettyName(node.worldObject.name) +
+                ' (' + this.app.priceOf(node.worldObject.name) + ' px) in the shop to edit it.');
+            return;
+        }
 
         // It's being moved, not duplicated -- take it off the undo stack.
         this.placedInstances = this.placedInstances.filter((p) => p.inst !== node);
@@ -104,14 +109,19 @@ class BuildMode {
     // those; otherwise undo the most recently placed object.
     deleteAction() {
         if (typeof this.selection != 'undefined' && this.selection.length > 0) {
-            let n = 0;
+            let n = 0, locked = 0;
             this.selection.slice().forEach((node) => {
+                if (node.worldObject && !this.app.isPurchased(node.worldObject.name)) {
+                    locked++;
+                    return;   // can't remove locked objects
+                }
                 this.app.showBoundingBoxAll(node, false);
                 this.removePlacedInstance(node);
                 n++;
             });
             this.selection = [];
-            this.app.toasty('Removed ' + n + ' object' + (n === 1 ? '' : 's') + '.');
+            if (n > 0) this.app.toasty('Removed ' + n + ' object' + (n === 1 ? '' : 's') + '.');
+            else if (locked > 0) this.app.toasty('Locked — purchase in the shop to remove.');
         } else if (this.placedInstances.length > 0) {
             const last = this.placedInstances.pop();
             if (last && last.inst) {
@@ -143,8 +153,21 @@ class BuildMode {
         this._selectRequested = true;
     }
 
-    // Return the index of the first object in the previous/next category
-    // (dir = -1 / +1), relative to the currently selected object's category.
+    // Return the index of the next owned object in scan direction dir (+1/-1),
+    // skipping locked (unpurchased) ones. Stays put if none are owned.
+    nextBuildableIndex(dir) {
+        const list = this.app.BuildableObjectList;
+        const n = list.length;
+        if (n === 0) return this.selectedObjectIndex;
+        let i = (this.selectedObjectIndex < 0) ? (dir > 0 ? -1 : 0) : this.selectedObjectIndex;
+        for (let k = 0; k < n; k++) {
+            i = (i + dir + n) % n;
+            if (this.app.isPurchased(list[i].name)) return i;
+        }
+        return this.selectedObjectIndex;
+    }
+
+    // Jump to the first owned object in the previous/next category that has one.
     categoryJumpIndex(dir) {
         const list = this.app.BuildableObjectList;
         if (list.length === 0) return this.selectedObjectIndex;
@@ -159,13 +182,16 @@ class BuildMode {
 
         const curIdx = (this.selectedObjectIndex >= 0 && this.selectedObjectIndex < list.length)
             ? this.selectedObjectIndex : 0;
-        const curCat = this.app.objectCategory(list[curIdx].name);
-        let ci = cats.indexOf(curCat);
-        ci = (ci + dir + cats.length) % cats.length;
-        const targetCat = cats[ci];
+        let ci = cats.indexOf(this.app.objectCategory(list[curIdx].name));
 
-        const idx = list.findIndex((wo) => this.app.objectCategory(wo.name) === targetCat);
-        return idx >= 0 ? idx : this.selectedObjectIndex;
+        for (let k = 0; k < cats.length; k++) {
+            ci = (ci + dir + cats.length) % cats.length;
+            const targetCat = cats[ci];
+            const idx = list.findIndex((wo) =>
+                this.app.objectCategory(wo.name) === targetCat && this.app.isPurchased(wo.name));
+            if (idx >= 0) return idx;
+        }
+        return this.selectedObjectIndex;
     }
 
     disposeCurrentInstance() {
@@ -241,19 +267,15 @@ class BuildMode {
         let objectChanged = false;
         let cursorMode = false;
 
-        const objectCount = this.app.BuildableObjectList.length;
-
-        // Left/Right arrows cycle through the buildable objects.
+        // Left/Right arrows cycle through the buildable objects the player owns
+        // (locked/unpurchased objects are skipped -- buy them in the shop).
         if (this.app.keyPressed('ArrowLeft')) {
-            this.selectedObjectIndex--;
-            if (this.selectedObjectIndex < 0) {
-                this.selectedObjectIndex = objectCount - 1; // Wrap around
-            }
+            this.selectedObjectIndex = this.nextBuildableIndex(-1);
             objectChanged = true;
         }
 
         if (this.app.keyPressed('ArrowRight')) {
-            this.selectedObjectIndex = (this.selectedObjectIndex + 1) % objectCount;
+            this.selectedObjectIndex = this.nextBuildableIndex(1);
             objectChanged = true;
         }
 

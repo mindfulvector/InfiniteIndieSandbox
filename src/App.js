@@ -6,6 +6,7 @@ const MENU_LOAD = 4;
 const MENU_OBJ_PROPS = 5;
 const MENU_OBJ_EVENT_BINDINGS = 6;
 const MENU_OBJ_EVENT_BINDING_EDIT = 7;
+const MENU_SHOP = 8;
 
 // HUD / menu theme
 const HUD_ACCENT       = "#4ad6ff";   // default cyan accent
@@ -539,15 +540,34 @@ class App {
         image.isVisible = false;
         tile.addControl(image);
 
+        // Locked (unpurchased) objects are dimmed with a price tag; clicking one
+        // attempts to buy it.
+        const locked = !this.isPurchased(wo.name);
+        const restColor = locked ? "rgba(255,120,120,0.35)" : "rgba(255,255,255,0.18)";
+        if(locked) {
+            image.alpha = 0.35;
+            tile.background = "rgba(40,20,26,0.5)";
+            const price = new BABYLON.GUI.TextBlock("objTilePrice_" + index);
+            price.text = "⬣ " + this.priceOf(wo.name);   // hex/gem glyph + price
+            price.color = "#ff9bce";
+            price.fontSize = 12;
+            price.fontStyle = "bold";
+            price.height = "16px";
+            price.textVerticalAlignment = A.VERTICAL_ALIGNMENT_BOTTOM;
+            price.paddingBottom = "4px";
+            tile.addControl(price);
+        }
+        tile.color = restColor;
+
         tile.onPointerEnterObservable.add(() => {
-            if(index !== app._objBrowserSel) tile.color = HUD_BUILD_ACCENT;
+            if(index !== app._objBrowserSel) tile.color = locked ? "#ff7b9b" : HUD_BUILD_ACCENT;
         });
         tile.onPointerOutObservable.add(() => {
-            if(index !== app._objBrowserSel) tile.color = "rgba(255,255,255,0.18)";
+            if(index !== app._objBrowserSel) tile.color = restColor;
         });
         tile.onPointerUpObservable.add(() => app.selectBuildObject(index));
 
-        return { index: index, wo: wo, tile: tile, image: image, placeholder: placeholder };
+        return { index: index, wo: wo, tile: tile, image: image, placeholder: placeholder, locked: locked };
     }
 
     // Bake thumbnails one at a time so we never run several render targets at
@@ -582,9 +602,18 @@ class App {
         }
     }
 
-    // Select an object for placement from the browser.
+    // Select an object for placement from the browser. Locked objects can't be
+    // placed until bought — clicking one attempts the purchase.
     selectBuildObject(index) {
         if(!this.activeMode || this.activeMode.constructor.name !== 'BuildMode') return;
+        const wo = this.BuildableObjectList[index];
+        if(wo && !this.isPurchased(wo.name)) {
+            if(!this.buy(wo.name)) {          // shows a toast if unaffordable
+                this.refreshObjBrowserSelection(index);
+                return;
+            }
+            this.populateObjectBrowser();     // refresh lock overlays
+        }
         this.activeMode.requestSelectIndex(index);
         this.refreshObjBrowserSelection(index);
     }
@@ -595,9 +624,11 @@ class App {
         this._objBrowserSel = index;
         this._objTiles.forEach((t) => {
             const on = (t.index === index);
-            t.tile.color = on ? HUD_BUILD_ACCENT : "rgba(255,255,255,0.18)";
+            const restColor = t.locked ? "rgba(255,120,120,0.35)" : "rgba(255,255,255,0.18)";
+            const restBg = t.locked ? "rgba(40,20,26,0.5)" : "rgba(255,255,255,0.04)";
+            t.tile.color = on ? HUD_BUILD_ACCENT : restColor;
             t.tile.thickness = on ? 3 : 2;
-            t.tile.background = on ? "rgba(255,177,74,0.18)" : "rgba(255,255,255,0.04)";
+            t.tile.background = on ? "rgba(255,177,74,0.18)" : restBg;
         });
         const wo = this.BuildableObjectList[index];
         if(wo) {
@@ -883,6 +914,25 @@ class App {
             case 5:                                 // Quit to Main Menu
                 app.menu.state = MENU_MAIN;
                 break;
+            case 6:                                 // Shop
+                app.menu.prevState = MENU_PAUSE;
+                app.menu.state = MENU_SHOP;
+                break;
+            }
+            break;
+        case MENU_SHOP:
+            if(menuItem == 0) {
+                app.menu.state = app.menu.prevState || MENU_PAUSE;
+            } else {
+                const items = app.premiumObjects();
+                const it = items[menuItem - 1];
+                if(it && !it.owned) {
+                    app.buy(it.name);   // deducts pixels + toasts
+                    if(app.activeMode && app.activeMode.constructor.name === 'BuildMode') {
+                        app.populateObjectBrowser();   // refresh lock overlays
+                    }
+                }
+                app.menu.renderedState = -1;    // force the shop to re-render
             }
             break;
         case MENU_SAVE:
@@ -1085,7 +1135,56 @@ class App {
                     }
                 });
 
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnShop',
+                    text: '6. Shop',
+                    handler: () => {
+                        app.triggerMenuItem(MENU_PAUSE, 6);
+                    }
+                });
 
+
+                break;
+            case MENU_SHOP:
+                this.MenuRect();
+
+                this.MenuItem({
+                    type: 'text',
+                    name: 'shopTitle',
+                    text: 'SHOP',
+                    fontSize: 24,
+                    accent: true,
+                });
+                this.MenuItem({
+                    type: 'text',
+                    name: 'shopBalance',
+                    text: 'Pixels: ' + this.pixels,
+                    fontSize: 16,
+                    color: '#ff9bce',
+                });
+
+                const shopItems = this.premiumObjects();
+                if(shopItems.length === 0) {
+                    this.MenuItem({ type: 'text', name: 'shopEmpty', text: 'Nothing for sale right now.' });
+                } else {
+                    shopItems.forEach((it, i) => {
+                        this.MenuItem({
+                            type: 'button',
+                            name: 'btnShopItem_' + i,
+                            text: (i + 1) + '. ' + this.prettyName(it.name) +
+                                (it.owned ? '   ✓ Owned' : '   ' + it.price + ' px'),
+                            handler: () => { app.triggerMenuItem(MENU_SHOP, i + 1); }
+                        });
+                    });
+                }
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnShopBack',
+                    text: '0. Back',
+                    handler: () => { app.triggerMenuItem(MENU_SHOP, 0); }
+                });
                 break;
             case MENU_SAVE:
             case MENU_LOAD:
@@ -1280,6 +1379,14 @@ class App {
                     // make name unique by adding uniqueId to it
                     prim.name += '[' + prim.uniqueId + ']';
 
+                    // apply a solid colour if required (col: [r,g,b])
+                    if(typeof p.col != 'undefined') {
+                        var colMat = new BABYLON.StandardMaterial('colMat['+prim.uniqueId+']', app.scene);
+                        colMat.diffuseColor = new BABYLON.Color3(p.col[0], p.col[1], p.col[2]);
+                        colMat.emissiveColor = new BABYLON.Color3(p.col[0]*0.35, p.col[1]*0.35, p.col[2]*0.35);
+                        prim.material = colMat;
+                    }
+
                     // apply procedural textures if required
                     if(typeof p.tex != 'undefined') {
                         switch(p.tex.id) {
@@ -1384,6 +1491,19 @@ class App {
     // Free objects (price 0) are always owned; otherwise check the purchased set.
     isPurchased(name) {
         return this.priceOf(name) === 0 || (this.purchasedSet && this.purchasedSet.has(name));
+    }
+
+    // List of buyable (priced) objects currently in the manifest.
+    premiumObjects() {
+        const seen = new Set();
+        const out = [];
+        this.BuildableObjectList.forEach((wo) => {
+            if (this.priceOf(wo.name) > 0 && !seen.has(wo.name)) {
+                seen.add(wo.name);
+                out.push({ name: wo.name, price: this.priceOf(wo.name), owned: this.isPurchased(wo.name) });
+            }
+        });
+        return out;
     }
 
     // Attempt to buy an object with pixels. Returns true on success.

@@ -28,7 +28,7 @@ class Manifest {
         // defeated, bursts into collectable pixels.
         app.createWorldObject('en_blob', {
             prims: [
-                     {ty: 'sphere',    s: [1.2], p: [0,0,0]},
+                     {ty: 'sphere',    s: [1.2], p: [0,0,0], col: [0.90, 0.16, 0.22]},
                   ]
         }, 'EnemyScript');
 

@@ -78,6 +78,15 @@ Keys:
 * Press `W`,`A`,`S`,`D` to move
 * Hold down `Shift` to run
 * Press `Space` to jump
+* Press `F` to attack nearby enemies
+
+### Pixels & the Shop
+
+Defeated enemies burst into **pixels** — tiny multi-coloured cubes that fly to
+you and are added to your pixel count (shown top-right). Spend pixels in the
+**Shop** (`Esc` → Shop) to unlock premium objects. Objects you don't own can
+still appear and work in a world in play mode, but they're locked in build mode
+(shown with a price in the object bar) until you buy them.
 
 ## Contributing
 

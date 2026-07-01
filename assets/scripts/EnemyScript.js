@@ -21,14 +21,6 @@ class EnemyScript {
         this._t = 0;
     }
 
-    createMaterial() {
-        const m = new BABYLON.StandardMaterial('enemyMat', this.app.scene);
-        m.diffuseColor = new BABYLON.Color3(0.90, 0.16, 0.22);
-        m.emissiveColor = new BABYLON.Color3(0.35, 0.03, 0.05);
-        m.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
-        return m;
-    }
-
     update(isPlayMode, modeObject) {
         const inst = this.inst;
         if (!isPlayMode) {
