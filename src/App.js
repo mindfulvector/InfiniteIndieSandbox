@@ -326,6 +326,54 @@ class App {
         this.hud.pixelPill = pixelPill;
         this.hud.pixelText = pixelText;
 
+        // --- Player health bar (top-left, below the mode badge) ---
+        const healthWrap = new BABYLON.GUI.Rectangle("hudHealth");
+        healthWrap.width = "200px";
+        healthWrap.height = "18px";
+        healthWrap.cornerRadius = 9;
+        healthWrap.thickness = 2;
+        healthWrap.color = "#ff5b6e";
+        healthWrap.background = "rgba(13,20,32,0.85)";
+        healthWrap.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        healthWrap.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        healthWrap.left = "18px";
+        healthWrap.top = "64px";
+        healthWrap.isVisible = false;
+        this.gui.addControl(healthWrap);
+        const healthFill = new BABYLON.GUI.Rectangle("hudHealthFill");
+        healthFill.width = "100%";
+        healthFill.height = "100%";
+        healthFill.thickness = 0;
+        healthFill.cornerRadius = 8;
+        healthFill.background = "#39ff9a";
+        healthFill.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        healthWrap.addControl(healthFill);
+        const healthLabel = new BABYLON.GUI.TextBlock("hudHealthLabel");
+        healthLabel.text = "HP";
+        healthLabel.color = "#0b1018";
+        healthLabel.fontSize = 11;
+        healthLabel.fontStyle = "bold";
+        healthWrap.addControl(healthLabel);
+        this.hud.healthWrap = healthWrap;
+        this.hud.healthFill = healthFill;
+
+        // --- Wave counter (top-left, below the health bar) ---
+        const waveText = new BABYLON.GUI.TextBlock("hudWave");
+        waveText.text = "";
+        waveText.color = "#8fd9ff";
+        waveText.fontSize = 14;
+        waveText.fontStyle = "bold";
+        waveText.height = "20px";
+        waveText.width = "200px";
+        waveText.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        waveText.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        waveText.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        waveText.left = "20px";
+        waveText.top = "88px";
+        waveText.isVisible = false;
+        this.gui.addControl(waveText);
+        this.hud.waveText = waveText;
+
         // --- Toast / notification (top-center) ---
         const toast = new BABYLON.GUI.Rectangle("hudToast");
         toast.adaptWidthToChildren = true;
@@ -767,6 +815,20 @@ class App {
         if(this.hud.pixelPill) {
             this.hud.pixelPill.isVisible = inHud && !!mode;
             this.hud.pixelText.text = String(this.pixels);
+        }
+
+        // Health bar + wave counter (play mode only).
+        const pm = (mode === 'PlayMode') ? this.activeMode : null;
+        if(this.hud.healthWrap) {
+            const showCombat = inHud && !!pm;
+            this.hud.healthWrap.isVisible = showCombat;
+            this.hud.waveText.isVisible = showCombat;
+            if(showCombat) {
+                const frac = Math.max(0, Math.min(1, pm.playerHp / pm.playerMaxHp));
+                this.hud.healthFill.width = Math.round(frac * 100) + "%";
+                this.hud.healthFill.background = frac > 0.5 ? "#39ff9a" : (frac > 0.25 ? "#ffd23f" : "#ff4a5b");
+                this.hud.waveText.text = "WAVE " + (pm.enemyManager ? pm.enemyManager.wave : 1);
+            }
         }
 
         // Reconfigure badge/hints only when the active mode actually changes.

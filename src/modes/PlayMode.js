@@ -9,6 +9,15 @@ class PlayMode {
         this.attackFxList = [];  // {mesh, life} transient swing effects
         this.attackCooldown = 0;
 
+        // Player survival state.
+        this.playerMaxHp = 100;
+        this.playerHp = 100;
+        this.hurtCooldown = 0;
+        this.spawnPoint = new BABYLON.Vector3(0, 12, 0);
+
+        // Auto-spawning TRON enemy system.
+        this.enemyManager = new EnemyManager(this.app, this);
+
         // Set static UI strings once on mode load
         this.app.modeName.text = "PlayMode";
 
@@ -18,6 +27,7 @@ class PlayMode {
     dispose() {
         this.app.modeName.text = "Exiting PlayMode...";
         this.disposePlayer();
+        this.enemyManager.dispose();
         this.pixelBursts.forEach((pb) => pb.mesh && pb.mesh.dispose());
         this.attackFxList.forEach((fx) => fx.mesh && fx.mesh.dispose());
         this.pixelBursts = [];
@@ -168,6 +178,13 @@ class PlayMode {
         this.handleCombat();
         this.updatePixelBursts();
         this.updateAttackFx();
+        this.enemyManager.update();
+
+        // Slow health regen + hurt cooldown.
+        if (this.hurtCooldown > 0) this.hurtCooldown--;
+        if (this.playerHp < this.playerMaxHp) {
+            this.playerHp = Math.min(this.playerMaxHp, this.playerHp + 0.04);
+        }
     }
 
     renderUI() {
@@ -190,6 +207,9 @@ class PlayMode {
         const p = this.player.position;
         const range = 3.4;
         this.spawnAttackFx(p);
+        // Auto-spawned TRON enemies.
+        this.enemyManager.damageNear(p, range, 1);
+        // Player-placed enemy objects (en_blob).
         this.app.BuildableObjectList.forEach((wo) => {
             wo.instances.forEach((inst) => {
                 if (inst && inst.isEnemy && !inst.defeated) {
@@ -201,6 +221,25 @@ class PlayMode {
                 }
             });
         });
+    }
+
+    // Called by enemies when they land a hit on the player.
+    damagePlayer(amount) {
+        if (this.hurtCooldown > 0) return;
+        this.playerHp -= amount;
+        this.hurtCooldown = 15;
+        if (this.playerHp <= 0) {
+            this.playerHp = 0;
+            this.respawn();
+        }
+    }
+
+    respawn() {
+        this.playerHp = this.playerMaxHp;
+        this.hurtCooldown = 60;
+        if (this.player) this.player.position = this.spawnPoint.clone();
+        this.enemyManager.reset();
+        this.app.toasty('Overwhelmed! Respawning...');
     }
 
     defeatEnemy(inst, wo) {

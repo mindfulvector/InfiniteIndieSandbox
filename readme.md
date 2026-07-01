@@ -80,6 +80,13 @@ Keys:
 * Press `Space` to jump
 * Press `F` to attack nearby enemies
 
+### Survival
+
+Waves of neon **TRON-style enemies** spawn automatically and close in on you —
+attack them with `F` before they wear down your health bar (top-left). If your
+health hits zero you respawn and the wave resets. You can also place your own
+enemies (the `en_blob` object) in build mode.
+
 ### Pixels & the Shop
 
 Defeated enemies burst into **pixels** — tiny multi-coloured cubes that fly to

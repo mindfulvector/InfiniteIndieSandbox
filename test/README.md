@@ -23,6 +23,7 @@ with no GPU.
 | `test-delete.js` | Placed objects can be removed with Delete (quick undo). |
 | `test-move-object.js` | A previously-placed object can be grabbed, moved and dropped (not duplicated). |
 | `test-combat.js` | Attacking defeats an enemy, which bursts pixels that home to the player and increment the count. |
+| `test-enemy-management.js` | TRON enemies auto-spawn, chase the player, are defeatable for pixels, damage the player, and are cleaned up on mode exit. |
 | `test-shop-gating.js` | Premium objects are locked in build mode and unlock via the shop for pixels. |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
