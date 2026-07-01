@@ -73,8 +73,10 @@ async function main() {
             const pm = window.app.activeMode;
             pm.playerHp = pm.playerMaxHp;
             pm.hurtCooldown = 0;
-            // ensure an enemy exists right on top of the player, ready to strike
-            if (pm.enemyManager.enemies.length === 0) pm.enemyManager.spawnEnemy();
+            // Use a fresh flyer right on top of the player, ready to strike.
+            pm.enemyManager.enemies.forEach((x) => x.mesh.dispose(false, false));
+            pm.enemyManager.enemies = [];
+            pm.enemyManager.spawnEnemy();
             const e = pm.enemyManager.enemies[0];
             e.attackCd = 0;
             e.fade = 0;

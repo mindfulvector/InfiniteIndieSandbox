@@ -83,9 +83,11 @@ Keys:
 ### Survival
 
 Waves of neon **TRON-style enemies** spawn automatically and close in on you —
-attack them with `F` before they wear down your health bar (top-left). If your
-health hits zero you respawn and the wave resets. You can also place your own
-enemies (the `en_blob` object) in build mode.
+attack them with `F` before they wear down your health bar (top-left). There are
+flying polyhedra (melee) and **bipedal walkers** that fall and walk on the
+terrain (using the same gravity as the player) and attack with both melee and
+ranged neon shots. If your health hits zero you respawn and the wave resets. You
+can also place your own enemies (the `en_blob` object) in build mode.
 
 ### Pixels & the Shop
 
