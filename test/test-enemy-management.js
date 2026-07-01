@@ -37,13 +37,20 @@ async function main() {
         await h.waitFrames(30);
         await h.screenshot('tron-enemies');
 
+        // From here on, control the enemy set explicitly (ambient spawning off).
+        await h.evaluate(() => { window.app.activeMode.enemyManager.autoSpawn = false; });
+
         // --- 2. They chase the player ---
         const chase = await h.evaluate(async () => {
-            const pm = window.app.activeMode;
-            const e = pm.enemyManager.enemies[0];
+            const pm = window.app.activeMode, em = pm.enemyManager;
+            em.enemies.forEach((x) => x.mesh.dispose(false, false)); em.enemies = [];
+            const e = em.spawnEnemy();          // a flyer
+            const p = pm.player.position;
+            e.fade = 0;
+            e.mesh.position = new BABYLON.Vector3(p.x + 8, p.y + 2, p.z);   // known far distance
             const d0 = BABYLON.Vector3.Distance(e.mesh.position, pm.player.position);
-            await new Promise((r) => { let n = 0; const t = () => (++n >= 40 ? r() : requestAnimationFrame(t)); requestAnimationFrame(t); });
-            const d1 = (pm.enemyManager.enemies.indexOf(e) >= 0)
+            await new Promise((r) => { let n = 0; const t = () => (++n >= 45 ? r() : requestAnimationFrame(t)); requestAnimationFrame(t); });
+            const d1 = (em.enemies.indexOf(e) >= 0)
                 ? BABYLON.Vector3.Distance(e.mesh.position, pm.player.position) : 0;
             return { d0: Math.round(d0 * 100) / 100, d1: Math.round(d1 * 100) / 100 };
         });
@@ -51,13 +58,12 @@ async function main() {
         check('an enemy moves toward the player', chase.d1 < chase.d0, chase);
 
         // --- 3. Attacking defeats an enemy and awards pixels ---
-        const beforeKill = await h.evaluate(() => ({ n: window.app.activeMode.enemyManager.enemies.length, px: window.app.pixels }));
-        // Pull one enemy next to the player and weaken it, then attack.
-        await h.evaluate(() => {
-            const pm = window.app.activeMode;
-            const e = pm.enemyManager.enemies[0];
-            e.hp = 1;
-            e.mesh.position = pm.player.position.add(new BABYLON.Vector3(1.5, 0, 0));
+        const beforeKill = await h.evaluate(() => {
+            const pm = window.app.activeMode, em = pm.enemyManager;
+            em.enemies.forEach((x) => x.mesh.dispose(false, false)); em.enemies = [];
+            const e = em.spawnEnemy(); e.hp = 1; e.fade = 0;
+            e.mesh.position = pm.player.position.add(new BABYLON.Vector3(1.5, 0.5, 0));
+            return { n: em.enemies.length, px: window.app.pixels };
         });
         await h.tapKey('F');
         await h.waitFor((n) => window.app.activeMode.enemyManager.enemies.length < n, beforeKill.n, 8000).catch(() => {});

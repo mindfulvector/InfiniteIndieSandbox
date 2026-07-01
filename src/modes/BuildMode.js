@@ -331,6 +331,7 @@ class BuildMode {
             placementPosition = this.currentInstance.position.clone();
             if(this.app.keyPressed(' ')) {
                 const wasGrabbed = this.grabbed;
+                const placed = this.currentInstance;
                 this.placeCurrent();
                 objectChanged = true;
                 objectPlaced = true;
@@ -339,13 +340,17 @@ class BuildMode {
                 if(wasGrabbed) {
                     cursorMode = true;
                     this.selectedObjectIndex = -1;
+                } else if(placed && placed.script && placed.script.paramDefs && placed.script.paramDefs.length) {
+                    // Freshly placed a configurable object (e.g. a spawner):
+                    // open its parameters popup automatically.
+                    this._openParamsAfter = placed;
                 }
             }
         } else {
-            // Handling Space key to open properties menu for a selected object or group of objects in cursor mode
+            // Space in cursor mode opens the highlighted object's parameters popup.
             if(this.app.keyPressed(' ')) {
-                if (!this.currentInstance && typeof this.selection != 'undefined' && this.selection.length > 0) {
-                    this.app.menu.state = MENU_OBJ_PROPS;
+                if (typeof this.selection != 'undefined' && this.selection.length > 0) {
+                    this.app.openParams(this.selection[0]);
                 }
             }
 
@@ -621,6 +626,13 @@ class BuildMode {
         }
 
         this.updateObjectsInBuildMode();
+
+        // Auto-open the parameters popup for a just-placed configurable object.
+        if(this._openParamsAfter) {
+            const target = this._openParamsAfter;
+            this._openParamsAfter = null;
+            this.app.openParams(target);
+        }
     }
 
     updateObjectsInBuildMode() {

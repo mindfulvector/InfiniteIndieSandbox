@@ -26,7 +26,15 @@ async function main() {
         await h.tapUntil('1', () => window.app.activeMode &&
             window.app.activeMode.constructor.name === 'PlayMode' && window.app.menu.state === 0);
         await h.waitFor(() => window.app.activeMode && !!window.app.activeMode.cc, null, 20000);
-        await h.waitFrames(10);
+        // Turn off ambient spawning and clear the field so nothing interferes
+        // (e.g. the player standing on an auto-spawned enemy).
+        await h.evaluate(() => {
+            const em = window.app.activeMode.enemyManager;
+            em.autoSpawn = false;
+            em.enemies.forEach((e) => e.mesh.dispose(false, false));
+            em.enemies = [];
+        });
+        await h.waitFrames(20);   // let the player settle onto the terrain
 
         // --- 1. Spawn a walker; it uses GravityBody and lands on the terrain ---
         const land = await h.evaluate(async () => {
@@ -53,7 +61,7 @@ async function main() {
         check('walker is a bipedal (walker) enemy', land.kind === 'walker', land);
         check('walker uses the shared GravityBody', land.usesGravity === true, land);
         check('walker fell from spawn and settled on the terrain',
-            land.y1 !== null && land.y1 < land.y0 && Math.abs(land.y1 - land.playerY) < 1.2, land);
+            land.y1 !== null && land.y1 < land.y0 && land.grounded === true && land.y1 < 1.5, land);
         await h.waitFrames(4);
         await h.screenshot('bipedal-enemy');
 

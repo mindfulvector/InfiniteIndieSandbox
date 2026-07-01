@@ -22,6 +22,7 @@ class EnemyManager {
         this.spawnTimer = 30;
         this.maxAlive = 5;
         this.enabled = true;
+        this.autoSpawn = true;    // ambient wave spawning (off = only placed spawners produce enemies)
         this._matCache = {};
 
         // Neon TRON palette.
@@ -81,8 +82,11 @@ class EnemyManager {
 
     // ---- flying enemy -------------------------------------------------------
 
-    spawnEnemy() {
-        if (!this.pm.player) return;
+    // Spawn a flying enemy. If `pos` is given it materialises there (used by the
+    // spawner object); otherwise it appears on a ring around the player. Returns
+    // the enemy record.
+    spawnEnemy(pos) {
+        if (!this.pm.player && !pos) return null;
         const color = this.pickColor();
         const type = Math.floor(Math.random() * 4);   // polyhedron variety
         const size = 1.0 + Math.random() * 0.5;
@@ -95,21 +99,33 @@ class EnemyManager {
         mesh.checkCollisions = false;
         mesh.visibility = 0.0;
 
-        const p = this.pm.player.position;
-        const ang = Math.random() * Math.PI * 2;
-        const R = 11 + Math.random() * 5;
         const hover = 1.6 + Math.random() * 0.9;
-        mesh.position = new BABYLON.Vector3(p.x + Math.cos(ang) * R, p.y + hover, p.z + Math.sin(ang) * R);
+        if (pos) {
+            mesh.position = new BABYLON.Vector3(pos.x, pos.y + hover, pos.z);
+        } else {
+            const p = this.pm.player.position;
+            const ang = Math.random() * Math.PI * 2;
+            const R = 11 + Math.random() * 5;
+            mesh.position = new BABYLON.Vector3(p.x + Math.cos(ang) * R, p.y + hover, p.z + Math.sin(ang) * R);
+        }
         this.spawnFlash(mesh.position, color, 14);
 
         const hp = 2 + Math.floor(this.wave / 2);
-        this.enemies.push({
+        const rec = {
             kind: 'flyer', mesh: mesh, hp: hp, maxHp: hp,
             speed: 0.06 + Math.min(0.07, this.wave * 0.004),
             hover: hover, bobPhase: Math.random() * Math.PI * 2,
             spin: (Math.random() < 0.5 ? -1 : 1) * (0.02 + Math.random() * 0.03),
             attackCd: 30, fade: 12, color: color,
-        });
+        };
+        this.enemies.push(rec);
+        return rec;
+    }
+
+    // Spawn a walker or flyer at a specific world position (used by spawners).
+    spawnAt(kind, pos) {
+        if (!pos) return null;
+        return (kind === 'flyer') ? this.spawnEnemy(pos) : this.spawnWalker(pos);
     }
 
     // ---- bipedal walker -----------------------------------------------------
@@ -133,20 +149,26 @@ class EnemyManager {
         return { leftHip, rightHip, leftSh, rightSh };
     }
 
-    spawnWalker() {
-        if (!this.pm.player) return;
+    // Spawn a bipedal walker. If `pos` is given it drops in there (spawner);
+    // otherwise near the player on the starter platform. Returns the record.
+    spawnWalker(pos) {
+        if (!this.pm.player && !pos) return null;
         const color = this.pickColor();
         // Invisible collider root (origin at the feet).
         const root = BABYLON.MeshBuilder.CreateBox('tronWalker', { width: 0.5, height: 0.2, depth: 0.5 }, this.scene);
         root.isVisible = false;
 
-        // Spawn on the platform near the player, above the surface, then let
-        // gravity drop it onto the terrain. Clamp to the starter cube footprint.
-        const p = this.pm.player.position;
-        const ang = Math.random() * Math.PI * 2;
-        const R = 3.5 + Math.random() * 2.5;
-        const clamp = (v) => Math.max(-4.3, Math.min(4.3, v));
-        root.position = new BABYLON.Vector3(clamp(p.x + Math.cos(ang) * R), p.y + 5, clamp(p.z + Math.sin(ang) * R));
+        if (pos) {
+            root.position = new BABYLON.Vector3(pos.x, pos.y + 3, pos.z);   // drop onto terrain
+        } else {
+            // On the platform near the player, above the surface, then let gravity
+            // drop it. Clamp to the starter cube footprint.
+            const p = this.pm.player.position;
+            const ang = Math.random() * Math.PI * 2;
+            const R = 3.5 + Math.random() * 2.5;
+            const clamp = (v) => Math.max(-4.3, Math.min(4.3, v));
+            root.position = new BABYLON.Vector3(clamp(p.x + Math.cos(ang) * R), p.y + 5, clamp(p.z + Math.sin(ang) * R));
+        }
 
         const parts = this.buildBipedal(root, color);
         this.spawnFlash(root.position, color, 14);
@@ -156,14 +178,16 @@ class EnemyManager {
         });
 
         const hp = 3 + Math.floor(this.wave / 2);
-        this.enemies.push({
+        const rec = {
             kind: 'walker', mesh: root, root: root, parts: parts, body: body, color: color,
             hp: hp, maxHp: hp,
             speed: 2.4 + this.wave * 0.18,        // units/second (gravity-scaled)
             meleeRange: 2.2, rangedRange: 12,
             meleeCd: 40, rangedCd: 70, meleeRate: 55, rangedRate: 100,
             walkPhase: 0, fade: 12,
-        });
+        };
+        this.enemies.push(rec);
+        return rec;
     }
 
     // ---- ranged projectiles -------------------------------------------------
@@ -213,7 +237,7 @@ class EnemyManager {
         }
 
         this.spawnTimer--;
-        if (this.enemies.length < this.maxAlive && this.spawnTimer <= 0) {
+        if (this.autoSpawn && this.enemies.length < this.maxAlive && this.spawnTimer <= 0) {
             if (Math.random() < 0.5) this.spawnWalker(); else this.spawnEnemy();
             this.spawnTimer = Math.max(24, 80 - this.wave * 4);
         }

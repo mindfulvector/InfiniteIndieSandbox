@@ -129,6 +129,18 @@ class WorldObject {
             inst.script = null;
         }
 
+        // Initialise editable per-instance parameters from the script's schema
+        // (paramDefs), applying any values restored from a save file (pr).
+        if(inst.script && inst.script.paramDefs) {
+            inst.params = {};
+            inst.script.paramDefs.forEach((pdef) => { inst.params[pdef.key] = pdef.default; });
+            if(typeof woInstData.pr != 'undefined' && woInstData.pr) {
+                Object.assign(inst.params, woInstData.pr);
+            }
+        } else {
+            inst.params = (typeof woInstData.pr != 'undefined' && woInstData.pr) ? woInstData.pr : {};
+        }
+
         // If we have a script with a createMaterial implementation and we don't yet have
         // a scripted material cached, call the method to create the material.
         if(null != inst.script 
@@ -181,7 +193,8 @@ class WorldObject {
                 'ro': inst.rotationQuaternion,
                 'sc': inst.scaling,
                 's1': inst.isOpened,
-                'ev': inst.events
+                'ev': inst.events,
+                'pr': inst.params        // editable parameter values
             });
         });
         console.log(result);

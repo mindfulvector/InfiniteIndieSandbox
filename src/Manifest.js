@@ -32,6 +32,14 @@ class Manifest {
                   ]
         }, 'EnemyScript');
 
+        // A spawner pad: in play mode it spawns enemies of a chosen type at a set
+        // frequency up to a limit (all editable via the parameters popup).
+        app.createWorldObject('l_spawner', {
+            prims: [
+                     {ty: 'box',       s: [1.4, 0.5, 1.4], p: [0,0,0]},
+                  ]
+        }, 'SpawnerScript');
+
         new CyberpunkManifest(app, assetsBaseUrl);
         new ChristmasManifest(app, assetsBaseUrl);
 

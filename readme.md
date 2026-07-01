@@ -58,6 +58,11 @@ To switch between modes, press the `Esc` key then to enter a new mode:
 
 Objects are placed sitting on the surface and centred under the cursor.
 
+Some objects have **settings**: place a **Spawner** (Logic category) and a
+parameters popup opens automatically so you can choose the enemy type, spawn
+frequency and max-alive limit. To edit a placed object's settings later, enter
+cursor mode (`0`), move the cursor over it and press `Space`.
+
 #### Select / move placed objects
 
 * Press `0` to enter cursor (select) mode

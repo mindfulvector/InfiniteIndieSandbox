@@ -7,6 +7,7 @@ const MENU_OBJ_PROPS = 5;
 const MENU_OBJ_EVENT_BINDINGS = 6;
 const MENU_OBJ_EVENT_BINDING_EDIT = 7;
 const MENU_SHOP = 8;
+const MENU_OBJ_PARAMS = 9;
 
 // HUD / menu theme
 const HUD_ACCENT       = "#4ad6ff";   // default cyan accent
@@ -784,7 +785,8 @@ class App {
         if(cursorMode) {
             this.setControlHints([
                 {k:'WASD',  label:'Move cursor'},
-                {k:'Enter', label:'Move object'},
+                {k:'Enter', label:'Move'},
+                {k:'Space', label:'Settings'},
                 {k:'Del',   label:'Remove'},
                 {k:'Esc',   label:'Menu'},
             ]);
@@ -996,6 +998,11 @@ class App {
                 }
                 app.menu.renderedState = -1;    // force the shop to re-render
             }
+            break;
+        case MENU_OBJ_PARAMS:
+            // Any close action returns to the gameplay HUD.
+            app.menu.state = MENU_HUD;
+            app.paramTarget = null;
             break;
         case MENU_SAVE:
             if(menuItem == 0) {
@@ -1248,6 +1255,38 @@ class App {
                     handler: () => { app.triggerMenuItem(MENU_SHOP, 0); }
                 });
                 break;
+            case MENU_OBJ_PARAMS: {
+                const inst = this.paramTarget;
+                this.MenuRect();
+                this.MenuItem({
+                    type: 'text',
+                    name: 'paramTitle',
+                    text: (inst && inst.worldObject ? this.prettyName(inst.worldObject.name) : 'Object') + ' Settings',
+                    fontSize: 22,
+                    accent: true,
+                });
+                if(!inst || !inst.script || !inst.script.paramDefs) {
+                    this.MenuItem({ type: 'text', name: 'paramNone', text: 'This object has no settings.' });
+                } else {
+                    inst.script.paramDefs.forEach((pdef) => {
+                        const cur = (inst.params && inst.params[pdef.key] != null) ? inst.params[pdef.key] : pdef.default;
+                        this.MenuItem({
+                            type: 'param',
+                            label: pdef.label,
+                            value: String(cur) + (pdef.unit ? pdef.unit : ''),
+                            onPrev: () => { app.cycleParam(inst, pdef, -1); app.menu.renderedState = -1; },
+                            onNext: () => { app.cycleParam(inst, pdef, +1); app.menu.renderedState = -1; },
+                        });
+                    });
+                }
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnParamsDone',
+                    text: '0. Done',
+                    handler: () => { app.triggerMenuItem(MENU_OBJ_PARAMS, 0); }
+                });
+                break;
+            }
             case MENU_SAVE:
             case MENU_LOAD:
                 this.MenuRect();
@@ -1555,6 +1594,30 @@ class App {
         return this.priceOf(name) === 0 || (this.purchasedSet && this.purchasedSet.has(name));
     }
 
+    // ---- object parameters popup -------------------------------------------
+
+    // Open the parameters popup to edit a placed instance's script parameters.
+    openParams(inst) {
+        if(!inst || !inst.script || !inst.script.paramDefs || inst.script.paramDefs.length === 0) {
+            this.toasty('This object has no settings.');
+            return;
+        }
+        this.paramTarget = inst;
+        this.menu.prevState = MENU_HUD;
+        this.menu.state = MENU_OBJ_PARAMS;
+    }
+
+    // Step a parameter to its previous/next preset value (dir = -1 / +1).
+    cycleParam(inst, pdef, dir) {
+        if(!inst.params) inst.params = {};
+        const opts = pdef.options || [];
+        if(opts.length === 0) return;
+        let idx = opts.indexOf(inst.params[pdef.key]);
+        if(idx < 0) idx = 0;
+        idx = (idx + dir + opts.length) % opts.length;
+        inst.params[pdef.key] = opts[idx];
+    }
+
     // List of buyable (priced) objects currently in the manifest.
     premiumObjects() {
         const seen = new Set();
@@ -1725,6 +1788,49 @@ class App {
                 btn.onPointerUpObservable.add(opts.handler);
             }
             stack.addControl(btn);
+            break;
+        case 'param':
+            // A row: [label]  [◀]  value  [▶]  for stepping a parameter.
+            const row = new BABYLON.GUI.StackPanel();
+            row.isVertical = false;
+            row.height = "42px";
+            row.width = "380px";
+
+            const plabel = new BABYLON.GUI.TextBlock();
+            plabel.text = opts.label;
+            plabel.width = "150px";
+            plabel.color = "#cdd9e8";
+            plabel.fontSize = 15;
+            plabel.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+            row.addControl(plabel);
+
+            const mkStep = (glyph, handler) => {
+                const b = BABYLON.GUI.Button.CreateSimpleButton('pstep', glyph);
+                b.width = "40px";
+                b.height = "34px";
+                b.color = "#eaf2ff";
+                b.fontSize = 18;
+                b.cornerRadius = 8;
+                b.thickness = 1;
+                b.background = "rgba(36,58,92,0.55)";
+                b.onPointerEnterObservable.add(() => { b.background = HUD_ACCENT; });
+                b.onPointerOutObservable.add(() => { b.background = "rgba(36,58,92,0.55)"; });
+                if(typeof handler == 'function') b.onPointerUpObservable.add(handler);
+                return b;
+            };
+            row.addControl(mkStep("◀", opts.onPrev));   // ◀
+
+            const pvalue = new BABYLON.GUI.TextBlock();
+            pvalue.text = String(opts.value);
+            pvalue.width = "130px";
+            pvalue.color = "#ffffff";
+            pvalue.fontSize = 16;
+            pvalue.fontStyle = "bold";
+            pvalue.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+            row.addControl(pvalue);
+
+            row.addControl(mkStep("▶", opts.onNext));   // ▶
+            stack.addControl(row);
             break;
         }
     }
