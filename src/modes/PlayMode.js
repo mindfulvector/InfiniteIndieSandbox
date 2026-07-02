@@ -13,7 +13,12 @@ class PlayMode {
         this.playerMaxHp = 100;
         this.playerHp = 100;
         this.hurtCooldown = 0;
-        this.spawnPoint = new BABYLON.Vector3(0, 12, 0);
+        // Prefer the spawn point the default-terrain builder chose (just above the
+        // tile nearest the origin) so the player lands on the rolling ground; fall
+        // back to a high drop for loaded worlds that didn't set one.
+        this.spawnPoint = (this.app.world && this.app.world.spawnPoint)
+            ? this.app.world.spawnPoint.clone()
+            : new BABYLON.Vector3(0, 12, 0);
 
         // Auto-spawning TRON enemy system.
         this.enemyManager = new EnemyManager(this.app, this);
@@ -52,7 +57,7 @@ class PlayMode {
                 sm.ambientColor = new BABYLON.Color3(1, 1, 1);
             }
 
-            playMode.player.position = new BABYLON.Vector3(0, 12, 0);
+            playMode.player.position = playMode.spawnPoint.clone();
             playMode.player.checkCollisions = true;
             playMode.player.ellipsoid = new BABYLON.Vector3(0.5, 1, 0.5);
             playMode.player.ellipsoidOffset = new BABYLON.Vector3(0, 1, 0);

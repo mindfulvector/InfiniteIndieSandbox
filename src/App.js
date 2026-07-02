@@ -949,7 +949,7 @@ class App {
                 app.menu.state = MENU_HUD;
                 app.world = new SandboxWorld(app);
                 app.world.clearWorld();
-                app.findWorldObject('t_cube_1x1').createInstance();
+                app.world.buildDefaultTerrain();     // 10x10 rolling terrain grid
                 app.goto_playMode();
                 break;
             case 2:                                 // Load Game

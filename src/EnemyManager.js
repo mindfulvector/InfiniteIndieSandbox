@@ -22,7 +22,10 @@ class EnemyManager {
         this.spawnTimer = 30;
         this.maxAlive = 5;
         this.enabled = true;
-        this.autoSpawn = true;    // ambient wave spawning (off = only placed spawners produce enemies)
+        // Ambient wave spawning is OFF by default: a blank sandbox has no enemies
+        // and nothing spawns until the player places a Spawner object. (The wave
+        // system is still here and can be switched on by setting autoSpawn = true.)
+        this.autoSpawn = false;
         this._matCache = {};
 
         // Neon TRON palette.

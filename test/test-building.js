@@ -76,7 +76,7 @@ async function main() {
         await h.screenshot('play-mode-new-sandbox');
         check('a SandboxWorld was created', s.hasWorld === true, s);
         check('entered PlayMode', s.activeMode === 'PlayMode', s);
-        check('origin terrain cube spawned', (s.instanceCounts.t_cube_1x1 || 0) >= 1, s);
+        check('default terrain grid spawned (10x10 tiles)', (s.instanceCounts.t_tile || 0) >= 100, s);
 
         // --- 3. Pause -> Build mode ------------------------------------------
         // Esc from the HUD opens the pause menu (and tears down PlayMode).

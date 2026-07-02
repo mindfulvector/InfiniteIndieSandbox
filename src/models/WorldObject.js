@@ -126,7 +126,10 @@ class WorldObject {
         // if needed
         this.instances[this.lastInstanceId] = inst;
 
-        console.log('createInstance['+this.name+']:', inst);
+        // Log the instance name only -- logging the whole mesh object serialises a
+        // huge (and cyclic) Babylon node, which is very slow when a remote debugger
+        // is attached and murders build times when creating many instances at once.
+        console.log('createInstance['+this.name+']: '+instName);
 
         // If a script class is defined, create an instance of it. The script file itself
         // is included for us by either the HTML file, a Manifest or the App class.

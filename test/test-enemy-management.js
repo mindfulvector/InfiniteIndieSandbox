@@ -27,6 +27,9 @@ async function main() {
         await h.tapUntil('1', () => window.app.activeMode &&
             window.app.activeMode.constructor.name === 'PlayMode' && window.app.menu.state === 0);
         await h.waitFor(() => window.app.activeMode && !!window.app.activeMode.cc, null, 20000);
+        // Ambient wave spawning is off by default (blank sandboxes stay empty);
+        // this test exercises that wave system, so switch it on explicitly.
+        await h.evaluate(() => { window.app.activeMode.enemyManager.autoSpawn = true; });
         await h.waitFrames(10);
 
         // --- 1. Enemies auto-spawn ---

@@ -11,6 +11,17 @@ class Manifest {
         const assetsBaseUrl     = './assets/';
         app.createWorldObject('t_floor_1x1',    { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_floor_1x1.gltf' });
         app.createWorldObject('t_cube_1x1',     { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf' });
+
+        // Lightweight primitive terrain tile used to build the default sandbox
+        // grid. Unlike the textured gltf terrain, a flat-shaded primitive renders
+        // cheaply even in software (a full 10x10 grid of the textured gltf tiles
+        // crawls under headless SwiftShader), so this is what the rolling terrain
+        // is made of. Players can also place it as a plain building block.
+        app.createWorldObject('t_tile', {
+            prims: [
+                     {ty: 'box',       s: [2, 1, 2], p: [0,0,0], col: [0.30, 0.52, 0.34]},
+                  ]
+        });
         
         app.createWorldObject('pr_door', {
             prims: [
