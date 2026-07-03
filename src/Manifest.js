@@ -55,6 +55,39 @@ class Manifest {
                   ]
         }, 'SpawnerScript');
 
+        // Logic toys: a counter (fires `reached` when wired events hit its
+        // target) and a timer (fires `tick` on a schedule). Both wire up in the
+        // wiring view alongside triggers and spawners.
+        app.createWorldObject('l_counter', {
+            prims: [
+                     {ty: 'box',       s: [1.0, 0.5, 1.0], p: [0,0,0]},
+                  ]
+        }, 'CounterScript');
+        app.createWorldObject('l_timer', {
+            prims: [
+                     {ty: 'box',       s: [1.0, 0.5, 1.0], p: [0,0,0]},
+                  ]
+        }, 'TimerScript');
+
+        // Pickups: collect by touching in play mode. One script drives all
+        // three; the col tint tells them apart (red = health, gold = pixels,
+        // bright yellow sphere = collectible star).
+        app.createWorldObject('pk_health', {
+            prims: [
+                     {ty: 'box',       s: [0.55, 0.55, 0.55], p: [0,0,0], col: [0.90, 0.20, 0.25]},
+                  ]
+        }, 'PickupScript');
+        app.createWorldObject('pk_pixels', {
+            prims: [
+                     {ty: 'box',       s: [0.55, 0.55, 0.55], p: [0,0,0], col: [1.00, 0.75, 0.15]},
+                  ]
+        }, 'PickupScript');
+        app.createWorldObject('pk_star', {
+            prims: [
+                     {ty: 'sphere',    s: [0.6], p: [0,0,0], col: [1.00, 0.90, 0.25]},
+                  ]
+        }, 'PickupScript');
+
         new CyberpunkManifest(app, assetsBaseUrl);
         new ChristmasManifest(app, assetsBaseUrl);
 

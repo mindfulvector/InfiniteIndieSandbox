@@ -31,6 +31,9 @@ with no GPU.
 | `test-animation.js` | Samples the game a few frames per second to prove things move over time (not just look right in one frame): a walker closes on the player and swings its legs, pixel cubes fly to the player, and a captured filmstrip's frames actually differ. Also reports whether the player avatar's skeleton is animating. |
 | `test-ranged-attack.js` | Mouse combat: a ranged attack fires a projectile from the player that travels and defeats an enemy (engaging the aim pose), right-click shoots and left-click swings melee, and the melee path still works. |
 | `test-anchor.js` | The per-object snap anchor: terrain snaps its top to the cursor (cube/floor/tile tops align into a seamless surface) while props snap their base to it, all centred on the cursor. |
+| `test-pickups.js` | Pickups: health/pixel/star collectables are collected by touch, apply their effect, animate (bob), respawn per their parameter or stay gone, and fire a `collected` wiring event that can drive spawners. |
+| `test-logic-toys.js` | Counter + timer logic toys: counters gate spawners via `reached`, count math (inc/dec/reset), timers drive spawns while started and stop on `stop`/one-shot, wire self-loops are stopped by the fireEvent depth guard, and params/wires persist through save/load. |
+| `test-combat-combo.js` | Melee combo chains (0→1→2 with a triple-damage finisher, window expiry resets), and `T` lock-on targeting (acquires nearest, marker shown, no-arg ranged shots track the lock, auto-unlock on death, toggle off). |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
 
@@ -80,6 +83,9 @@ the manifest fully settles so the object list is stable before assertions run.
 Environment variables:
 
 - `IIS_HEADLESS=0` — run with a visible browser (needs an X/Wayland display).
+- `IIS_PORT=7031` — override the PHP dev-server port (tests may also pass
+  `port` to the GameHarness constructor). Distinct ports let several harness
+  instances run in parallel without colliding.
 
 ## What the building test verifies
 

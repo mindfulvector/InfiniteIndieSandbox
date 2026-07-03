@@ -84,6 +84,21 @@ For example, wire a trigger's *Player Enters* to a spawner's *Spawn One* and set
 the spawner to *Start on: no* — enemies then appear only when the player walks
 into the trigger. Wires are saved with the world.
 
+The logic family also includes a **Counter** (fires *Target Reached* after a set
+number of wired events — e.g. "after collecting 3 stars, spawn a boss") and a
+**Timer** (fires *Tick* on a schedule, startable/stoppable by wires — e.g. timed
+enemy waves). Chain them freely: trigger → counter → spawner, timer → spawner,
+star → counter, and so on.
+
+#### Pickups
+
+The **Pickups** category has placeable collectables that bob and spin in play
+mode and are collected by touch: **health packs** (restore HP), **pixel caches**
+(grant currency), and **stars** (collectibles). Each has settings for the
+amount and whether it respawns after a delay or is one-time. Pickups fire a
+*Collected* wiring event, so collecting one can drive spawners, counters, and
+timers.
+
 #### Select / move placed objects
 
 * Press `0` to enter cursor (select) mode
@@ -107,8 +122,13 @@ Keys:
 * **Left click** for a melee attack (also `F` for keyboard-only play)
 * **Right click** for a ranged attack — the character turns to aim their hand and
   fires a neon shot toward the cursor
+* Press `T` to **lock on** to the nearest enemy (a marker floats above it);
+  ranged shots then track that target until it's defeated or you press `T` again
 
-Aim the ranged shot with the mouse; a gamepad auto-aims at the nearest enemy.
+**Combos:** land melee swings back-to-back to chain a 3-hit combo — the third
+hit is a finisher that deals triple damage.
+
+Aim the ranged shot with the mouse; a gamepad auto-aims at the locked/nearest enemy.
 
 **Gamepad:** the right trigger / right bumper fires a ranged attack, and the
 left trigger / `X` swings a melee attack (in addition to the movement stick).

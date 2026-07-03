@@ -13,6 +13,19 @@ class PlayMode {
         this.aimTimer = 0;          // frames left of the upper-body aim pose
         this.aimYaw = 0;            // world yaw the upper body is aiming at
 
+        // Melee combo chain: land the next swing while the window is open to
+        // advance the chain; the third hit is a finisher with bonus damage.
+        this.comboStage = 0;        // which swing of the chain this is (0..2)
+        this.comboTimer = 0;        // frames left to land the next chained swing
+
+        // Lock-on targeting (toggled with T): ranged shots and the aim pose
+        // track the locked enemy; a marker floats above it.
+        this.lockTarget = null;     // {type:'em', rec} | {type:'inst', inst, wo}
+        this.lockMarker = null;
+
+        // Collectible stars gathered this play session (pk_star pickups).
+        this.starsCollected = 0;
+
         // Player survival state.
         this.playerMaxHp = 100;
         this.playerHp = 100;
@@ -36,6 +49,7 @@ class PlayMode {
     dispose() {
         this.app.modeName.text = "Exiting PlayMode...";
         this.unbindMouseCombat();
+        this.clearLockOn();
         this.disposePlayer();
         this.enemyManager.dispose();
         this.pixelBursts.forEach((pb) => pb.mesh && pb.mesh.dispose());
@@ -216,16 +230,23 @@ class PlayMode {
         if (!this.player) return;
         if (this.attackCooldown > 0) this.attackCooldown--;
         if (this.rangedCooldown > 0) this.rangedCooldown--;
+        if (this.comboTimer > 0) this.comboTimer--;
 
         // Melee: F key (kept for keyboard-only play) or a gamepad melee button.
         if (this.app.keyPressed('F') || this.app.consumePad('meleeAttack')) {
             this.meleeAttack();
         }
         // Ranged: a gamepad ranged button (mouse right-click is handled by the
-        // pointer observer). Auto-aims at the nearest enemy when using a pad.
+        // pointer observer). Auto-aims at the lock-on/nearest enemy on a pad.
         if (this.app.consumePad('rangedAttack')) {
             this.rangedAttack();
         }
+        // T toggles lock-on targeting. (Q/E are the character controller's
+        // strafe keys, so lock-on gets its own key.)
+        if (this.app.keyPressed('T')) {
+            this.toggleLockOn();
+        }
+        this.updateLockOn();
     }
 
     // Left-click = melee, right-click = ranged. Called by the pointer observer
@@ -241,20 +262,30 @@ class PlayMode {
     meleeAttack(aimPoint) {
         if (!this.player || this.attackCooldown > 0) return;
         this.attackCooldown = 12;
+
+        // Combo chain: swinging again while the window is open advances the
+        // chain (0 -> 1 -> 2). The third swing is a finisher with bonus damage,
+        // after which the chain restarts.
+        this.comboStage = (this.comboTimer > 0) ? Math.min(this.comboStage + 1, 2) : 0;
+        const finisher = this.comboStage === 2;
+        this.comboTimer = finisher ? 0 : 36;   // frames to land the next swing
+        const dmg = finisher ? 3 : 1;
+        if (finisher) this.app.toasty('Combo finisher!');
+
         const aim = this.resolveAim(aimPoint, 3.4);
         if (aim) this.aimAt(aim);
         const p = this.player.position;
         const range = 3.4;
-        this.spawnAttackFx(p);
+        this.spawnAttackFx(p, finisher);
         // Auto-spawned TRON enemies.
-        this.enemyManager.damageNear(p, range, 1);
+        this.enemyManager.damageNear(p, range, dmg);
         // Player-placed enemy objects (en_blob).
         this.app.BuildableObjectList.forEach((wo) => {
             wo.instances.forEach((inst) => {
                 if (inst && inst.isEnemy && !inst.defeated) {
                     const ip = inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position;
                     if (BABYLON.Vector3.Distance(ip, p) <= range) {
-                        inst.hp -= 1;
+                        inst.hp -= dmg;
                         if (inst.hp <= 0) this.defeatEnemy(inst, wo);
                     }
                 }
@@ -327,12 +358,80 @@ class PlayMode {
 
     // ---- aiming -------------------------------------------------------------
 
-    // Resolve an aim point: an explicit world point, else the nearest enemy
-    // within `maxDist`, else null.
+    // Resolve an aim point: an explicit world point, else the locked-on enemy,
+    // else the nearest enemy within `maxDist`, else null.
     resolveAim(aimPoint, maxDist) {
         if (aimPoint) return aimPoint.clone ? aimPoint.clone() : aimPoint;
+        const lock = this.lockTargetPos();
+        if (lock) return lock;
         const near = this.nearestEnemyPos(maxDist || 60);
         return near ? near : null;
+    }
+
+    // ---- lock-on targeting ----------------------------------------------------
+
+    // Q toggles a lock onto the nearest enemy in range. While locked, ranged
+    // shots and the aim pose track that enemy and a marker floats above it.
+    toggleLockOn() {
+        if (this.lockTarget) { this.clearLockOn(); return; }
+        const p = this.player.position;
+        let best = null, bestD = 25;
+        this.enemyManager.enemies.forEach((rec) => {
+            const d = BABYLON.Vector3.Distance(rec.mesh.position, p);
+            if (d < bestD) { bestD = d; best = { type: 'em', rec: rec }; }
+        });
+        this.app.BuildableObjectList.forEach((wo) => {
+            wo.instances.forEach((inst) => {
+                if (inst && inst.isEnemy && !inst.defeated) {
+                    const ip = inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position;
+                    const d = BABYLON.Vector3.Distance(ip, p);
+                    if (d < bestD) { bestD = d; best = { type: 'inst', inst: inst, wo: wo }; }
+                }
+            });
+        });
+        if (!best) { this.app.toasty('No target in range.'); return; }
+        this.lockTarget = best;
+        const marker = BABYLON.MeshBuilder.CreateCylinder('lockMarker',
+            { diameterTop: 0.5, diameterBottom: 0, height: 0.5, tessellation: 4 }, this.app.scene);
+        const mat = new BABYLON.StandardMaterial('lockMarkerMat', this.app.scene);
+        mat.emissiveColor = new BABYLON.Color3(1.0, 0.85, 0.2);
+        mat.disableLighting = true;
+        marker.material = mat;
+        marker.isPickable = false;
+        marker.checkCollisions = false;
+        this.lockMarker = marker;
+    }
+
+    clearLockOn() {
+        this.lockTarget = null;
+        if (this.lockMarker) { this.lockMarker.dispose(); this.lockMarker = null; }
+    }
+
+    // Current world position of the locked enemy, or null if it's gone.
+    lockTargetPos() {
+        const t = this.lockTarget;
+        if (!t) return null;
+        if (t.type === 'em') {
+            if (this.enemyManager.enemies.indexOf(t.rec) < 0) return null;
+            return t.rec.mesh.position.clone();
+        }
+        if (!t.inst || t.inst.isDisposed() || t.inst.defeated) return null;
+        return (t.inst.getAbsolutePosition ? t.inst.getAbsolutePosition() : t.inst.position).clone();
+    }
+
+    // Per-frame: drop the lock if the target died or left range, else float the
+    // marker above it (spinning, so it reads as a live indicator).
+    updateLockOn() {
+        if (!this.lockTarget) return;
+        const pos = this.lockTargetPos();
+        if (!pos || BABYLON.Vector3.Distance(pos, this.player.position) > 30) {
+            this.clearLockOn();
+            return;
+        }
+        if (this.lockMarker) {
+            this.lockMarker.position = pos.add(new BABYLON.Vector3(0, 2.4, 0));
+            this.lockMarker.rotation.y += 0.12;
+        }
     }
 
     nearestEnemyPos(maxDist) {
@@ -543,11 +642,11 @@ class PlayMode {
         }
     }
 
-    spawnAttackFx(p) {
-        const fx = BABYLON.MeshBuilder.CreateSphere('attackFx', { diameter: 1.2, segments: 8 }, this.app.scene);
+    spawnAttackFx(p, big = false) {
+        const fx = BABYLON.MeshBuilder.CreateSphere('attackFx', { diameter: big ? 2.2 : 1.2, segments: 8 }, this.app.scene);
         fx.position = p.add(new BABYLON.Vector3(0, 1.0, 0));
         const mat = new BABYLON.StandardMaterial('attackFxMat', this.app.scene);
-        mat.emissiveColor = new BABYLON.Color3(0.6, 0.9, 1.0);
+        mat.emissiveColor = big ? new BABYLON.Color3(1.0, 0.8, 0.3) : new BABYLON.Color3(0.6, 0.9, 1.0);
         mat.alpha = 0.35;
         mat.disableLighting = true;
         fx.material = mat;

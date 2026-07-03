@@ -60,7 +60,9 @@ const SHOT_DIR = path.join(__dirname, 'screenshots');
 class GameHarness {
     constructor(opts = {}) {
         this.host = opts.host || '127.0.0.1';
-        this.port = opts.port || 7011; // avoid clashing with a dev server on 7001
+        // Port precedence: explicit option > IIS_PORT env > default. A per-test
+        // port lets several harness instances run in parallel without colliding.
+        this.port = opts.port || Number(process.env.IIS_PORT) || 7011; // avoid clashing with a dev server on 7001
         this.headless = opts.headless !== false;
         this.viewport = opts.viewport || { width: 1280, height: 720 };
         this.shotDir = opts.shotDir || process.env.IIS_SHOT_DIR || SHOT_DIR;

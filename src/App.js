@@ -708,7 +708,8 @@ class App {
         const p = (name || '').split('_')[0];
         return ({
             t: 'TERRAIN', pr: 'PROPS', al: 'ARCHITECTURE',
-            cp: 'CYBERPUNK', d: 'DECOR', l: 'LOGIC', en: 'ENEMIES'
+            cp: 'CYBERPUNK', d: 'DECOR', l: 'LOGIC', en: 'ENEMIES',
+            pk: 'PICKUPS'
         })[p] || 'OBJECTS';
     }
 
@@ -793,6 +794,7 @@ class App {
                 {k:'Space', label:'Jump'},
                 {k:'LMB',   label:'Melee'},
                 {k:'RMB',   label:'Shoot'},
+                {k:'T',     label:'Lock-on'},
                 {k:'Esc',   label:'Menu'},
             ]);
         }
@@ -1398,7 +1400,11 @@ class App {
         app.uploadLoadingMessage();
 
         if(null != scriptClass) {
-            if(typeof this.loadedScripts[scriptClass] == 'undefined') {
+            // loadedScripts is an array of class names -- membership must be
+            // checked with indexOf. (Indexing the array by name was always
+            // undefined, so scripts shared by several objects were injected
+            // repeatedly, throwing "Identifier already declared".)
+            if(this.loadedScripts.indexOf(scriptClass) < 0) {
                 console.log('loading script: '+scriptClass);
                 this.loadedScripts.push(scriptClass);
                 var scriptLoader = document.createElement('script');
@@ -1762,15 +1768,27 @@ class App {
 
     // Fire an output event from an instance: deliver it to every wired target's
     // input handler. Called by scripts (e.g. TriggerScript on player enter).
+    // Guarded against runaway recursion: wiring is player-editable, so cycles
+    // like counter.changed -> counter.increment are possible and must not hang
+    // the game -- delivery stops past a small depth instead.
     fireEvent(inst, event) {
         if(!inst || !inst.wires) return;
-        inst.wires.forEach((w) => {
-            if(w.event !== event) return;
-            const target = this.findInstance(w.toWo, w.toId);
-            if(target && target.script && typeof target.script.onInput === 'function') {
-                target.script.onInput(w.action, inst);
+        this._fireDepth = (this._fireDepth || 0) + 1;
+        try {
+            if(this._fireDepth > 8) {
+                console.warn('fireEvent: wire loop detected (depth > 8), stopping delivery of `' + event + '`');
+                return;
             }
-        });
+            inst.wires.forEach((w) => {
+                if(w.event !== event) return;
+                const target = this.findInstance(w.toWo, w.toId);
+                if(target && target.script && typeof target.script.onInput === 'function') {
+                    target.script.onInput(w.action, inst);
+                }
+            });
+        } finally {
+            this._fireDepth--;
+        }
     }
 
     hasWire(inst, event, toWo, toId, action) {
