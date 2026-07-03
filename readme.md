@@ -94,10 +94,13 @@ into the trigger. Wires are saved with the world.
 The logic family also includes a **Counter** (fires *Target Reached* after a set
 number of wired events — e.g. "after collecting 3 stars, spawn a boss"), a
 **Timer** (fires *Tick* on a schedule, startable/stoppable by wires — e.g. timed
-enemy waves), and a **Scoreboard** (wired events score points, the score shows
+enemy waves), a **Scoreboard** (wired events score points, the score shows
 on the play-mode HUD, and hitting the target fires *Target Reached* — build
-your own minigame win conditions). Chain them freely: trigger → counter →
-spawner, timer → spawner, star → scoreboard, and so on.
+your own minigame win conditions), and a **Camera** (a wired *Cut To This
+Camera* moves the view to it for a few seconds — a cutaway that shows the
+player what their trigger just did — then fires *Cut Finished*, so cameras can
+chain into mini-cinematics). Chain them freely: trigger → counter → spawner,
+timer → spawner, star → scoreboard, trigger → camera, and so on.
 
 #### Pickups
 

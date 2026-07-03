@@ -76,6 +76,13 @@ class Manifest {
                      {ty: 'box',       s: [1.2, 1.6, 0.3], p: [0,0,0]},
                   ]
         }, 'ScoreboardScript');
+        // A camera: wires cut the play-mode view to it for a few seconds
+        // (cutaways / mini-cinematics), then it fires `finished`.
+        app.createWorldObject('l_camera', {
+            prims: [
+                     {ty: 'box',       s: [0.6, 0.6, 0.9], p: [0,0,0]},
+                  ]
+        }, 'CameraScript');
 
         // Pickups: collect by touching in play mode. One script drives all
         // three; texture + tint tell them apart (red marble = health, gold

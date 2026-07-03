@@ -66,7 +66,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Logic toys: counters | ✅ | `l_counter` — increment/decrement/reset inputs, reached/changed outputs (`test-logic-toys.js`) |
 | Logic toys: timers | ✅ | `l_timer` — start/stop/reset inputs, tick output, interval/repeat params (`test-logic-toys.js`) |
 | Logic toys: scoreboards | ✅ | `l_scoreboard` — add/subtract/reset inputs, HUD score display, edge-triggered `reached` output (`test-progression.js`) |
-| Logic toys: cameras | ⬜ | Last of the logic family |
+| Logic toys: cameras | ✅ | `l_camera` — wires cut the view to it for N seconds (player-tracking or fixed shot), `started`/`finished` outputs chain cinematics (`test-camera-toy.js`) |
 | Event wiring between logic toys | ✅ | Overhead 3D wiring view; wires persist in saves (`test-wiring.js`) |
 | Interiors (rooms, doors, decoration) | ⬜ | |
 | Path/track creation (races, patrols, moving platforms) | ⬜ | |
@@ -107,9 +107,9 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Camera logic toy (completes the wiring family)
-2. Double-jump + glide traversal
-3. Blocking/dodging in melee combat
-4. Skill tree for spending level-ups
-5. Interiors (rooms, doors, decoration)
-6. Figure packs / Play Set bundles
+1. Double-jump + glide traversal
+2. Blocking/dodging in melee combat
+3. Skill tree for spending level-ups
+4. Interiors (rooms, doors, decoration)
+5. Figure packs / Play Set bundles
+6. Path/track creation (races, patrols, moving platforms)

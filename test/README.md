@@ -38,7 +38,8 @@ with no GPU.
 | `test-progression.js` | New Game starter-world picker (Flat/Arena/Islands layouts), XP + level-up with stat growth (max HP, level-5 melee bonus), and the scoreboard logic toy (wired points, HUD display, `reached` firing a spawner). |
 | `test-idle-animation.js` | The procedural idle: standing still stops the rig's frozen 2-frame idle clip and breathes the spine/neck, movement input hands the bones back to the real locomotion clips, and idle breathing resumes afterwards. |
 | `test-collection.js` | The figure Collection: roster with the free default active, locked figures stay locked without pixels, buying unlocks + selects (colorway tint on the live avatar, stat leans apply), and level/XP progress is tracked per figure across switches. |
-| `test-texture-category.js` | Every non-logic prim object has a textured surface (grass terrain, marble enemies/health, gold-grain pixels, starfield stars) while logic toys stay flat; the object bar shows only the current category, Down re-filters it, and Left/Right cycling never leaves the category. |
+| `test-texture-category.js` | Every non-logic prim object has a textured surface (grass terrain, marble enemies/health, gold-grain pixels, starfield stars) while logic toys stay flat; the object bar shows only the current category, Down re-filters it, Left/Right cycling never leaves the category, and locked-only categories are still browsable with priced tiles. |
+| `test-camera-toy.js` | The camera logic toy: a wired `activate` cuts the view to it (input paused), the cut ends after its duration and fires `finished` (wired into a counter), `release` ends early, and a trigger can drive it end-to-end. |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
 
