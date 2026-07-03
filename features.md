@@ -22,6 +22,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Ranged combat with aimable projectiles | ✅ | Right-click fires at cursor; projectile from hand (`test-ranged-attack.js`) |
 | Lock-on targeting | ✅ | `T` toggles lock-on to nearest enemy; marker + auto-aim (`test-combat-combo.js`) |
 | Character-specific movesets / special attacks / super moves | ⬜ | Single starter avatar today |
+| Avatar animation (locomotion clips + idle) | ✅ | Authored walk/run/jump/strafe clips via the character controller; procedural breathing idle replaces the rig's frozen 2-frame idle range (`test-idle-animation.js`) |
 | Character leveling (to 20) with skill trees | 🟡 | XP from defeating enemies, level 1–20 persisted, +5 max HP/level, +1 melee dmg per 5 levels, HUD badge + XP bar (`test-progression.js`); skill trees planned |
 | Health + respawn | ✅ | HP bar, hurt cooldown, respawn at spawn point |
 | Pickups: health, currency, collectibles | ✅ | `pk_health`, `pk_pixels`, `pk_star` placeable objects (`test-pickups.js`) |
@@ -106,8 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Avatar animation wiring (idle/walk/run clips — avatar is currently a static pose)
-2. Collection/roster screen groundwork (figure definitions, owned set)
+1. Collection/roster screen groundwork (figure definitions, owned set)
 3. Camera logic toy (completes the wiring family)
 4. Double-jump + glide traversal
 5. Blocking/dodging in melee combat

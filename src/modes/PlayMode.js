@@ -23,6 +23,13 @@ class PlayMode {
         this.lockTarget = null;     // {type:'em', rec} | {type:'inst', inst, wo}
         this.lockMarker = null;
 
+        // Procedural idle: the avatar's authored "idle" range is a frozen
+        // 2-frame pose, so when standing still we stop that static clip and
+        // breathe the spine/neck ourselves (see updateIdleAndAim).
+        this.idlePhase = 0;
+        this.idleFrames = 0;          // consecutive frames with no movement input
+        this._idleAnimStopped = false;
+
         // Collectible stars gathered this play session (pk_star pickups).
         this.starsCollected = 0;
 
@@ -210,7 +217,7 @@ class PlayMode {
         this.updatePixelBursts();
         this.updateAttackFx();
         this.updatePlayerProjectiles();
-        this.updateAimPose();
+        this.updateIdleAndAim();
         this.enemyManager.update();
 
         // Slow health regen + hurt cooldown.
@@ -483,36 +490,91 @@ class PlayMode {
     }
 
     cacheAimBones() {
-        this.boneSpine = null; this.boneHand = null; this.boneArm = null;
-        this._spineRest = null;
+        this.boneSpine = null; this.boneHand = null; this.boneArm = null; this.boneNeck = null;
+        this._spineRest = null; this._neckRest = null;
         const sk = this.player && this.player.skeleton;
         if (!sk) return;
         const find = (n) => sk.bones.find((b) => b.name === n);
         this.boneSpine = find('mixamorig:Spine1') || find('mixamorig:Spine2') || find('mixamorig:Spine');
         this.boneArm = find('mixamorig:RightArm');
         this.boneHand = find('mixamorig:RightHand');
-        if (this.boneSpine) {
-            try { this._spineRest = this.boneSpine.getRotationQuaternion(BABYLON.Space.LOCAL, this.player).clone(); }
-            catch (_) { this._spineRest = null; }
-        }
+        this.boneNeck = find('mixamorig:Neck') || find('mixamorig:Head');
+        try {
+            if (this.boneSpine) this._spineRest = this.boneSpine.getRotationQuaternion(BABYLON.Space.LOCAL, this.player).clone();
+            if (this.boneNeck) this._neckRest = this.boneNeck.getRotationQuaternion(BABYLON.Space.LOCAL, this.player).clone();
+        } catch (_) { this._spineRest = null; this._neckRest = null; }
     }
 
-    // Ease the upper-body twist toward the aim yaw while aiming, then relax. Best
-    // effort: if the rig doesn't cooperate we just skip the skeletal twist.
-    updateAimPose() {
+    // True while any movement input is held (the same keys the character
+    // controller acts on: WASD move/turn, Q/E strafe, Space jump).
+    isMovementInput() {
+        const a = this.app;
+        return a.keyDown('W') || a.keyDown('A') || a.keyDown('S') || a.keyDown('D') ||
+               a.keyDown('Q') || a.keyDown('E') || a.keyDown(' ');
+    }
+
+    // Skeletal pose layer for standing still and aiming.
+    //
+    // Idle: the avatar's authored "idle" range is a frozen 2-frame pose (all the
+    // locomotion clips are real, but no idle loop was ever authored), so the
+    // character stood statue-still. Once the player has been idle a moment we
+    // stop that static clip and gently breathe the spine and neck procedurally.
+    // Any movement input immediately returns the bones to the real clips (the
+    // controller restarts them on its own state transition).
+    //
+    // Aiming: firing turns the upper body toward the aim yaw while aimTimer
+    // runs. Composes with the breathing when both are active. Best effort: if
+    // the rig doesn't cooperate we skip the skeletal writes.
+    updateIdleAndAim() {
         if (!this.player) return;
         if (this.aimTimer > 0) this.aimTimer--;
+
+        const sk = this.player.skeleton;
+        const moving = this.isMovementInput();
+        if (moving) {
+            this.idleFrames = 0;
+            this._idleAnimStopped = false;   // CC restarts clips on its transition
+        } else {
+            this.idleFrames++;
+        }
+
+        const idleActive = !moving && this.idleFrames > 12 && !!sk;
+        if (idleActive && !this._idleAnimStopped) {
+            // Stop the frozen idle clip so the breathing below owns the bones.
+            try { this.app.scene.stopAnimation(sk); } catch (_) {}
+            this._idleAnimStopped = true;
+        }
+
+        const aiming = this.aimTimer > 0;
+        if (!idleActive && !aiming) return;   // animation clips own the bones
         if (!this.boneSpine || !this._spineRest) return;
-        try {
+
+        // Breathing offsets (idle only).
+        let breathe = 0, nod = 0;
+        if (idleActive) {
+            const dt = Math.min(0.1, this.app.scene.getEngine().getDeltaTime() / 1000);
+            this.idlePhase += dt * 2.2;                        // ~0.35 Hz sway
+            breathe = Math.sin(this.idlePhase) * 0.045;        // spine pitch
+            nod = Math.sin(this.idlePhase + 0.9) * 0.022;      // neck follow-through
+        }
+
+        // Aim twist (shortest-path yaw toward the target, clamped ~80 deg).
+        let yaw = 0;
+        if (aiming) {
             const facing = Math.atan2(this.playerForward().x, this.playerForward().z);
             let delta = this.aimYaw - facing;
             while (delta > Math.PI) delta -= Math.PI * 2;
             while (delta < -Math.PI) delta += Math.PI * 2;
-            delta = Math.max(-1.4, Math.min(1.4, delta));            // clamp ~80deg
-            const amt = (this.aimTimer > 0) ? delta : 0;              // relax to rest
-            const twist = BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Y, amt);
-            const q = this._spineRest.multiply(twist);
+            yaw = Math.max(-1.4, Math.min(1.4, delta));
+        }
+
+        try {
+            const q = this._spineRest.multiply(BABYLON.Quaternion.RotationYawPitchRoll(yaw, breathe, 0));
             this.boneSpine.setRotationQuaternion(q, BABYLON.Space.LOCAL, this.player);
+            if (this.boneNeck && this._neckRest) {
+                const qn = this._neckRest.multiply(BABYLON.Quaternion.RotationYawPitchRoll(0, nod, 0));
+                this.boneNeck.setRotationQuaternion(qn, BABYLON.Space.LOCAL, this.player);
+            }
         } catch (_) { /* rig doesn't support it; ignore */ }
     }
 
