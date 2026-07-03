@@ -156,6 +156,15 @@ Defeating enemies also grants **XP**. Your character levels up (to level 20,
 shown top-left with an XP bar): each level adds max HP, and every 5 levels
 adds +1 melee damage. Progress persists between sessions, like pixels.
 
+### The Collection (figures)
+
+The **Collection** screen (main menu, or `Esc` → Collection in game) is your
+figure roster. Figures are colorways of the avatar with their own stat leans —
+Scout (balanced, free), Blaze (+1 melee), Frost (+25 max HP), and Volt (faster
+ranged fire) — bought à la carte with pixels. Each figure **levels up
+independently**: switch figures and you switch to that figure's saved
+level and XP. The HUD badge shows who you're playing and their level.
+
 ### Pixels & the Shop
 
 Defeated enemies burst into **pixels** — tiny multi-coloured cubes that fly to

@@ -46,9 +46,9 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 ### Digital figures and collection
 | Feature | Status | Notes |
 |---|---|---|
-| Purchasable figure packs / à la carte | 🟡 | Shop sells premium *objects* with pixels; figures planned |
-| Collection screen as roster (select + spawn any owned figure) | ⬜ | |
-| Per-figure progress saved to account | ⬜ | |
+| Purchasable figure packs / à la carte | 🟡 | Figures purchasable à la carte with pixels (`test-collection.js`); packs/Play Set bundles planned |
+| Collection screen as roster (select + spawn any owned figure) | ✅ | Collection menu (main + pause): 4 figures with colorways + stat leans; selecting applies live (`test-collection.js`) |
+| Per-figure progress saved to account | ✅ | Level/XP persisted per figure; switching figures swaps progression (`test-collection.js`) |
 | Round power discs (abilities/buffs) | ⬜ | |
 | Hex discs (vehicles, gadgets, skies/terrain) | ⬜ | |
 | Multiple discs stack/combine | ⬜ | |
@@ -107,9 +107,9 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Collection/roster screen groundwork (figure definitions, owned set)
-3. Camera logic toy (completes the wiring family)
-4. Double-jump + glide traversal
-5. Blocking/dodging in melee combat
-6. Skill tree for spending level-ups
-7. Interiors (rooms, doors, decoration)
+1. Camera logic toy (completes the wiring family)
+2. Double-jump + glide traversal
+3. Blocking/dodging in melee combat
+4. Skill tree for spending level-ups
+5. Interiors (rooms, doors, decoration)
+6. Figure packs / Play Set bundles

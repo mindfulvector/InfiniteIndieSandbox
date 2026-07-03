@@ -37,6 +37,7 @@ with no GPU.
 | `test-origin-and-pixels.js` | Regression guards: no invisible template mesh collides at the world origin (templates are collision-stripped), and pixel-burst cubes always drain within their lifetime instead of orbiting the player forever. |
 | `test-progression.js` | New Game starter-world picker (Flat/Arena/Islands layouts), XP + level-up with stat growth (max HP, level-5 melee bonus), and the scoreboard logic toy (wired points, HUD display, `reached` firing a spawner). |
 | `test-idle-animation.js` | The procedural idle: standing still stops the rig's frozen 2-frame idle clip and breathes the spine/neck, movement input hands the bones back to the real locomotion clips, and idle breathing resumes afterwards. |
+| `test-collection.js` | The figure Collection: roster with the free default active, locked figures stay locked without pixels, buying unlocks + selects (colorway tint on the live avatar, stat leans apply), and level/XP progress is tracked per figure across switches. |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
 

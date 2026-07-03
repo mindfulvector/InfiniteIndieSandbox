@@ -10,8 +10,19 @@ const MENU_SHOP = 8;
 const MENU_OBJ_PARAMS = 9;
 const MENU_WIRING = 10;
 const MENU_WORLD_TEMPLATE = 11;
+const MENU_COLLECTION = 12;
 
 const MAX_LEVEL = 20;   // character level cap
+
+// Digital figures: the character roster. Each figure is a colorway of the
+// starter avatar with its own stat lean, bought à la carte with pixels and
+// levelled independently (per-figure XP/level persistence).
+const FIGURES = [
+    { id: 'scout', name: 'Scout', price: 0,   tint: [1.00, 1.00, 1.00], hpBonus: 0,  meleeBonus: 0, rangedHaste: 0, desc: 'Balanced all-rounder' },
+    { id: 'blaze', name: 'Blaze', price: 150, tint: [1.00, 0.45, 0.35], hpBonus: 0,  meleeBonus: 1, rangedHaste: 0, desc: '+1 melee damage' },
+    { id: 'frost', name: 'Frost', price: 150, tint: [0.55, 0.75, 1.00], hpBonus: 25, meleeBonus: 0, rangedHaste: 0, desc: '+25 max HP' },
+    { id: 'volt',  name: 'Volt',  price: 250, tint: [1.00, 0.95, 0.40], hpBonus: 10, meleeBonus: 0, rangedHaste: 6, desc: 'Faster ranged fire, +10 HP' },
+];
 
 // HUD / menu theme
 const HUD_ACCENT       = "#4ad6ff";   // default cyan accent
@@ -386,7 +397,7 @@ class App {
         levelText.fontSize = 14;
         levelText.fontStyle = "bold";
         levelText.height = "20px";
-        levelText.width = "70px";
+        levelText.width = "160px";
         levelText.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
         levelText.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
         levelText.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
@@ -924,7 +935,7 @@ class App {
             this.hud.levelText.isVisible = showLvl;
             this.hud.xpWrap.isVisible = showLvl;
             if(showLvl) {
-                this.hud.levelText.text = "LV " + this.playerLevel;
+                this.hud.levelText.text = this.activeFigureDef().name + " · LV " + this.playerLevel;
                 const need = this.xpToNext(this.playerLevel);
                 const frac = (this.playerLevel >= MAX_LEVEL) ? 1 : Math.max(0, Math.min(1, this.playerXp / need));
                 this.hud.xpFill.width = Math.round(frac * 100) + "%";
@@ -1057,9 +1068,13 @@ class App {
                 app.menu.prevState = MENU_MAIN;     // So we cancel back to the right place
                 app.menu.state = MENU_LOAD;
                 break;
-            case 3:                                 // About
+            case 3:                                 // Collection (figure roster)
+                app.menu.prevState = MENU_MAIN;
+                app.menu.state = MENU_COLLECTION;
                 break;
-            case 4:                                 // Quit
+            case 4:                                 // About
+                break;
+            case 5:                                 // Quit
                 break;
             }
             break;
@@ -1094,8 +1109,25 @@ class App {
             case 7:                                 // Wiring
                 app.openWiring();
                 break;
+            case 8:                                 // Collection (figure roster)
+                app.menu.prevState = MENU_PAUSE;
+                app.menu.state = MENU_COLLECTION;
+                break;
             }
             break;
+        case MENU_COLLECTION: {
+            if(menuItem === 0) {
+                app.menu.state = app.menu.prevState || MENU_MAIN;
+            } else {
+                const fig = FIGURES[menuItem - 1];
+                if(fig) {
+                    if(app.ownsFigure(fig.id)) app.selectFigure(fig.id);
+                    else app.buyFigure(fig.id);
+                    app.menu.renderedState = -1;   // re-render with new state
+                }
+            }
+            break;
+        }
         case MENU_WIRING:
             // Any cancel/back action leaves the wiring view.
             if(app.wiring) app.wiring.exit();
@@ -1265,8 +1297,8 @@ class App {
 
                 this.MenuItem({
                     type: 'button',
-                    name: 'btnAbout',
-                    text: '3. About',
+                    name: 'btnCollection',
+                    text: '3. Collection',
                     handler: () => {
                         app.triggerMenuItem(MENU_MAIN, 3);
                     }
@@ -1275,9 +1307,18 @@ class App {
                 this.MenuItem({
                     type: 'button',
                     name: 'btnAbout',
-                    text: '4. Quit',
+                    text: '4. About',
                     handler: () => {
                         app.triggerMenuItem(MENU_MAIN, 4);
+                    }
+                });
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnQuit',
+                    text: '5. Quit',
+                    handler: () => {
+                        app.triggerMenuItem(MENU_MAIN, 5);
                     }
                 });
                 break;
@@ -1352,6 +1393,15 @@ class App {
                     text: '7. Wiring',
                     handler: () => {
                         app.triggerMenuItem(MENU_PAUSE, 7);
+                    }
+                });
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnCollection',
+                    text: '8. Collection',
+                    handler: () => {
+                        app.triggerMenuItem(MENU_PAUSE, 8);
                     }
                 });
 
@@ -1468,6 +1518,42 @@ class App {
                 // built in WiringView.enter() and disposed in exit(). Nothing to
                 // build through the menu system here.
                 break;
+            case MENU_COLLECTION: {
+                this.MenuRect();
+                this.MenuItem({
+                    type: 'text',
+                    name: 'colTitle',
+                    text: 'COLLECTION',
+                    fontSize: 22,
+                    accent: true,
+                });
+                this.MenuItem({
+                    type: 'text',
+                    name: 'colBalance',
+                    text: 'Pixels: ' + this.pixels,
+                    fontSize: 15,
+                    color: '#ff9bce',
+                });
+                FIGURES.forEach((fig, i) => {
+                    const owned = this.ownsFigure(fig.id);
+                    const active = this.activeFigure === fig.id;
+                    const status = active ? '★ PLAYING' : (owned ? 'Owned' : fig.price + ' px');
+                    this.MenuItem({
+                        type: 'button',
+                        name: 'btnFig_' + fig.id,
+                        text: (i + 1) + '. ' + fig.name + '  ·  LV ' + this.figureLevelOf(fig.id) +
+                              '  ·  ' + fig.desc + '   [' + status + ']',
+                        handler: () => { app.triggerMenuItem(MENU_COLLECTION, i + 1); }
+                    });
+                });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnColBack',
+                    text: '0. Back',
+                    handler: () => { app.triggerMenuItem(MENU_COLLECTION, 0); }
+                });
+                break;
+            }
             case MENU_WORLD_TEMPLATE: {
                 this.MenuRect();
                 this.MenuItem({
@@ -1783,11 +1869,30 @@ class App {
             this.pixels = p ? (parseInt(p, 10) || 0) : 0;
             const owned = JSON.parse(window.localStorage.getItem('iis_purchased') || '[]');
             this.purchasedSet = new Set(Array.isArray(owned) ? owned : []);
-            this.playerLevel = Math.min(MAX_LEVEL, Math.max(1, parseInt(window.localStorage.getItem('iis_level'), 10) || 1));
-            this.playerXp = Math.max(0, parseInt(window.localStorage.getItem('iis_xp'), 10) || 0);
+
+            // Figures: owned set (the free default is always owned) + active id.
+            const figs = JSON.parse(window.localStorage.getItem('iis_figures_owned') || '["scout"]');
+            this.ownedFigures = new Set(Array.isArray(figs) ? figs : ['scout']);
+            this.ownedFigures.add('scout');
+            const act = window.localStorage.getItem('iis_figure');
+            this.activeFigure = (act && this.figureById(act) && this.ownedFigures.has(act)) ? act : 'scout';
+
+            // Per-figure level/XP. Migrate the old global keys onto the default
+            // figure once so pre-figure progress isn't lost.
+            if (window.localStorage.getItem('iis_level') !== null &&
+                window.localStorage.getItem('iis_fig_scout_level') === null) {
+                window.localStorage.setItem('iis_fig_scout_level', window.localStorage.getItem('iis_level'));
+                window.localStorage.setItem('iis_fig_scout_xp', window.localStorage.getItem('iis_xp') || '0');
+            }
+            this.playerLevel = Math.min(MAX_LEVEL, Math.max(1,
+                parseInt(window.localStorage.getItem('iis_fig_' + this.activeFigure + '_level'), 10) || 1));
+            this.playerXp = Math.max(0,
+                parseInt(window.localStorage.getItem('iis_fig_' + this.activeFigure + '_xp'), 10) || 0);
         } catch (e) {
             this.pixels = 0;
             this.purchasedSet = new Set();
+            this.ownedFigures = new Set(['scout']);
+            this.activeFigure = 'scout';
             this.playerLevel = 1;
             this.playerXp = 0;
         }
@@ -1797,8 +1902,11 @@ class App {
         try {
             window.localStorage.setItem('iis_pixels', String(this.pixels));
             window.localStorage.setItem('iis_purchased', JSON.stringify([...this.purchasedSet]));
-            window.localStorage.setItem('iis_level', String(this.playerLevel));
-            window.localStorage.setItem('iis_xp', String(this.playerXp));
+            window.localStorage.setItem('iis_figures_owned', JSON.stringify([...this.ownedFigures]));
+            window.localStorage.setItem('iis_figure', this.activeFigure);
+            // Level/XP belong to the active figure.
+            window.localStorage.setItem('iis_fig_' + this.activeFigure + '_level', String(this.playerLevel));
+            window.localStorage.setItem('iis_fig_' + this.activeFigure + '_xp', String(this.playerXp));
         } catch (e) { /* storage may be unavailable */ }
     }
 
@@ -1839,9 +1947,89 @@ class App {
         this.saveEconomy();
     }
 
-    // Stat growth: +5 max HP per level, +1 melee damage every 5 levels.
-    maxHpForLevel() { return 100 + (this.playerLevel - 1) * 5; }
-    meleeBonus()    { return Math.floor(this.playerLevel / 5); }
+    // Stat growth: +5 max HP per level, +1 melee damage every 5 levels, plus
+    // the active figure's own stat lean.
+    maxHpForLevel() { return 100 + (this.playerLevel - 1) * 5 + this.activeFigureDef().hpBonus; }
+    meleeBonus()    { return Math.floor(this.playerLevel / 5) + this.activeFigureDef().meleeBonus; }
+    // Frames between ranged shots (some figures fire faster).
+    rangedCooldownFrames() { return Math.max(8, 18 - this.activeFigureDef().rangedHaste); }
+
+    // ---- digital figures (roster) -------------------------------------------
+
+    figureById(id) { return FIGURES.find((f) => f.id === id) || null; }
+    activeFigureDef() { return this.figureById(this.activeFigure) || FIGURES[0]; }
+    ownsFigure(id) { return this.ownedFigures && this.ownedFigures.has(id); }
+    figures() { return FIGURES; }
+
+    // Saved level of any figure (for the collection screen roster).
+    figureLevelOf(id) {
+        if (id === this.activeFigure) return this.playerLevel;
+        try { return Math.max(1, parseInt(window.localStorage.getItem('iis_fig_' + id + '_level'), 10) || 1); }
+        catch (e) { return 1; }
+    }
+
+    // Buy a figure with pixels (and hop into it right away on success).
+    buyFigure(id) {
+        const fig = this.figureById(id);
+        if (!fig) return false;
+        if (this.ownsFigure(id)) return this.selectFigure(id);
+        if (this.pixels < fig.price) {
+            this.toasty('Not enough pixels — ' + fig.name + ' costs ' + fig.price + '.');
+            return false;
+        }
+        this.pixels -= fig.price;
+        this.ownedFigures.add(id);
+        this.toasty('Unlocked ' + fig.name + '!');
+        return this.selectFigure(id);
+    }
+
+    // Make a figure the active character: swap in its saved level/XP and apply
+    // its tint/stats to a live play session immediately.
+    selectFigure(id) {
+        const fig = this.figureById(id);
+        if (!fig || !this.ownsFigure(id)) return false;
+        // Bank the current figure's progress before switching identities.
+        this.saveEconomy();
+        this.activeFigure = id;
+        try {
+            this.playerLevel = Math.min(MAX_LEVEL, Math.max(1,
+                parseInt(window.localStorage.getItem('iis_fig_' + id + '_level'), 10) || 1));
+            this.playerXp = Math.max(0, parseInt(window.localStorage.getItem('iis_fig_' + id + '_xp'), 10) || 0);
+        } catch (e) { this.playerLevel = 1; this.playerXp = 0; }
+        this.saveEconomy();
+
+        // Live-apply to the current play session, if any.
+        const pm = this.activeMode;
+        if (pm && pm.constructor.name === 'PlayMode' && pm.player) {
+            pm.playerMaxHp = this.maxHpForLevel();
+            pm.playerHp = Math.min(pm.playerHp, pm.playerMaxHp);
+            this.applyFigureTint(pm);
+        }
+        this.toasty('Playing as ' + fig.name + '  (LV ' + this.playerLevel + ')');
+        return true;
+    }
+
+    // Tint every avatar material by the figure's colorway (figure variants are
+    // colorways of the starter avatar, like plastic figure repaints). Original
+    // colors are cached per material so re-tints don't compound.
+    applyFigureTint(pm) {
+        if (!pm || !pm.player) return;
+        const t = this.activeFigureDef().tint;
+        const mats = [];
+        const collect = (m) => {
+            if (!m) return;
+            if (m.subMaterials) m.subMaterials.forEach((sm) => sm && mats.push(sm));
+            else mats.push(m);
+        };
+        collect(pm.player.material);
+        (pm.player.getChildMeshes ? pm.player.getChildMeshes() : []).forEach((c) => collect(c.material));
+        mats.forEach((mat) => {
+            if (!mat.diffuseColor) return;
+            if (!mat._origDiffuse) mat._origDiffuse = mat.diffuseColor.clone();
+            mat.diffuseColor = new BABYLON.Color3(
+                mat._origDiffuse.r * t[0], mat._origDiffuse.g * t[1], mat._origDiffuse.b * t[2]);
+        });
+    }
 
     priceOf(name) {
         return this.objectPrices[name] || 0;

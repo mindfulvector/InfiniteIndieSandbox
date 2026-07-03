@@ -158,6 +158,9 @@ class PlayMode {
             // wire up mouse combat now that the avatar exists.
             playMode.cacheAimBones();
             playMode.bindMouseCombat();
+
+            // Paint the avatar in the active figure's colorway.
+            playMode.app.applyFigureTint(playMode);
         }, null, function (scene, message) {
             // Surface a failed avatar load instead of leaving the player frozen
             // with no feedback.
@@ -306,7 +309,7 @@ class PlayMode {
     // nearest enemy, for gamepad auto-aim). The upper body turns to aim.
     rangedAttack(aimPoint) {
         if (!this.player || this.rangedCooldown > 0) return;
-        this.rangedCooldown = 18;
+        this.rangedCooldown = this.app.rangedCooldownFrames ? this.app.rangedCooldownFrames() : 18;
         const aim = this.resolveAim(aimPoint, 60) ||
             this.player.position.add(this.playerForward().scale(6));
         this.aimAt(aim);
