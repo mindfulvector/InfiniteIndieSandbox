@@ -34,6 +34,8 @@ with no GPU.
 | `test-pickups.js` | Pickups: health/pixel/star collectables are collected by touch, apply their effect, animate (bob), respawn per their parameter or stay gone, and fire a `collected` wiring event that can drive spawners. |
 | `test-logic-toys.js` | Counter + timer logic toys: counters gate spawners via `reached`, count math (inc/dec/reset), timers drive spawns while started and stop on `stop`/one-shot, wire self-loops are stopped by the fireEvent depth guard, and params/wires persist through save/load. |
 | `test-combat-combo.js` | Melee combo chains (0→1→2 with a triple-damage finisher, window expiry resets), and `T` lock-on targeting (acquires nearest, marker shown, no-arg ranged shots track the lock, auto-unlock on death, toggle off). |
+| `test-origin-and-pixels.js` | Regression guards: no invisible template mesh collides at the world origin (templates are collision-stripped), and pixel-burst cubes always drain within their lifetime instead of orbiting the player forever. |
+| `test-progression.js` | New Game starter-world picker (Flat/Arena/Islands layouts), XP + level-up with stat growth (max HP, level-5 melee bonus), and the scoreboard logic toy (wired points, HUD display, `reached` firing a spawner). |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
 

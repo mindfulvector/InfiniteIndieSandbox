@@ -125,4 +125,91 @@ class SandboxWorld {
         return count;
     }
 
+    // ---- starter-world templates -------------------------------------------
+    // Pre-built worlds the player picks from at New Game and then customizes.
+    // Each returns the number of tiles created and records a safe spawnPoint.
+
+    buildTemplate(kind) {
+        switch(kind) {
+        case 'flat':    return this.buildFlatTemplate();
+        case 'arena':   return this.buildArenaTemplate();
+        case 'islands': return this.buildIslandsTemplate();
+        case 'rolling':
+        default:        return this.buildDefaultTerrain();
+        }
+    }
+
+    // Place one terrain tile with collisions at a grid cell (shared helper).
+    _tileAt(wo, x, y, z) {
+        const tile = wo.createInstance();
+        tile.position = new BABYLON.Vector3(x, y, z);
+        // Single-mesh prim instances aren't flagged by showAll (it only walks
+        // children), so enable collisions explicitly -- same as the default grid.
+        tile.checkCollisions = true;
+        return tile;
+    }
+
+    // A perfectly flat 10x10 plane -- the blank-canvas starter.
+    buildFlatTemplate(cols = 10, rows = 10, tileSize = 2.0) {
+        const wo = this.app.findWorldObject('t_tile');
+        if(!wo) return 0;
+        let count = 0;
+        for(let gx = 0; gx < cols; gx++) {
+            for(let gz = 0; gz < rows; gz++) {
+                this._tileAt(wo,
+                    (gx - (cols - 1) / 2) * tileSize, 0,
+                    (gz - (rows - 1) / 2) * tileSize);
+                count++;
+            }
+        }
+        this.spawnPoint = new BABYLON.Vector3(0, 3, 0);
+        return count;
+    }
+
+    // A flat 12x12 floor ringed by a raised wall of tiles -- ready for combat
+    // arenas and brawler-style minigames.
+    buildArenaTemplate(cols = 12, rows = 12, tileSize = 2.0) {
+        const wo = this.app.findWorldObject('t_tile');
+        if(!wo) return 0;
+        let count = 0;
+        for(let gx = 0; gx < cols; gx++) {
+            for(let gz = 0; gz < rows; gz++) {
+                const edge = (gx === 0 || gz === 0 || gx === cols - 1 || gz === rows - 1);
+                const x = (gx - (cols - 1) / 2) * tileSize;
+                const z = (gz - (rows - 1) / 2) * tileSize;
+                this._tileAt(wo, x, 0, z);
+                count++;
+                if(edge) { this._tileAt(wo, x, 1.0, z); count++; }   // perimeter wall
+            }
+        }
+        this.spawnPoint = new BABYLON.Vector3(0, 3, 0);
+        return count;
+    }
+
+    // Several separate tile clusters at varying heights with gaps between them
+    // -- a platforming starter.
+    buildIslandsTemplate(tileSize = 2.0) {
+        const wo = this.app.findWorldObject('t_tile');
+        if(!wo) return 0;
+        // {cx, cz (grid units), r (half-size in tiles), y}
+        const islands = [
+            { cx: 0,  cz: 0,  r: 2, y: 0    },
+            { cx: 7,  cz: 1,  r: 1, y: 0.75 },
+            { cx: 4,  cz: -6, r: 1, y: 1.5  },
+            { cx: -6, cz: 5,  r: 1, y: 0.5  },
+            { cx: -5, cz: -5, r: 1, y: 1.0  },
+        ];
+        let count = 0;
+        islands.forEach((isl) => {
+            for(let gx = -isl.r; gx <= isl.r; gx++) {
+                for(let gz = -isl.r; gz <= isl.r; gz++) {
+                    this._tileAt(wo, (isl.cx + gx) * tileSize, isl.y, (isl.cz + gz) * tileSize);
+                    count++;
+                }
+            }
+        });
+        this.spawnPoint = new BABYLON.Vector3(0, 3, 0);   // over the central island
+        return count;
+    }
+
 }

@@ -9,6 +9,9 @@ const MENU_OBJ_EVENT_BINDING_EDIT = 7;
 const MENU_SHOP = 8;
 const MENU_OBJ_PARAMS = 9;
 const MENU_WIRING = 10;
+const MENU_WORLD_TEMPLATE = 11;
+
+const MAX_LEVEL = 20;   // character level cap
 
 // HUD / menu theme
 const HUD_ACCENT       = "#4ad6ff";   // default cyan accent
@@ -375,6 +378,63 @@ class App {
         healthWrap.addControl(healthLabel);
         this.hud.healthWrap = healthWrap;
         this.hud.healthFill = healthFill;
+
+        // --- Level badge + XP progress bar (top-left, beside/below health) ---
+        const levelText = new BABYLON.GUI.TextBlock("hudLevel");
+        levelText.text = "LV 1";
+        levelText.color = "#ffd76a";
+        levelText.fontSize = 14;
+        levelText.fontStyle = "bold";
+        levelText.height = "20px";
+        levelText.width = "70px";
+        levelText.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        levelText.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        levelText.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        levelText.left = "226px";
+        levelText.top = "64px";
+        levelText.isVisible = false;
+        this.gui.addControl(levelText);
+        this.hud.levelText = levelText;
+
+        const xpWrap = new BABYLON.GUI.Rectangle("hudXp");
+        xpWrap.width = "200px";
+        xpWrap.height = "6px";
+        xpWrap.cornerRadius = 3;
+        xpWrap.thickness = 1;
+        xpWrap.color = "rgba(255,215,106,0.6)";
+        xpWrap.background = "rgba(13,20,32,0.85)";
+        xpWrap.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        xpWrap.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        xpWrap.left = "18px";
+        xpWrap.top = "86px";
+        xpWrap.isVisible = false;
+        this.gui.addControl(xpWrap);
+        const xpFill = new BABYLON.GUI.Rectangle("hudXpFill");
+        xpFill.width = "0%";
+        xpFill.height = "100%";
+        xpFill.thickness = 0;
+        xpFill.cornerRadius = 3;
+        xpFill.background = "#ffd76a";
+        xpFill.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        xpWrap.addControl(xpFill);
+        this.hud.xpWrap = xpWrap;
+        this.hud.xpFill = xpFill;
+
+        // --- Scoreboard readout (top-center, under the toast) ---
+        const scoreText = new BABYLON.GUI.TextBlock("hudScore");
+        scoreText.text = "";
+        scoreText.color = "#ffcf5e";
+        scoreText.fontSize = 22;
+        scoreText.fontStyle = "bold";
+        scoreText.height = "30px";
+        scoreText.width = "300px";
+        scoreText.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+        scoreText.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+        scoreText.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        scoreText.top = "62px";
+        scoreText.isVisible = false;
+        this.gui.addControl(scoreText);
+        this.hud.scoreText = scoreText;
 
         // --- Wave counter (top-left, below the health bar) ---
         const waveText = new BABYLON.GUI.TextBlock("hudWave");
@@ -858,6 +918,33 @@ class App {
             }
         }
 
+        // Character level + XP progress (play mode only).
+        if(this.hud.levelText) {
+            const showLvl = inHud && !!pm;
+            this.hud.levelText.isVisible = showLvl;
+            this.hud.xpWrap.isVisible = showLvl;
+            if(showLvl) {
+                this.hud.levelText.text = "LV " + this.playerLevel;
+                const need = this.xpToNext(this.playerLevel);
+                const frac = (this.playerLevel >= MAX_LEVEL) ? 1 : Math.max(0, Math.min(1, this.playerXp / need));
+                this.hud.xpFill.width = Math.round(frac * 100) + "%";
+            }
+        }
+
+        // Scoreboard readout: shown while a placed scoreboard exists in play mode.
+        if(this.hud.scoreText) {
+            let sb = null;
+            if(inHud && pm) {
+                const wo = this.findWorldObject('l_scoreboard');
+                if(wo) sb = wo.instances.filter((i) => i && i.script)[0] || null;
+            }
+            this.hud.scoreText.isVisible = !!sb;
+            if(sb) {
+                this.hud.scoreText.text = "SCORE  " + sb.script.score +
+                    (sb.params && sb.params.target ? "  /  " + sb.params.target : "");
+            }
+        }
+
         // Reconfigure badge/hints only when the active mode actually changes.
         if(mode !== this._hudMode) {
             this._hudMode = mode;
@@ -962,12 +1049,9 @@ class App {
         switch(menuState) {
         case MENU_MAIN:
             switch(menuItem) {
-            case 1:                                 // New Game
-                app.menu.state = MENU_HUD;
-                app.world = new SandboxWorld(app);
-                app.world.clearWorld();
-                app.world.buildDefaultTerrain();     // 10x10 rolling terrain grid
-                app.goto_playMode();
+            case 1:                                 // New Game -> pick a starter world
+                app.menu.prevState = MENU_MAIN;
+                app.menu.state = MENU_WORLD_TEMPLATE;
                 break;
             case 2:                                 // Load Game
                 app.menu.prevState = MENU_MAIN;     // So we cancel back to the right place
@@ -1017,6 +1101,22 @@ class App {
             if(app.wiring) app.wiring.exit();
             app.menu.state = app.menu.prevState || MENU_PAUSE;
             break;
+        case MENU_WORLD_TEMPLATE: {
+            // Pick a starter world to build the new game from. Item 1 (Rolling
+            // Hills) is the classic default, so pressing 1-1 from the main menu
+            // still starts a standard game.
+            const kinds = { 1: 'rolling', 2: 'flat', 3: 'arena', 4: 'islands' };
+            if(menuItem === 0) {
+                app.menu.state = app.menu.prevState || MENU_MAIN;
+            } else if(kinds[menuItem]) {
+                app.menu.state = MENU_HUD;
+                app.world = new SandboxWorld(app);
+                app.world.clearWorld();
+                app.world.buildTemplate(kinds[menuItem]);
+                app.goto_playMode();
+            }
+            break;
+        }
         case MENU_SHOP:
             if(menuItem == 0) {
                 app.menu.state = app.menu.prevState || MENU_PAUSE;
@@ -1368,6 +1468,37 @@ class App {
                 // built in WiringView.enter() and disposed in exit(). Nothing to
                 // build through the menu system here.
                 break;
+            case MENU_WORLD_TEMPLATE: {
+                this.MenuRect();
+                this.MenuItem({
+                    type: 'text',
+                    name: 'tplTitle',
+                    text: 'CHOOSE A STARTER WORLD',
+                    fontSize: 22,
+                    accent: true,
+                });
+                const templates = [
+                    { n: 1, label: '1. Rolling Hills — gentle terrain (classic)' },
+                    { n: 2, label: '2. Flat Plane — a blank canvas' },
+                    { n: 3, label: '3. Arena — walled floor for combat games' },
+                    { n: 4, label: '4. Floating Islands — platforming start' },
+                ];
+                templates.forEach((t) => {
+                    this.MenuItem({
+                        type: 'button',
+                        name: 'btnTpl_' + t.n,
+                        text: t.label,
+                        handler: () => { app.triggerMenuItem(MENU_WORLD_TEMPLATE, t.n); }
+                    });
+                });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnTplBack',
+                    text: '0. Back',
+                    handler: () => { app.triggerMenuItem(MENU_WORLD_TEMPLATE, 0); }
+                });
+                break;
+            }
             case MENU_OBJ_PROPS:
             case MENU_OBJ_EVENT_BINDINGS:
             case MENU_OBJ_EVENT_BINDING_EDIT:
@@ -1652,9 +1783,13 @@ class App {
             this.pixels = p ? (parseInt(p, 10) || 0) : 0;
             const owned = JSON.parse(window.localStorage.getItem('iis_purchased') || '[]');
             this.purchasedSet = new Set(Array.isArray(owned) ? owned : []);
+            this.playerLevel = Math.min(MAX_LEVEL, Math.max(1, parseInt(window.localStorage.getItem('iis_level'), 10) || 1));
+            this.playerXp = Math.max(0, parseInt(window.localStorage.getItem('iis_xp'), 10) || 0);
         } catch (e) {
             this.pixels = 0;
             this.purchasedSet = new Set();
+            this.playerLevel = 1;
+            this.playerXp = 0;
         }
     }
 
@@ -1662,6 +1797,8 @@ class App {
         try {
             window.localStorage.setItem('iis_pixels', String(this.pixels));
             window.localStorage.setItem('iis_purchased', JSON.stringify([...this.purchasedSet]));
+            window.localStorage.setItem('iis_level', String(this.playerLevel));
+            window.localStorage.setItem('iis_xp', String(this.playerXp));
         } catch (e) { /* storage may be unavailable */ }
     }
 
@@ -1669,6 +1806,42 @@ class App {
         this.pixels = Math.max(0, this.pixels + n);
         this.saveEconomy();
     }
+
+    // ---- character progression --------------------------------------------
+    // XP is earned by defeating enemies; the character levels up to MAX_LEVEL.
+    // Progress persists with the economy (per browser/account, like pixels).
+
+    // XP needed to advance FROM the given level.
+    xpToNext(level) {
+        return 25 + (level - 1) * 15;
+    }
+
+    addXp(n) {
+        if (this.playerLevel >= MAX_LEVEL) { this.saveEconomy(); return; }
+        this.playerXp += n;
+        let leveled = false;
+        while (this.playerLevel < MAX_LEVEL && this.playerXp >= this.xpToNext(this.playerLevel)) {
+            this.playerXp -= this.xpToNext(this.playerLevel);
+            this.playerLevel += 1;
+            leveled = true;
+        }
+        if (this.playerLevel >= MAX_LEVEL) this.playerXp = 0;
+        if (leveled) {
+            this.toasty('LEVEL UP!  Now level ' + this.playerLevel);
+            // Apply growth to the live play session immediately.
+            const pm = this.activeMode;
+            if (pm && pm.constructor.name === 'PlayMode') {
+                const frac = pm.playerMaxHp > 0 ? pm.playerHp / pm.playerMaxHp : 1;
+                pm.playerMaxHp = this.maxHpForLevel();
+                pm.playerHp = Math.round(pm.playerMaxHp * Math.max(frac, 0.5));
+            }
+        }
+        this.saveEconomy();
+    }
+
+    // Stat growth: +5 max HP per level, +1 melee damage every 5 levels.
+    maxHpForLevel() { return 100 + (this.playerLevel - 1) * 5; }
+    meleeBonus()    { return Math.floor(this.playerLevel / 5); }
 
     priceOf(name) {
         return this.objectPrices[name] || 0;

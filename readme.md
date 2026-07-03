@@ -39,6 +39,11 @@ After the server is started, go to this URL:
 
 Currently, the game starts in build mode. The active mode is listed at the top of the screen.
 
+**New Game** opens a **starter-world picker**: Rolling Hills (the classic
+gentle terrain), Flat Plane (a blank canvas), Arena (a walled floor for combat
+games), or Floating Islands (a platforming start). Pick one and customize it in
+build mode.
+
 To switch between modes, press the `Esc` key then to enter a new mode:
 
 * Press `1` for Build mode
@@ -85,10 +90,12 @@ the spawner to *Start on: no* — enemies then appear only when the player walks
 into the trigger. Wires are saved with the world.
 
 The logic family also includes a **Counter** (fires *Target Reached* after a set
-number of wired events — e.g. "after collecting 3 stars, spawn a boss") and a
+number of wired events — e.g. "after collecting 3 stars, spawn a boss"), a
 **Timer** (fires *Tick* on a schedule, startable/stoppable by wires — e.g. timed
-enemy waves). Chain them freely: trigger → counter → spawner, timer → spawner,
-star → counter, and so on.
+enemy waves), and a **Scoreboard** (wired events score points, the score shows
+on the play-mode HUD, and hitting the target fires *Target Reached* — build
+your own minigame win conditions). Chain them freely: trigger → counter →
+spawner, timer → spawner, star → scoreboard, and so on.
 
 #### Pickups
 
@@ -142,6 +149,12 @@ There are flying polyhedra (melee) and **bipedal walkers** that fall and walk on
 the terrain (using the same gravity as the player) and attack with both melee
 and ranged neon shots. Attack them with `F` before they wear down your health
 bar (top-left); if your health hits zero you respawn.
+
+### Levelling up
+
+Defeating enemies also grants **XP**. Your character levels up (to level 20,
+shown top-left with an XP bar): each level adds max HP, and every 5 levels
+adds +1 melee damage. Progress persists between sessions, like pixels.
 
 ### Pixels & the Shop
 

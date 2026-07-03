@@ -22,7 +22,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Ranged combat with aimable projectiles | ✅ | Right-click fires at cursor; projectile from hand (`test-ranged-attack.js`) |
 | Lock-on targeting | ✅ | `T` toggles lock-on to nearest enemy; marker + auto-aim (`test-combat-combo.js`) |
 | Character-specific movesets / special attacks / super moves | ⬜ | Single starter avatar today |
-| Character leveling (to 20) with skill trees | ⬜ | |
+| Character leveling (to 20) with skill trees | 🟡 | XP from defeating enemies, level 1–20 persisted, +5 max HP/level, +1 melee dmg per 5 levels, HUD badge + XP bar (`test-progression.js`); skill trees planned |
 | Health + respawn | ✅ | HP bar, hurt cooldown, respawn at spawn point |
 | Pickups: health, currency, collectibles | ✅ | `pk_health`, `pk_pixels`, `pk_star` placeable objects (`test-pickups.js`) |
 
@@ -64,12 +64,13 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Logic toys: spawners | ✅ | `l_spawner` w/ enemy type / frequency / limit params (`test-spawner.js`) |
 | Logic toys: counters | ✅ | `l_counter` — increment/decrement/reset inputs, reached/changed outputs (`test-logic-toys.js`) |
 | Logic toys: timers | ✅ | `l_timer` — start/stop/reset inputs, tick output, interval/repeat params (`test-logic-toys.js`) |
-| Logic toys: cameras, scoreboards | ⬜ | Next in the logic family |
+| Logic toys: scoreboards | ✅ | `l_scoreboard` — add/subtract/reset inputs, HUD score display, edge-triggered `reached` output (`test-progression.js`) |
+| Logic toys: cameras | ⬜ | Last of the logic family |
 | Event wiring between logic toys | ✅ | Overhead 3D wiring view; wires persist in saves (`test-wiring.js`) |
 | Interiors (rooms, doors, decoration) | ⬜ | |
 | Path/track creation (races, patrols, moving platforms) | ⬜ | |
 | AI builder assistants | ⬜ | |
-| Templates / starter worlds | 🟡 | Default rolling-terrain starter world; template library planned |
+| Templates / starter worlds | ✅ | New Game picker: Rolling Hills / Flat Plane / Arena / Floating Islands (`test-progression.js`) |
 | Unlockable toys through play | ✅ | Pixels earned from enemies buy locked objects in the shop (`test-shop-gating.js`) |
 
 ### The Sandbox Hub
@@ -105,10 +106,10 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Logic toys: scoreboard + camera toy (completes the wiring family)
-2. Avatar animation wiring (idle/walk/run clips — avatar is currently a static pose)
-3. Character leveling (XP from combat, level 1–20) + per-save progress
-4. Collection/roster screen groundwork (figure definitions, owned set)
-5. Double-jump + glide traversal
-6. Template starter worlds (flat, arena, island) at New Game
-7. Blocking/dodging in melee combat
+1. Avatar animation wiring (idle/walk/run clips — avatar is currently a static pose)
+2. Collection/roster screen groundwork (figure definitions, owned set)
+3. Camera logic toy (completes the wiring family)
+4. Double-jump + glide traversal
+5. Blocking/dodging in melee combat
+6. Skill tree for spending level-ups
+7. Interiors (rooms, doors, decoration)

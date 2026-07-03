@@ -26,9 +26,9 @@ class PlayMode {
         // Collectible stars gathered this play session (pk_star pickups).
         this.starsCollected = 0;
 
-        // Player survival state.
-        this.playerMaxHp = 100;
-        this.playerHp = 100;
+        // Player survival state. Max HP grows with the character's level.
+        this.playerMaxHp = this.app.maxHpForLevel ? this.app.maxHpForLevel() : 100;
+        this.playerHp = this.playerMaxHp;
         this.hurtCooldown = 0;
         // Prefer the spawn point the default-terrain builder chose (just above the
         // tile nearest the origin) so the player lands on the rolling ground; fall
@@ -269,7 +269,9 @@ class PlayMode {
         this.comboStage = (this.comboTimer > 0) ? Math.min(this.comboStage + 1, 2) : 0;
         const finisher = this.comboStage === 2;
         this.comboTimer = finisher ? 0 : 36;   // frames to land the next swing
-        const dmg = finisher ? 3 : 1;
+        // Base damage plus the character's level bonus (+1 per 5 levels).
+        const bonus = this.app.meleeBonus ? this.app.meleeBonus() : 0;
+        const dmg = (finisher ? 3 : 1) + bonus;
         if (finisher) this.app.toasty('Combo finisher!');
 
         const aim = this.resolveAim(aimPoint, 3.4);
@@ -585,6 +587,7 @@ class PlayMode {
         inst.defeated = true;
         const pos = (inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position).clone();
         this.spawnPixelBurst(pos, 14);
+        this.app.addXp(5);   // character progression
         wo.disposeInstance(inst);
     }
 

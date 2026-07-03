@@ -68,6 +68,13 @@ class Manifest {
                      {ty: 'box',       s: [1.0, 0.5, 1.0], p: [0,0,0]},
                   ]
         }, 'TimerScript');
+        // A scoreboard: wired events score points, the score shows on the HUD,
+        // and hitting the target fires its `reached` output.
+        app.createWorldObject('l_scoreboard', {
+            prims: [
+                     {ty: 'box',       s: [1.2, 1.6, 0.3], p: [0,0,0]},
+                  ]
+        }, 'ScoreboardScript');
 
         // Pickups: collect by touching in play mode. One script drives all
         // three; the col tint tells them apart (red = health, gold = pixels,
