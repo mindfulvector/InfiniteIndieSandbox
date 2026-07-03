@@ -1499,6 +1499,11 @@ class App {
                     }
                     var nestedMeshes = true;
                 }
+                // The template is invisible and only ever cloned/instanced, so it
+                // must not collide -- otherwise it sits at the origin as an
+                // invisible obstacle. (colliderMeshes flag the parts that should
+                // collide when placed; instances get that via showAll.)
+                app.disableCollisionsTree(object);
                 let woNewAsset = new WorldObject(app, objectName, object, nestedMeshes, scriptClass);
                 if(assetProps.anchor) woNewAsset.anchor = assetProps.anchor;
                 app.BuildableObjectList.push(woNewAsset);
@@ -1585,6 +1590,8 @@ class App {
             });
             
             if(null != object) {
+                // Invisible template must never collide (see the mesh branch).
+                app.disableCollisionsTree(object);
                 let woNewAsset = new WorldObject(app, objectName, object, nestedMeshes, scriptClass);
                 if(assetProps.anchor) woNewAsset.anchor = assetProps.anchor;
                 this.BuildableObjectList.push(woNewAsset);
@@ -1864,6 +1871,19 @@ class App {
         //    node.isVisible = true;
         //    node.checkCollisions = true;
         //}
+    }
+
+    // Turn OFF collisions across a whole node tree. Used on WorldObject template
+    // meshes: they are invisible and only ever cloned/instanced, but the physics
+    // collision loop ignores visibility, so a template left with checkCollisions
+    // (e.g. one whose colliderMeshes were flagged) becomes an invisible wall the
+    // player bumps into at the world origin. Instances re-enable collisions via
+    // showAll() / explicit sets, so clearing the template is safe.
+    disableCollisionsTree(node) {
+        if(!node) return;
+        node.checkCollisions = false;
+        const children = node.getChildren ? node.getChildren() : [];
+        children.forEach((child) => this.disableCollisionsTree(child));
     }
 
     showBoundingBoxAll(node, on=true) {

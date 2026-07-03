@@ -617,7 +617,7 @@ class PlayMode {
             box.isPickable = false;
             box.checkCollisions = false;
             const vel = new BABYLON.Vector3(Math.random() - 0.5, Math.random() * 0.6 + 0.3, Math.random() - 0.5).scale(0.18);
-            this.pixelBursts.push({ mesh: box, vel: vel, delay: 6 + Math.floor(Math.random() * 6), spin: (Math.random() - 0.5) * 0.3 });
+            this.pixelBursts.push({ mesh: box, vel: vel, delay: 6 + Math.floor(Math.random() * 6), spin: (Math.random() - 0.5) * 0.3, age: 0 });
         }
     }
 
@@ -625,8 +625,11 @@ class PlayMode {
         if (!this.player || this.pixelBursts.length === 0) return;
         const target = this.player.position.add(new BABYLON.Vector3(0, 1.2, 0));
         const collectDist = 0.7, homeAccel = 0.06, maxSpeed = 0.9;
+        const MAX_LIFE = 300;   // ~a few seconds: a hard cap so a pixel can never
+                                // orbit the player forever without being collected.
         for (let i = this.pixelBursts.length - 1; i >= 0; i--) {
             const pb = this.pixelBursts[i];
+            pb.age++;
             pb.mesh.rotation.y += pb.spin;
             pb.mesh.rotation.x += pb.spin * 0.7;
             if (pb.delay > 0) {
@@ -636,10 +639,14 @@ class PlayMode {
             } else {
                 const dir = target.subtract(pb.mesh.position);
                 const dist = dir.length();
-                if (dist < collectDist) {
+                // The collect radius grows the longer a pixel has been chasing, so
+                // one that keeps overshooting (orbiting) is still swept up rather
+                // than circling indefinitely; MAX_LIFE is the absolute backstop.
+                const collect = collectDist + Math.max(0, pb.age - 90) * 0.015;
+                if (dist < collect || pb.age >= MAX_LIFE) {
                     pb.mesh.dispose();
                     this.pixelBursts.splice(i, 1);
-                    this.app.addPixels(1);
+                    this.app.addPixels(1);   // always credited, never lost
                     continue;
                 }
                 dir.normalize();
