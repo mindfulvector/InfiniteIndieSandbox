@@ -497,12 +497,15 @@ class PlayMode {
         const find = (n) => sk.bones.find((b) => b.name === n);
         this.boneSpine = find('mixamorig:Spine1') || find('mixamorig:Spine2') || find('mixamorig:Spine');
         this.boneArm = find('mixamorig:RightArm');
+        this.boneArmL = find('mixamorig:LeftArm');
         this.boneHand = find('mixamorig:RightHand');
         this.boneNeck = find('mixamorig:Neck') || find('mixamorig:Head');
+        // Load-time spine rest (used for the aim twist during locomotion). The
+        // idle breathing does NOT use load-time poses -- they are the raw bind
+        // pose (arms out); it snapshots the live standing pose at takeover.
         try {
             if (this.boneSpine) this._spineRest = this.boneSpine.getRotationQuaternion(BABYLON.Space.LOCAL, this.player).clone();
-            if (this.boneNeck) this._neckRest = this.boneNeck.getRotationQuaternion(BABYLON.Space.LOCAL, this.player).clone();
-        } catch (_) { this._spineRest = null; this._neckRest = null; }
+        } catch (_) { this._spineRest = null; }
     }
 
     // True while any movement input is held (the same keys the character
@@ -534,28 +537,50 @@ class PlayMode {
         if (moving) {
             this.idleFrames = 0;
             this._idleAnimStopped = false;   // CC restarts clips on its transition
+            this._idleBase = null;
         } else {
             this.idleFrames++;
         }
 
         const idleActive = !moving && this.idleFrames > 12 && !!sk;
         if (idleActive && !this._idleAnimStopped) {
-            // Stop the frozen idle clip so the breathing below owns the bones.
+            // Stop the frozen idle clip so the breathing below owns the bones,
+            // and snapshot the CURRENT standing pose as the base the breathing
+            // offsets from. (Load-time rest poses are the raw bind pose with
+            // the arms out -- offsetting from those would raise the arms.)
             try { this.app.scene.stopAnimation(sk); } catch (_) {}
             this._idleAnimStopped = true;
+            try {
+                const rot = (b) => b ? b.getRotationQuaternion(BABYLON.Space.LOCAL, this.player).clone() : null;
+                this._idleBase = {
+                    spine: rot(this.boneSpine),
+                    neck: rot(this.boneNeck),
+                    armR: rot(this.boneArm),
+                    armL: rot(this.boneArmL),
+                };
+            } catch (_) { this._idleBase = null; }
         }
 
         const aiming = this.aimTimer > 0;
         if (!idleActive && !aiming) return;   // animation clips own the bones
         if (!this.boneSpine || !this._spineRest) return;
 
-        // Breathing offsets (idle only).
-        let breathe = 0, nod = 0;
+        // Idle offsets. The default camera sits BEHIND the character, so pitch
+        // (leaning toward/away from the camera) barely reads -- the visible
+        // components from behind are the side-to-side weight shift (roll) and
+        // the slow head look-around (yaw).
+        let breathe = 0, sway = 0, nod = 0, look = 0, armSwing = 0;
         if (idleActive) {
             const dt = Math.min(0.1, this.app.scene.getEngine().getDeltaTime() / 1000);
-            this.idlePhase += dt * 2.2;                        // ~0.35 Hz sway
-            breathe = Math.sin(this.idlePhase) * 0.045;        // spine pitch
-            nod = Math.sin(this.idlePhase + 0.9) * 0.022;      // neck follow-through
+            this.idlePhase += dt * 2.2;
+            const p = this.idlePhase;
+            breathe  = Math.sin(p) * 0.07;                 // chest rise/fall (~0.35 Hz)
+            sway     = Math.sin(p * 0.53 + 1.1) * 0.07;    // slower weight shift
+            nod      = Math.sin(p + 0.9) * 0.03;           // neck follow-through
+            look     = Math.sin(p * 0.21 + 2.0) * 0.22;    // slow glance around (~10s)
+            // Counter-phase arm sway: opening/closing the arm-torso gap changes
+            // the silhouette, which reads clearly even at camera distance.
+            armSwing = Math.sin(p * 0.53 + 0.6) * 0.10;
         }
 
         // Aim twist (shortest-path yaw toward the target, clamped ~80 deg).
@@ -569,11 +594,25 @@ class PlayMode {
         }
 
         try {
-            const q = this._spineRest.multiply(BABYLON.Quaternion.RotationYawPitchRoll(yaw, breathe, 0));
+            const base = (idleActive && this._idleBase) ? this._idleBase : null;
+            const spineBase = (base && base.spine) ? base.spine : this._spineRest;
+            const q = spineBase.multiply(BABYLON.Quaternion.RotationYawPitchRoll(yaw, breathe, sway));
             this.boneSpine.setRotationQuaternion(q, BABYLON.Space.LOCAL, this.player);
-            if (this.boneNeck && this._neckRest) {
-                const qn = this._neckRest.multiply(BABYLON.Quaternion.RotationYawPitchRoll(0, nod, 0));
-                this.boneNeck.setRotationQuaternion(qn, BABYLON.Space.LOCAL, this.player);
+            // Neck and arms only move as part of the idle (never during a pure
+            // aim while running -- the locomotion clips own them then).
+            if (base) {
+                if (this.boneNeck && base.neck) {
+                    const qn = base.neck.multiply(BABYLON.Quaternion.RotationYawPitchRoll(look, nod, 0));
+                    this.boneNeck.setRotationQuaternion(qn, BABYLON.Space.LOCAL, this.player);
+                }
+                if (this.boneArm && base.armR) {
+                    const qa = base.armR.multiply(BABYLON.Quaternion.RotationYawPitchRoll(0, 0, armSwing));
+                    this.boneArm.setRotationQuaternion(qa, BABYLON.Space.LOCAL, this.player);
+                }
+                if (this.boneArmL && base.armL) {
+                    const ql = base.armL.multiply(BABYLON.Quaternion.RotationYawPitchRoll(0, 0, -armSwing));
+                    this.boneArmL.setRotationQuaternion(ql, BABYLON.Space.LOCAL, this.player);
+                }
             }
         } catch (_) { /* rig doesn't support it; ignore */ }
     }
