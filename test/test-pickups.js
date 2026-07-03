@@ -3,7 +3,8 @@
  * ------------------
  * Verifies the PickupScript-driven pickups (pk_health / pk_pixels / pk_star):
  *   - a health pickup restores HP by its amount and (respawn 'no' default) is
- *     disposed for good once collected,
+ *     hidden for the rest of the play session once collected -- but NOT
+ *     disposed, so playtesting can never destroy authored world content,
  *   - a pixels pickup grants exactly its amount of currency,
  *   - a pickup with respawn = 5 hides on collect and reappears after ~5s,
  *   - pickups bob (animate) while waiting to be collected,
@@ -40,7 +41,7 @@ async function main() {
         });
         await h.waitFrames(20);
 
-        // --- 1. HEALTH: restores HP by its amount, then disposes (respawn 'no') ---
+        // --- 1. HEALTH: restores HP by its amount, then hides for the session ---
         const hpSetup = await h.evaluate(() => {
             const pm = window.app.activeMode;
             pm.playerHp = 40;
@@ -51,15 +52,20 @@ async function main() {
         });
         console.log('\n[1] health pickup', hpSetup);
         await h.waitFor(() => window.app.activeMode.playerHp >= 60, null, 20000);
-        const hpRes = await h.evaluate(() => ({
-            hp: window.app.activeMode.playerHp,
-            live: window.app.findWorldObject('pk_health').instances.filter(Boolean).length,
-        }));
+        const hpRes = await h.evaluate(() => {
+            const wo = window.app.findWorldObject('pk_health');
+            const inst = wo.instances.filter(Boolean)[0];
+            return {
+                hp: window.app.activeMode.playerHp,
+                live: wo.instances.filter(Boolean).length,
+                hidden: inst ? (inst.isVisible === false && inst.script._collected === true) : null,
+            };
+        });
         console.log('[1] after collect', hpRes);
         check('health pickup restores ~amount HP (40 -> >=60, <=72 allowing regen)',
             hpRes.hp >= 60 && hpRes.hp <= 72, hpRes);
-        check('collected health pickup is disposed (default respawn \'no\')',
-            hpRes.live === 0, hpRes);
+        check('collected one-shot pickup is hidden but NOT disposed (authored content survives)',
+            hpRes.live === 1 && hpRes.hidden === true, hpRes);
 
         // --- 2. PIXELS: grants exactly its amount ---
         const pxSetup = await h.evaluate(() => {
@@ -156,16 +162,21 @@ async function main() {
             const pm = window.app.activeMode;
             return (pm.starsCollected || 0) >= 1 && pm.enemyManager.enemies.length >= 1;
         }, null, 20000);
-        const wireRes = await h.evaluate(() => ({
-            stars: window.app.activeMode.starsCollected,
-            enemies: window.app.activeMode.enemyManager.enemies.length,
-            kinds: window.app.activeMode.enemyManager.enemies.map((e) => e.kind),
-            starLive: window.app.findWorldObject('pk_star').instances.filter(Boolean).length,
-        }));
+        const wireRes = await h.evaluate((id) => {
+            const star = window.app.findInstance('pk_star', id);
+            return {
+                stars: window.app.activeMode.starsCollected,
+                enemies: window.app.activeMode.enemyManager.enemies.length,
+                kinds: window.app.activeMode.enemyManager.enemies.map((e) => e.kind),
+                starLive: window.app.findWorldObject('pk_star').instances.filter(Boolean).length,
+                starHidden: star ? (star.isVisible === false && star.script._collected === true) : null,
+            };
+        }, starId);
         console.log('[5] after collect', wireRes);
         check('collecting the star increments starsCollected', wireRes.stars >= 1, wireRes);
         check('the collected wire fired the spawner (an enemy spawned)', wireRes.enemies >= 1, wireRes);
-        check('the collected star is disposed (default respawn \'no\')', wireRes.starLive === 0, wireRes);
+        check('the collected star is hidden for the session but not disposed',
+            wireRes.starLive === 1 && wireRes.starHidden === true, wireRes);
         await h.screenshot('star-wire-spawned');
 
         console.log('\n========================================');

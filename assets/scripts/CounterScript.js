@@ -5,8 +5,9 @@
 // fires its `reached` output — e.g. "after 3 stars are collected, open the
 // spawner". The live count resets when a play session starts.
 //
-//   inputs:  increment / decrement / reset
-//   outputs: reached (count hit the threshold), changed (any count change)
+//   inputs:  increment / decrement / reset   (count never drops below 0)
+//   outputs: reached (edge-triggered: count crossed the threshold from below),
+//            changed (any count change)
 //
 // Note on `changed`: wiring is player-editable, so a player CAN wire
 // changed -> increment on the same counter. App.fireEvent's depth guard stops
@@ -58,17 +59,21 @@ class CounterScript {
 
     onInput(action, from) {
         switch (action) {
-        case 'increment': this.setCount(this.count + 1); break;
-        case 'decrement': this.setCount(this.count - 1); break;
-        case 'reset':     this.setCount(0);              break;
+        case 'increment': this.setCount(this.count + 1);              break;
+        case 'decrement': this.setCount(Math.max(0, this.count - 1)); break;   // never below 0
+        case 'reset':     this.setCount(0);                           break;
         }
     }
 
     setCount(v) {
         if (v === this.count) return;
+        const prev = this.count;
         this.count = v;
         this.app.fireEvent(this.inst, 'changed');
-        if (this.count >= this.getParam('threshold')) {
+        // `reached` is EDGE-triggered: it fires only when the count crosses the
+        // threshold from below, not on every change while sitting at/above it
+        // (which would re-fire on later increments -- or even decrements).
+        if (v >= this.getParam('threshold') && prev < this.getParam('threshold')) {
             this.app.fireEvent(this.inst, 'reached');
             if (this.getParam('autoReset') === 'yes') this.count = 0;
         }

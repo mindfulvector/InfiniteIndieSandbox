@@ -8,7 +8,9 @@
 //   star   - a collectible: increments the mode's star count
 // Pickups bob and spin so they read as collectable, fire a `collected` wiring
 // output (so they can drive spawners/counters/etc.), and either respawn after a
-// delay or stay gone, per the `respawn` parameter.
+// delay or stay collected for the rest of the play session, per the `respawn`
+// parameter. Collection only ever HIDES the instance -- the authored object
+// always survives into build mode, saves, and the next play-test.
 class PickupScript {
     constructor(app, wo, inst) {
         this.app = app;
@@ -77,6 +79,7 @@ class PickupScript {
             if (this._baseY !== null) {
                 inst.position.y = this._baseY;   // undo any bob offset
                 this._baseY = null;
+                inst.restY = null;
             }
             return;
         }
@@ -84,7 +87,7 @@ class PickupScript {
         // Waiting to respawn?
         if (this._collected) {
             const respawn = this.getParam('respawn');
-            if (respawn === 'no') return;   // stays gone (disposed below; safety)
+            if (respawn === 'no') return;   // one-shot: hidden for this play session
             const dt = Math.min(0.1, this.app.scene.getEngine().getDeltaTime() / 1000);
             this._respawnAcc += dt;
             if (this._respawnAcc >= respawn) {
@@ -95,8 +98,11 @@ class PickupScript {
             return;
         }
 
-        // Bob + spin so the pickup reads as collectable.
+        // Bob + spin so the pickup reads as collectable. restY tells the world
+        // serializer the true rest height, so saving mid-bob (e.g. pausing play
+        // and using Save Game) doesn't bake the bob offset into the save file.
         if (this._baseY === null) this._baseY = inst.position.y;
+        inst.restY = this._baseY;
         this._phase += 0.08;
         inst.position.y = this._baseY + Math.sin(this._phase) * 0.15;
         inst.rotate(BABYLON.Axis.Y, 0.05, BABYLON.Space.LOCAL);
@@ -108,16 +114,15 @@ class PickupScript {
         if (BABYLON.Vector3.Distance(p, player.position.add(new BABYLON.Vector3(0, 1, 0))) <= 1.6) {
             this.applyEffect(mode);
             this.app.fireEvent(inst, 'collected');
-            if (this.getParam('respawn') === 'no') {
-                // One-shot: remove from the world entirely (won't re-save).
-                // Restore the rest height first so a save right after is clean.
-                inst.position.y = this._baseY !== null ? this._baseY : inst.position.y;
-                this.wo.disposeInstance(inst);
-            } else {
-                this._collected = true;
-                this._respawnAcc = 0;
-                inst.isVisible = false;
-            }
+            // Hide rather than dispose -- even for one-shot ('no' respawn)
+            // pickups, which stay hidden for the rest of the play session but
+            // return in build mode and in the next play-test. Disposing here
+            // would let a playtest permanently destroy authored content (the
+            // pickup would vanish from the builder's world and its saves).
+            inst.position.y = this._baseY !== null ? this._baseY : inst.position.y;
+            this._collected = true;
+            this._respawnAcc = 0;
+            inst.isVisible = false;
         }
     }
 }

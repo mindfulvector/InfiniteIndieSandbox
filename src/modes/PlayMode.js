@@ -370,7 +370,7 @@ class PlayMode {
 
     // ---- lock-on targeting ----------------------------------------------------
 
-    // Q toggles a lock onto the nearest enemy in range. While locked, ranged
+    // T toggles a lock onto the nearest enemy in range. While locked, ranged
     // shots and the aim pose track that enemy and a marker floats above it.
     toggleLockOn() {
         if (this.lockTarget) { this.clearLockOn(); return; }
@@ -404,7 +404,9 @@ class PlayMode {
 
     clearLockOn() {
         this.lockTarget = null;
-        if (this.lockMarker) { this.lockMarker.dispose(); this.lockMarker = null; }
+        // dispose(false, true): also dispose the marker's material -- a fresh
+        // one is created per lock, so keeping it would leak one per T-toggle.
+        if (this.lockMarker) { this.lockMarker.dispose(false, true); this.lockMarker = null; }
     }
 
     // Current world position of the locked enemy, or null if it's gone.
@@ -569,6 +571,12 @@ class PlayMode {
         this.playerHp = this.playerMaxHp;
         this.hurtCooldown = 60;
         if (this.player) this.player.position = this.spawnPoint.clone();
+        // Death ends any in-progress combo and drops the target lock -- without
+        // this, a chain started before dying could carry a free finisher (3x
+        // damage) into the first swing after respawning.
+        this.comboStage = 0;
+        this.comboTimer = 0;
+        this.clearLockOn();
         this.enemyManager.reset();
         this.app.toasty('Overwhelmed! Respawning...');
     }

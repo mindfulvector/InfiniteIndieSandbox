@@ -1315,7 +1315,9 @@ class App {
                         this.MenuItem({
                             type: 'param',
                             label: pdef.label,
-                            value: String(cur) + (pdef.unit ? pdef.unit : ''),
+                            // Unit suffix only applies to numeric values -- an enum
+                            // option like 'no' must not render as "nos".
+                            value: String(cur) + (pdef.unit && typeof cur === 'number' ? pdef.unit : ''),
                             onPrev: () => { app.cycleParam(inst, pdef, -1); app.menu.renderedState = -1; },
                             onNext: () => { app.cycleParam(inst, pdef, +1); app.menu.renderedState = -1; },
                         });
@@ -1409,6 +1411,19 @@ class App {
                 this.loadedScripts.push(scriptClass);
                 var scriptLoader = document.createElement('script');
                 scriptLoader.setAttribute('src', './assets/scripts/'+scriptClass+'.js');
+                // Script files load asynchronously but instances eval
+                // 'new <ScriptClass>(...)' synchronously, so count each script
+                // file toward the manifest settle. "Game ready" (and the loading
+                // pill) then genuinely waits for script classes to exist --
+                // otherwise a world auto-loaded at boot could instantiate an
+                // object before its script arrived and throw a ReferenceError.
+                app.manifestObjectTarget++;
+                scriptLoader.onload = () => { app.manifestObjectCount++; app.uploadLoadingMessage(); };
+                scriptLoader.onerror = () => {
+                    console.error('Failed to load script `' + scriptClass + '`');
+                    app.manifestObjectFailed++;
+                    app.uploadLoadingMessage();
+                };
                 document.head.appendChild(scriptLoader);
             } else {
                 console.log('script already loaded: '+scriptClass);
@@ -1775,8 +1790,10 @@ class App {
         if(!inst || !inst.wires) return;
         this._fireDepth = (this._fireDepth || 0) + 1;
         try {
-            if(this._fireDepth > 8) {
-                console.warn('fireEvent: wire loop detected (depth > 8), stopping delivery of `' + event + '`');
+            // 32 is far deeper than any sensible hand-built chain, so legitimate
+            // linear cascades pass through while genuine cycles still terminate.
+            if(this._fireDepth > 32) {
+                console.warn('fireEvent: wire loop detected (depth > 32), stopping delivery of `' + event + '`');
                 return;
             }
             inst.wires.forEach((w) => {
