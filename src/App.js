@@ -55,27 +55,39 @@ class App {
           );
         });
 
+        // Edge-triggered gamepad action flags, consumed once per press by the
+        // active mode (see consumePad). Combat maps:
+        //   Right Trigger / Right Bumper / B  -> ranged attack (shoot)
+        //   X / Left Bumper / A               -> melee attack
+        // Buttons arrive as an Xbox360Button enum (Xbox pads) or a raw index
+        // (generic pads); we map both to the same action names.
+        this.padActions = {};
+        this.gamepad = null;
         const gamepadManager = new BABYLON.GamepadManager();
-        gamepadManager.onGamepadConnectedObservable.add((gamepad, state)=>{
-            console.log('gamepad connected', gamepad);
-
-            if (gamepad instanceof BABYLON.Xbox360Pad) {
-                console.log('BABYLON.Xbox360Pad');
-                //Xbox button down/up events
-                gamepad.onButtonDownObservable.add((button, state)=>{
-                    console.log('down',button);
-                    console.log(BABYLON.Xbox360Button[button] + " pressed");
-                })
-                gamepad.onButtonUpObservable.add((button, state)=>{
-                    console.log('up',button);
-                    console.log(BABYLON.Xbox360Button[button] + " released");
-                })
-            } else {
-                console.log('NOT BABYLON.Xbox360Pad');
+        gamepadManager.onGamepadConnectedObservable.add((gamepad) => {
+            console.log('gamepad connected', gamepad && gamepad.id);
+            this.gamepad = gamepad;
+            const X = BABYLON.Xbox360Button || {};
+            const rangedButtons = new Set([X.RB, X.B, 5 /*RB*/, 1 /*B*/].filter((v) => v !== undefined));
+            const meleeButtons  = new Set([X.X, X.LB, X.A, 2 /*X*/, 4 /*LB*/, 0 /*A*/].filter((v) => v !== undefined));
+            if(gamepad.onButtonDownObservable) {
+                gamepad.onButtonDownObservable.add((button) => {
+                    if(rangedButtons.has(button)) this.padActions.rangedAttack = true;
+                    else if(meleeButtons.has(button)) this.padActions.meleeAttack = true;
+                });
+            }
+            // Analog triggers on Xbox pads: press past halfway = shoot / melee.
+            if(gamepad.onrighttriggerchanged) {
+                gamepad.onrighttriggerchanged((v) => { if(v > 0.5 && !this._rtDown) { this.padActions.rangedAttack = true; this._rtDown = true; } else if(v <= 0.4) this._rtDown = false; });
+            }
+            if(gamepad.onlefttriggerchanged) {
+                gamepad.onlefttriggerchanged((v) => { if(v > 0.5 && !this._ltDown) { this.padActions.meleeAttack = true; this._ltDown = true; } else if(v <= 0.4) this._ltDown = false; });
             }
         });
 
-        gamepadManager.onGamepadDisconnectedObservable.add((gamepad, state) => {});
+        gamepadManager.onGamepadDisconnectedObservable.add((gamepad) => {
+            if(this.gamepad === gamepad) this.gamepad = null;
+        });
 
         // create the canvas html element and attach it to the webpage
         var canvas = document.createElement("canvas");
@@ -779,6 +791,8 @@ class App {
                 {k:'WASD',  label:'Move'},
                 {k:'Shift', label:'Run'},
                 {k:'Space', label:'Jump'},
+                {k:'LMB',   label:'Melee'},
+                {k:'RMB',   label:'Shoot'},
                 {k:'Esc',   label:'Menu'},
             ]);
         }
@@ -801,6 +815,7 @@ class App {
                 {k:'← / →', label:'Cycle'},
                 {k:'↑ / ↓', label:'Category'},
                 {k:'WASD',   label:'Move'},
+                {k:'R / V',  label:'Raise'},
                 {k:'Z / C',  label:'Rotate'},
                 {k:'Space',  label:'Place'},
                 {k:'0',      label:'Select'},
@@ -1464,6 +1479,7 @@ class App {
                     var nestedMeshes = true;
                 }
                 let woNewAsset = new WorldObject(app, objectName, object, nestedMeshes, scriptClass);
+                if(assetProps.anchor) woNewAsset.anchor = assetProps.anchor;
                 app.BuildableObjectList.push(woNewAsset);
                 app.manifestObjectCount++;
                 app.uploadLoadingMessage();
@@ -1549,6 +1565,7 @@ class App {
             
             if(null != object) {
                 let woNewAsset = new WorldObject(app, objectName, object, nestedMeshes, scriptClass);
+                if(assetProps.anchor) woNewAsset.anchor = assetProps.anchor;
                 this.BuildableObjectList.push(woNewAsset);
                 app.manifestObjectCount++;
                 app.uploadLoadingMessage();
@@ -1581,6 +1598,16 @@ class App {
             this.keysPressed[key.toUpperCase()] = false;
             return result;
         }
+    }
+
+    // Edge-triggered read of a gamepad action (e.g. 'meleeAttack','rangedAttack').
+    // Returns true once per button press, then clears it -- mirrors keyPressed().
+    consumePad(action) {
+        if(this.padActions && this.padActions[action]) {
+            this.padActions[action] = false;
+            return true;
+        }
+        return false;
     }
 
     keyDown(key) {

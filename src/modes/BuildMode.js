@@ -229,20 +229,30 @@ class BuildMode {
     }
 
     // Position an instance so that its footprint is centred on `anchor` (x,z) and
-    // its base sits exactly on `anchor.y`, whatever its pivot is. Returns the
-    // resulting world-space centre (for the camera focus).
+    // it snaps to `anchor.y` per the object's anchor mode, whatever its pivot is.
+    // Returns the resulting world-space centre (for the camera focus).
+    //   'above' (default): the base sits on anchor.y -> the object rests on top of
+    //           the surface at the cursor (a tree, a wall).
+    //   'below': the TOP sits at anchor.y -> the top (walking) surface aligns with
+    //           the cursor and the body extends below (terrain tiles of any
+    //           thickness then share a seamless top surface).
     anchorInstance(inst, anchor) {
         inst.position.copyFrom(anchor);
         inst.computeWorldMatrix(true);
         const bb = this.computeWorldBBox(inst);
         if (!bb) return anchor.clone();   // no geometry: leave pivot at anchor
+        const below = inst.worldObject && inst.worldObject.anchor === 'below';
+        const yShift = below ? (anchor.y - bb.max.y)   // top onto anchor
+                             : (anchor.y - bb.min.y);   // base onto anchor
         const shift = new BABYLON.Vector3(
             anchor.x - bb.center.x,   // centre footprint over anchor
-            anchor.y - bb.min.y,      // drop base onto anchor height
+            yShift,
             anchor.z - bb.center.z
         );
         inst.position.addInPlace(shift);
-        return new BABYLON.Vector3(anchor.x, anchor.y + (bb.center.y - bb.min.y), anchor.z);
+        const centerYOffset = below ? -(bb.max.y - bb.center.y)   // centre below anchor
+                                    : (bb.center.y - bb.min.y);    // centre above anchor
+        return new BABYLON.Vector3(anchor.x, anchor.y + centerYOffset, anchor.z);
     }
 
     // Point the orbit camera at the object's centre and pull back enough that the

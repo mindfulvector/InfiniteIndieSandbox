@@ -3,7 +3,8 @@
  * --------------------------
  * Verifies the build-mode placement/camera behaviour is consistent across every
  * buildable object, regardless of the object's mesh pivot:
- *   - every object's BASE rests at the same height (sits on the surface),
+ *   - every object's SNAP SURFACE meets the anchor at the same height -- the
+ *     base for normal props (anchor:'above'), the top for terrain (anchor:'below'),
  *   - every object's footprint is CENTRED on the same anchor point,
  *   - the camera is aimed at each object's visual centre (so it stays framed).
  *
@@ -34,9 +35,15 @@ const PROBE = function (index) {
             const bb = bm.computeWorldBBox(bm.currentInstance);
             const r = (v) => Math.round(v * 1000) / 1000;
             const focus = bm.camFocus.position;
+            const wo = bm.currentWorldObject;
+            // The surface that snaps to the anchor: base for 'above', top for 'below'.
+            const snapY = bb ? (wo && wo.anchor === 'below' ? bb.max.y : bb.min.y) : null;
             resolve({
-                name: bm.currentWorldObject ? bm.currentWorldObject.name : '?',
+                name: wo ? wo.name : '?',
+                anchorMode: wo ? wo.anchor : '?',
                 baseY: bb ? r(bb.min.y) : null,
+                topY: bb ? r(bb.max.y) : null,
+                snapY: snapY !== null ? r(snapY) : null,
                 centerX: bb ? r(bb.center.x) : null,
                 centerZ: bb ? r(bb.center.z) : null,
                 centerY: bb ? r(bb.center.y) : null,
@@ -72,10 +79,13 @@ async function main() {
         check('every object resolved renderable geometry', withGeom.length === rows.length,
             { resolved: withGeom.length, total: rows.length });
 
-        // 1) Bases all at the same height.
-        const bases = withGeom.map((r) => r.baseY);
-        const baseSpread = Math.max(...bases) - Math.min(...bases);
-        check('every object base rests at the same height', baseSpread < 0.05, { bases, baseSpread });
+        // 1) Each object's snap surface meets the anchor at the same height (base
+        //    for 'above' props, top for 'below' terrain), so different objects
+        //    line up consistently on the surface.
+        const snaps = withGeom.map((r) => r.snapY);
+        const snapSpread = Math.max(...snaps) - Math.min(...snaps);
+        check('every object snaps its surface to the same anchor height', snapSpread < 0.05,
+            { snaps: withGeom.map((r) => ({ name: r.name, mode: r.anchorMode, snapY: r.snapY })), snapSpread });
 
         // 2) Footprints centred on the anchor (x,z near 0).
         const offCenter = withGeom.filter((r) => Math.abs(r.centerX) > 0.3 || Math.abs(r.centerZ) > 0.3);
@@ -93,7 +103,7 @@ async function main() {
 
         console.log('\n========================================');
         console.log(failures === 0
-            ? `RESULT: PASS — all ${rows.length} objects base-align, centre, and stay framed consistently.`
+            ? `RESULT: PASS — all ${rows.length} objects snap-align, centre, and stay framed consistently.`
             : `RESULT: FAIL — ${failures} assertion(s) failed.`);
         console.log('========================================');
         if (h.pageErrors.length) h.dumpDiagnostics();

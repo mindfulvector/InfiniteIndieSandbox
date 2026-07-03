@@ -56,7 +56,11 @@ To switch between modes, press the `Esc` key then to enter a new mode:
 * Press `Space` to place the object
 * Press `Delete` to remove the last placed object
 
-Objects are placed sitting on the surface and centred under the cursor.
+Objects are placed centred under the cursor. Most objects rest their **base** on
+the cursor (a tree sits *on* the surface), while **terrain** tiles snap their
+**top** to the cursor — so a thin floor panel and a full terrain cube line up at
+the same walking surface and tile together seamlessly. Use `R`/`V` to raise or
+lower the object (and the whole surface height) before placing.
 
 Some objects have **settings**: place a **Spawner** (Logic category) and a
 parameters popup opens automatically so you can choose the enemy type, spawn
@@ -100,7 +104,14 @@ Keys:
 * Press `W`,`A`,`S`,`D` to move
 * Hold down `Shift` to run
 * Press `Space` to jump
-* Press `F` to attack nearby enemies
+* **Left click** for a melee attack (also `F` for keyboard-only play)
+* **Right click** for a ranged attack — the character turns to aim their hand and
+  fires a neon shot toward the cursor
+
+Aim the ranged shot with the mouse; a gamepad auto-aims at the nearest enemy.
+
+**Gamepad:** the right trigger / right bumper fires a ranged attack, and the
+left trigger / `X` swings a melee attack (in addition to the movement stick).
 
 ### Survival
 

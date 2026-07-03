@@ -5,9 +5,13 @@ class PlayMode {
         this.app = app;
 
         // Combat / pixel-collection state.
-        this.pixelBursts = [];   // {mesh, vel, delay, spin} tiny cubes homing to the player
-        this.attackFxList = [];  // {mesh, life} transient swing effects
-        this.attackCooldown = 0;
+        this.pixelBursts = [];      // {mesh, vel, delay, spin} tiny cubes homing to the player
+        this.attackFxList = [];     // {mesh, life} transient swing effects
+        this.playerProjectiles = [];// {mesh, vel, life} shots fired by the player
+        this.attackCooldown = 0;    // melee cooldown
+        this.rangedCooldown = 0;    // ranged cooldown
+        this.aimTimer = 0;          // frames left of the upper-body aim pose
+        this.aimYaw = 0;            // world yaw the upper body is aiming at
 
         // Player survival state.
         this.playerMaxHp = 100;
@@ -31,12 +35,15 @@ class PlayMode {
 
     dispose() {
         this.app.modeName.text = "Exiting PlayMode...";
+        this.unbindMouseCombat();
         this.disposePlayer();
         this.enemyManager.dispose();
         this.pixelBursts.forEach((pb) => pb.mesh && pb.mesh.dispose());
         this.attackFxList.forEach((fx) => fx.mesh && fx.mesh.dispose());
+        this.playerProjectiles.forEach((pr) => pr.mesh && pr.mesh.dispose());
         this.pixelBursts = [];
         this.attackFxList = [];
+        this.playerProjectiles = [];
     }
 
     initPlayer() {
@@ -125,6 +132,11 @@ class PlayMode {
             playMode.cc.makeObstructionInvisible(false);
 
             playMode.cc.start();
+
+            // Cache the bones used to aim the upper body / fire from the hand, and
+            // wire up mouse combat now that the avatar exists.
+            playMode.cacheAimBones();
+            playMode.bindMouseCombat();
         }, null, function (scene, message) {
             // Surface a failed avatar load instead of leaving the player frozen
             // with no feedback.
@@ -183,6 +195,8 @@ class PlayMode {
         this.handleCombat();
         this.updatePixelBursts();
         this.updateAttackFx();
+        this.updatePlayerProjectiles();
+        this.updateAimPose();
         this.enemyManager.update();
 
         // Slow health regen + hurt cooldown.
@@ -201,14 +215,34 @@ class PlayMode {
     handleCombat() {
         if (!this.player) return;
         if (this.attackCooldown > 0) this.attackCooldown--;
-        // F swings a melee attack that damages nearby enemies.
-        if (this.attackCooldown === 0 && this.app.keyPressed('F')) {
-            this.attack();
-            this.attackCooldown = 12;
+        if (this.rangedCooldown > 0) this.rangedCooldown--;
+
+        // Melee: F key (kept for keyboard-only play) or a gamepad melee button.
+        if (this.app.keyPressed('F') || this.app.consumePad('meleeAttack')) {
+            this.meleeAttack();
+        }
+        // Ranged: a gamepad ranged button (mouse right-click is handled by the
+        // pointer observer). Auto-aims at the nearest enemy when using a pad.
+        if (this.app.consumePad('rangedAttack')) {
+            this.rangedAttack();
         }
     }
 
-    attack() {
+    // Left-click = melee, right-click = ranged. Called by the pointer observer
+    // with the world-space aim point picked under the cursor.
+    clickAttack(button, aimPoint) {
+        if (button === 2) this.rangedAttack(aimPoint);
+        else this.meleeAttack(aimPoint);
+    }
+
+    // Back-compat alias (older tests / keyboard call attack()).
+    attack(aimPoint) { this.meleeAttack(aimPoint); }
+
+    meleeAttack(aimPoint) {
+        if (!this.player || this.attackCooldown > 0) return;
+        this.attackCooldown = 12;
+        const aim = this.resolveAim(aimPoint, 3.4);
+        if (aim) this.aimAt(aim);
         const p = this.player.position;
         const range = 3.4;
         this.spawnAttackFx(p);
@@ -226,6 +260,199 @@ class PlayMode {
                 }
             });
         });
+    }
+
+    // Fire a neon shot from the player's hand toward the aim point (or the
+    // nearest enemy, for gamepad auto-aim). The upper body turns to aim.
+    rangedAttack(aimPoint) {
+        if (!this.player || this.rangedCooldown > 0) return;
+        this.rangedCooldown = 18;
+        const aim = this.resolveAim(aimPoint, 60) ||
+            this.player.position.add(this.playerForward().scale(6));
+        this.aimAt(aim);
+        const from = this.handPosition();
+        const to = aim.add(new BABYLON.Vector3(0, 1.0, 0));
+        const dir = to.subtract(from);
+        const len = dir.length();
+        if (len < 0.001) return;
+        dir.scaleInPlace(1 / len);
+        const proj = BABYLON.MeshBuilder.CreateBox('playerProj', { size: 0.24 }, this.app.scene);
+        proj.position = from.clone();
+        const mat = new BABYLON.StandardMaterial('playerProjMat', this.app.scene);
+        const c = new BABYLON.Color3(0.4, 0.95, 1.0);
+        mat.emissiveColor = c;
+        mat.diffuseColor = c.scale(0.3);
+        mat.disableLighting = true;
+        proj.material = mat;
+        proj.isPickable = false;
+        proj.checkCollisions = false;
+        this.playerProjectiles.push({ mesh: proj, vel: dir.scale(0.7), life: 120 });
+        this.spawnAttackFx(from);
+    }
+
+    updatePlayerProjectiles() {
+        if (this.playerProjectiles.length === 0) return;
+        const hitRange = 1.5, dmg = 1;
+        for (let i = this.playerProjectiles.length - 1; i >= 0; i--) {
+            const pr = this.playerProjectiles[i];
+            pr.mesh.position.addInPlace(pr.vel);
+            pr.mesh.rotation.y += 0.3; pr.mesh.rotation.x += 0.2;
+            pr.life--;
+            let hit = false;
+            // TRON enemies.
+            if (this.enemyManager.damageNear(pr.mesh.position, hitRange, dmg) > 0) hit = true;
+            // Player-placed en_blob enemies.
+            if (!hit) {
+                for (const wo of this.app.BuildableObjectList) {
+                    for (const inst of wo.instances) {
+                        if (inst && inst.isEnemy && !inst.defeated) {
+                            const ip = inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position;
+                            if (BABYLON.Vector3.Distance(ip, pr.mesh.position) <= hitRange) {
+                                inst.hp -= dmg;
+                                if (inst.hp <= 0) this.defeatEnemy(inst, wo);
+                                hit = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (hit) break;
+                }
+            }
+            if (hit || pr.life <= 0) {
+                pr.mesh.dispose();
+                this.playerProjectiles.splice(i, 1);
+            }
+        }
+    }
+
+    // ---- aiming -------------------------------------------------------------
+
+    // Resolve an aim point: an explicit world point, else the nearest enemy
+    // within `maxDist`, else null.
+    resolveAim(aimPoint, maxDist) {
+        if (aimPoint) return aimPoint.clone ? aimPoint.clone() : aimPoint;
+        const near = this.nearestEnemyPos(maxDist || 60);
+        return near ? near : null;
+    }
+
+    nearestEnemyPos(maxDist) {
+        const p = this.player.position;
+        let best = null, bestD = maxDist;
+        this.enemyManager.enemies.forEach((e) => {
+            const d = BABYLON.Vector3.Distance(e.mesh.position, p);
+            if (d < bestD) { bestD = d; best = e.mesh.position; }
+        });
+        this.app.BuildableObjectList.forEach((wo) => {
+            wo.instances.forEach((inst) => {
+                if (inst && inst.isEnemy && !inst.defeated) {
+                    const ip = inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position;
+                    const d = BABYLON.Vector3.Distance(ip, p);
+                    if (d < bestD) { bestD = d; best = ip; }
+                }
+            });
+        });
+        return best ? best.clone() : null;
+    }
+
+    playerForward() {
+        const m = this.player.getWorldMatrix();
+        const f = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, 1), m);
+        f.y = 0;
+        return f.lengthSquared() > 0.0001 ? f.normalize() : new BABYLON.Vector3(0, 0, 1);
+    }
+
+    // World position the shot leaves from. We use a chest-height point just in
+    // front of the player: reliable in world space and close enough to the hand
+    // (the right-hand bone's world position proved unreliable across rigs).
+    handPosition() {
+        if (!this.player) return BABYLON.Vector3.Zero();
+        return this.player.position.add(new BABYLON.Vector3(0, 1.3, 0)).add(this.playerForward().scale(0.5));
+    }
+
+    // Turn to face the aim point and start the upper-body aim pose.
+    aimAt(target) {
+        if (!this.player) return;
+        const dir = target.subtract(this.player.position);
+        dir.y = 0;
+        if (dir.lengthSquared() < 0.0001) return;
+        this.aimYaw = Math.atan2(dir.x, dir.z);
+        this.aimTimer = 36;
+    }
+
+    cacheAimBones() {
+        this.boneSpine = null; this.boneHand = null; this.boneArm = null;
+        this._spineRest = null;
+        const sk = this.player && this.player.skeleton;
+        if (!sk) return;
+        const find = (n) => sk.bones.find((b) => b.name === n);
+        this.boneSpine = find('mixamorig:Spine1') || find('mixamorig:Spine2') || find('mixamorig:Spine');
+        this.boneArm = find('mixamorig:RightArm');
+        this.boneHand = find('mixamorig:RightHand');
+        if (this.boneSpine) {
+            try { this._spineRest = this.boneSpine.getRotationQuaternion(BABYLON.Space.LOCAL, this.player).clone(); }
+            catch (_) { this._spineRest = null; }
+        }
+    }
+
+    // Ease the upper-body twist toward the aim yaw while aiming, then relax. Best
+    // effort: if the rig doesn't cooperate we just skip the skeletal twist.
+    updateAimPose() {
+        if (!this.player) return;
+        if (this.aimTimer > 0) this.aimTimer--;
+        if (!this.boneSpine || !this._spineRest) return;
+        try {
+            const facing = Math.atan2(this.playerForward().x, this.playerForward().z);
+            let delta = this.aimYaw - facing;
+            while (delta > Math.PI) delta -= Math.PI * 2;
+            while (delta < -Math.PI) delta += Math.PI * 2;
+            delta = Math.max(-1.4, Math.min(1.4, delta));            // clamp ~80deg
+            const amt = (this.aimTimer > 0) ? delta : 0;              // relax to rest
+            const twist = BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Y, amt);
+            const q = this._spineRest.multiply(twist);
+            this.boneSpine.setRotationQuaternion(q, BABYLON.Space.LOCAL, this.player);
+        } catch (_) { /* rig doesn't support it; ignore */ }
+    }
+
+    // ---- mouse input --------------------------------------------------------
+
+    bindMouseCombat() {
+        const scene = this.app.scene;
+        const canvas = this.app.engine.getRenderingCanvas();
+        // Suppress the browser context menu so right-click can be a game action.
+        if (canvas) { this._prevContextMenu = canvas.oncontextmenu; canvas.oncontextmenu = (e) => e.preventDefault(); }
+        this._downInfo = null;
+        this._pointerObs = scene.onPointerObservable.add((pi) => {
+            const ev = pi.event;
+            if (pi.type === BABYLON.PointerEventTypes.POINTERDOWN) {
+                this._downInfo = { x: ev.clientX, y: ev.clientY, button: ev.button };
+            } else if (pi.type === BABYLON.PointerEventTypes.POINTERUP && this._downInfo) {
+                const moved = Math.hypot(ev.clientX - this._downInfo.x, ev.clientY - this._downInfo.y);
+                const button = this._downInfo.button;
+                this._downInfo = null;
+                // A drag rotates the camera; only a click (little movement) attacks.
+                if (moved <= 6) this.clickAttack(button, this.aimPointFromPointer(pi));
+            }
+        });
+    }
+
+    unbindMouseCombat() {
+        if (this._pointerObs) { this.app.scene.onPointerObservable.remove(this._pointerObs); this._pointerObs = null; }
+        const canvas = this.app.engine.getRenderingCanvas();
+        if (canvas && this._prevContextMenu !== undefined) { canvas.oncontextmenu = this._prevContextMenu; this._prevContextMenu = undefined; }
+    }
+
+    // World point under the cursor: the picked mesh hit, else where the ray
+    // crosses the player's ground plane, else null (auto-aim takes over).
+    aimPointFromPointer(pi) {
+        if (pi && pi.pickInfo && pi.pickInfo.hit && pi.pickInfo.pickedPoint) return pi.pickInfo.pickedPoint.clone();
+        const scene = this.app.scene;
+        const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity(), this.app.camera);
+        const planeY = this.player ? this.player.position.y : 0;
+        if (Math.abs(ray.direction.y) > 1e-4) {
+            const t = (planeY - ray.origin.y) / ray.direction.y;
+            if (t > 0) return ray.origin.add(ray.direction.scale(t));
+        }
+        return null;
     }
 
     // Called by enemies when they land a hit on the player.

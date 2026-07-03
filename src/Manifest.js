@@ -9,8 +9,11 @@ class Manifest {
         app.createWorldObject('al_wallCorner',  Object.assign({}, Assets.meshes.wallCorner_glb,     { colliderMeshes: ['wallCorner'] }));
         app.createWorldObject('al_rocks1',      Object.assign({}, Assets.meshes.rocks1_glb,         { colliderMeshes: ['rocks1'] }));
         const assetsBaseUrl     = './assets/';
-        app.createWorldObject('t_floor_1x1',    { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_floor_1x1.gltf' });
-        app.createWorldObject('t_cube_1x1',     { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf' });
+        // Terrain snaps its TOP to the cursor (anchor:'below') so tiles of
+        // different thicknesses (a thin floor panel, a full cube) share a seamless
+        // top walking surface at the cursor height.
+        app.createWorldObject('t_floor_1x1',    { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_floor_1x1.gltf', anchor: 'below' });
+        app.createWorldObject('t_cube_1x1',     { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf', anchor: 'below' });
 
         // Lightweight primitive terrain tile used to build the default sandbox
         // grid. Unlike the textured gltf terrain, a flat-shaded primitive renders
@@ -18,6 +21,7 @@ class Manifest {
         // crawls under headless SwiftShader), so this is what the rolling terrain
         // is made of. Players can also place it as a plain building block.
         app.createWorldObject('t_tile', {
+            anchor: 'below',
             prims: [
                      {ty: 'box',       s: [2, 1, 2], p: [0,0,0], col: [0.30, 0.52, 0.34]},
                   ]

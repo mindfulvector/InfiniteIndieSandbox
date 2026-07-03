@@ -28,6 +28,15 @@ class WorldObject {
         this.lastInstanceId = 0;
         this.instances = [];
         this.tag = 'world.' + this.name.replaceAll(' ', '_');
+
+        // How the object snaps to the build cursor when placed:
+        //   'above' (default): the object's BASE sits on the cursor, so it rests
+        //           on top of the surface (a tree, a wall, a prop).
+        //   'below': the object's TOP sits at the cursor, so its top (walking)
+        //           surface lines up with the cursor height and the body extends
+        //           below -- terrain tiles of different thicknesses then share a
+        //           seamless top surface.
+        this.anchor = 'above';
     }
 
     // Create an instance or clone of this world object's meshes.
