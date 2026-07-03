@@ -16,6 +16,10 @@ class BuildMode {
         this.cursor = BABYLON.MeshBuilder.CreateBox('meshCursor', { size:0.25 });
         this.cursorMatIndex = 0;
 
+        // Category the object bar is browsing. Follows the selection, but can
+        // point at a category with no owned objects (browse + buy from tiles).
+        this.browseCat = null;
+
         this.cursorMats = [];
         for(let i = 0; i < 100; i++) {
             let g = 1.0 / 100 * i;
@@ -161,9 +165,9 @@ class BuildMode {
         const list = this.app.BuildableObjectList;
         const n = list.length;
         if (n === 0) return this.selectedObjectIndex;
-        const cur = (this.selectedObjectIndex >= 0 && this.selectedObjectIndex < n)
-            ? this.selectedObjectIndex : 0;
-        const cat = this.app.objectCategory(list[cur].name);
+        const cat = (this.selectedObjectIndex >= 0 && this.selectedObjectIndex < n)
+            ? this.app.objectCategory(list[this.selectedObjectIndex].name)
+            : (this.browseCat || this.app.objectCategory(list[0].name));
         let i = (this.selectedObjectIndex < 0) ? (dir > 0 ? -1 : 0) : this.selectedObjectIndex;
         for (let k = 0; k < n; k++) {
             i = (i + dir + n) % n;
@@ -173,31 +177,28 @@ class BuildMode {
         return this.selectedObjectIndex;
     }
 
-    // Jump to the first owned object in the previous/next category that has one.
-    categoryJumpIndex(dir) {
+    // The previous/next category in first-appearance order -- ALL categories,
+    // including ones whose objects are all still locked (the bar shows them
+    // with price tags so they can be discovered and bought). Returns
+    // { cat, ownedIdx } where ownedIdx is the first owned object in that
+    // category, or -1 if none is owned yet.
+    categoryJump(dir) {
         const list = this.app.BuildableObjectList;
-        if (list.length === 0) return this.selectedObjectIndex;
-
-        // Ordered list of unique categories, by first appearance.
+        if (list.length === 0) return null;
         const cats = [];
         list.forEach((wo) => {
             const c = this.app.objectCategory(wo.name);
             if (cats.indexOf(c) === -1) cats.push(c);
         });
-        if (cats.length === 0) return this.selectedObjectIndex;
-
-        const curIdx = (this.selectedObjectIndex >= 0 && this.selectedObjectIndex < list.length)
-            ? this.selectedObjectIndex : 0;
-        let ci = cats.indexOf(this.app.objectCategory(list[curIdx].name));
-
-        for (let k = 0; k < cats.length; k++) {
-            ci = (ci + dir + cats.length) % cats.length;
-            const targetCat = cats[ci];
-            const idx = list.findIndex((wo) =>
-                this.app.objectCategory(wo.name) === targetCat && this.app.isPurchased(wo.name));
-            if (idx >= 0) return idx;
-        }
-        return this.selectedObjectIndex;
+        const curCat = (this.selectedObjectIndex >= 0 && this.selectedObjectIndex < list.length)
+            ? this.app.objectCategory(list[this.selectedObjectIndex].name)
+            : (this.browseCat || cats[0]);
+        let ci = Math.max(0, cats.indexOf(curCat));
+        ci = (ci + dir + cats.length) % cats.length;
+        const cat = cats[ci];
+        const ownedIdx = list.findIndex((wo) =>
+            this.app.objectCategory(wo.name) === cat && this.app.isPurchased(wo.name));
+        return { cat: cat, ownedIdx: ownedIdx };
     }
 
     disposeCurrentInstance() {
@@ -295,14 +296,25 @@ class BuildMode {
             objectChanged = true;
         }
 
-        // Up/Down arrows jump between object categories.
-        if (this.app.keyPressed('ArrowUp')) {
-            this.selectedObjectIndex = this.categoryJumpIndex(-1);
-            objectChanged = true;
-        }
-        if (this.app.keyPressed('ArrowDown')) {
-            this.selectedObjectIndex = this.categoryJumpIndex(1);
-            objectChanged = true;
+        // Up/Down arrows jump between object categories (the bar follows). A
+        // category whose objects are all locked is still browsable: the bar
+        // shows its price tags and the placement cursor stays active.
+        let catJumpDir = 0;
+        if (this.app.keyPressed('ArrowUp')) catJumpDir = -1;
+        if (this.app.keyPressed('ArrowDown')) catJumpDir = 1;
+        if (catJumpDir !== 0) {
+            const jump = this.categoryJump(catJumpDir);
+            if (jump) {
+                this.browseCat = jump.cat;
+                if (jump.ownedIdx >= 0) {
+                    this.selectedObjectIndex = jump.ownedIdx;
+                } else {
+                    cursorMode = true;
+                    this.selectedObjectIndex = -1;
+                    this.app.toasty('All ' + jump.cat + ' items are locked — click a tile to buy.');
+                }
+                objectChanged = true;
+            }
         }
 
         if (this.app.keyPressed('0')) {

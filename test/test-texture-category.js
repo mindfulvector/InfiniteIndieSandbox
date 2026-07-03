@@ -113,6 +113,34 @@ async function main() {
         check('Left/Right cycling never leaves the current category',
             cycle.cats.length === 1 && cycle.cats[0] === cycle.cat, cycle);
 
+        // --- 5. Locked-only categories are still browsable (discover + buy) ---
+        // Fresh economy: nothing premium owned, so CYBERPUNK/DECOR are all-locked.
+        await h.evaluate(() => {
+            window.app.pixels = 0;
+            window.app.purchasedSet = new Set();
+            window.app.saveEconomy();
+        });
+        const seen = new Set();
+        let lockedBrowse = null;
+        for (let i = 0; i < 10 && !lockedBrowse; i++) {
+            await h.tapUntil('ArrowDown', (prev) => window.app._objBrowserCat !== prev,
+                await h.evaluate(() => window.app._objBrowserCat));
+            await h.waitFrames(4);
+            const s = await h.evaluate(() => ({
+                cat: window.app._objBrowserCat,
+                tiles: window.app._objTiles.map((t) => ({ name: t.wo.name, locked: t.locked })),
+                sel: window.app.activeMode.selectedObjectIndex,
+            }));
+            seen.add(s.cat);
+            if (s.tiles.length > 0 && s.tiles.every((t) => t.locked)) lockedBrowse = s;
+        }
+        console.log('\n[5] categories seen:', Array.from(seen), 'locked-only:', lockedBrowse && lockedBrowse.cat);
+        check('Up/Down reaches categories whose objects are all locked (discover + buy path)',
+            !!lockedBrowse, { seen: Array.from(seen) });
+        check('browsing a locked-only category shows priced tiles with no selection',
+            lockedBrowse && lockedBrowse.sel === -1 && lockedBrowse.tiles.every((t) => t.locked), lockedBrowse);
+        await h.screenshot('locked-category-browse');
+
         console.log('\n========================================');
         console.log(failures === 0
             ? 'RESULT: PASS — non-logic objects are textured, grass terrain renders, and the bar filters by category.'

@@ -16,10 +16,11 @@ class Manifest {
         app.createWorldObject('t_cube_1x1',     { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf', anchor: 'below' });
 
         // Lightweight primitive terrain tile used to build the default sandbox
-        // grid. Unlike the textured gltf terrain, a flat-shaded primitive renders
-        // cheaply even in software (a full 10x10 grid of the textured gltf tiles
-        // crawls under headless SwiftShader), so this is what the rolling terrain
-        // is made of. Players can also place it as a plain building block.
+        // grid. Unlike the gltf terrain (whose multi-mesh CLONES crawl under
+        // headless SwiftShader in quantity), this is a single prim: all placed
+        // tiles are instances sharing one material and one grass procedural
+        // texture rendered once, so a full 10x10 grid stays cheap. Players can
+        // also place it as a plain grass building block.
         app.createWorldObject('t_tile', {
             anchor: 'below',
             prims: [

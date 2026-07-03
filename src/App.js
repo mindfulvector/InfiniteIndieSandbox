@@ -624,11 +624,17 @@ class App {
     }
 
     // The category the bar should be showing: the selected object's category,
-    // or whatever it already shows (falling back to the first object's).
+    // else the mode's browse category (up/down can browse a category whose
+    // objects are all locked), else whatever the bar already shows.
     desiredBrowserCategory(bm) {
         const list = this.BuildableObjectList;
         const sel = bm ? bm.selectedObjectIndex : -1;
-        if(sel >= 0 && sel < list.length && list[sel]) return this.objectCategory(list[sel].name);
+        if(sel >= 0 && sel < list.length && list[sel]) {
+            const c = this.objectCategory(list[sel].name);
+            if(bm) bm.browseCat = c;   // keep browse state in step with selection
+            return c;
+        }
+        if(bm && bm.browseCat) return bm.browseCat;
         if(this._objBrowserCat) return this._objBrowserCat;
         return list.length ? this.objectCategory(list[0].name) : null;
     }
@@ -790,6 +796,11 @@ class App {
         if(wo) {
             this.hud.objName.text = this.prettyName(wo.name);
             this.hud.objCat.text = this.objectCategory(wo.name) + '  ·  ' +
+                this._objTiles.length + '  ·  ↑/↓ to switch';
+        } else {
+            // No selection (browsing / cursor mode): don't leave a stale caption.
+            this.hud.objName.text = '';
+            this.hud.objCat.text = (this._objBrowserCat || '') + '  ·  ' +
                 this._objTiles.length + '  ·  ↑/↓ to switch';
         }
     }
