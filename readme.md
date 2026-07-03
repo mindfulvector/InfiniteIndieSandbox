@@ -52,8 +52,10 @@ To switch between modes, press the `Esc` key then to enter a new mode:
 
 ### Build Mode
 
-* Press the `Left`/`Right` arrow keys to cycle through the buildable objects
-* Press the `Up`/`Down` arrow keys to switch object categories
+* Press the `Up`/`Down` arrow keys to switch object categories — the bottom
+  bar shows only the selected category
+* Press the `Left`/`Right` arrow keys to cycle through the objects in that
+  category
 * Press `W`,`A`,`S`,`D` to move the object around the world
 * Press `R` or `V` to raise or lower the object
 * Press `Z` or `C` to rotate the object

@@ -36,27 +36,35 @@ async function main() {
             window.app.activeMode.constructor.name === 'BuildMode' && window.app.menu.state === 0);
         await h.waitFrames(5);
 
-        // --- browser is present and populated ---
-        const info = await h.evaluate(() => ({
-            visible: window.app.hud.objBar.isVisible,
-            tiles: window.app._objTiles ? window.app._objTiles.length : 0,
-            objects: window.app.BuildableObjectList.length,
-        }));
+        // --- browser is present and shows the current category ---
+        const info = await h.evaluate(() => {
+            const app = window.app;
+            const cat = app._objBrowserCat;
+            const inCat = app.BuildableObjectList.filter((w) => app.objectCategory(w.name) === cat).length;
+            return {
+                visible: app.hud.objBar.isVisible,
+                tiles: app._objTiles ? app._objTiles.length : 0,
+                cat, inCat,
+                objects: app.BuildableObjectList.length,
+            };
+        });
         console.log('\n[1] Object browser', info);
         check('object browser is visible in build mode', info.visible === true, info);
-        check('one tile per buildable object', info.tiles === info.objects && info.tiles > 0, info);
+        check('the bar shows exactly the current category\'s objects',
+            info.tiles === info.inCat && info.tiles > 0 && info.tiles < info.objects, info);
 
-        // --- every object gets a runtime thumbnail ---
+        // --- every displayed object gets a runtime thumbnail ---
         await h.waitFor(() => window.app._baking === false &&
-            window.app.BuildableObjectList.every((wo) => typeof wo.thumbUrl === 'string'),
+            window.app._objTiles.every((t) => typeof t.wo.thumbUrl === 'string'),
             null, 30000).catch(() => {});
-        const thumbs = await h.evaluate(() => window.app.BuildableObjectList.map((wo) => ({
-            name: wo.name,
-            ok: typeof wo.thumbUrl === 'string' && wo.thumbUrl.startsWith('data:image/png'),
+        const thumbs = await h.evaluate(() => window.app._objTiles.map((t) => ({
+            name: t.wo.name,
+            ok: typeof t.wo.thumbUrl === 'string' && t.wo.thumbUrl.startsWith('data:image/png'),
         })));
         console.log('\n[2] Thumbnails', thumbs);
         const baked = thumbs.filter((t) => t.ok).length;
-        check('a PNG thumbnail was baked for every object', baked === thumbs.length, { baked, total: thumbs.length });
+        check('a PNG thumbnail was baked for every displayed object', baked === thumbs.length && baked > 0,
+            { baked, total: thumbs.length });
         await h.screenshot('object-browser');
 
         // --- clicking a tile selects that object and spawns its preview ---
@@ -81,7 +89,7 @@ async function main() {
             (await h.evaluate(() => window.app.activeMode.currentWorldObject.name)) === TARGET);
         check('a placement preview of the selected object was spawned', after === before + 1, { before, after });
         check('caption + category updated to the selection',
-            caption.name === 'Cube 1x1' && caption.cat === 'TERRAIN', caption);
+            caption.name === 'Cube 1x1' && caption.cat.indexOf('TERRAIN') === 0, caption);
         check('the clicked tile is highlighted', caption.sel === objIdx, caption);
         await h.screenshot('object-browser-tile-selected');
 

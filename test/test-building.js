@@ -97,15 +97,14 @@ async function main() {
         check(`${BUILD_OBJECT} has no instances yet`, before === 0, { before });
 
         // --- 4. Select the build object --------------------------------------
-        // Point the selector one slot *before* our target, then press E so the
-        // real BuildMode.update() cycles onto it and spawns a floating preview.
+        // Left/Right now cycles WITHIN a category, so reach the door the way a
+        // player does: ArrowDown jumps from TERRAIN to the next category
+        // (PROPS), whose first owned object is the door -- BuildMode.update()
+        // selects it and spawns a floating preview.
         await h.evaluate((name) => {
-            const list = window.app.BuildableObjectList;
-            const idx = list.findIndex((wo) => wo.name === name);
-            window.__targetIdx = idx;
-            window.app.activeMode.selectedObjectIndex = (idx - 1 + list.length) % list.length;
+            window.__targetIdx = window.app.BuildableObjectList.findIndex((wo) => wo.name === name);
         }, BUILD_OBJECT);
-        await h.tapUntil('ArrowRight', () => window.app.activeMode.currentInstance &&
+        await h.tapUntil('ArrowDown', () => window.app.activeMode.currentInstance &&
             window.app.activeMode.selectedObjectIndex === window.__targetIdx);
         await h.waitFrames(5);
         s = await h.getState();

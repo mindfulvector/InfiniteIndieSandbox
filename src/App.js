@@ -623,18 +623,34 @@ class App {
         this.hud.objStack = stack;
     }
 
-    // (Re)build the tile row from the current buildable object list.
-    populateObjectBrowser() {
+    // The category the bar should be showing: the selected object's category,
+    // or whatever it already shows (falling back to the first object's).
+    desiredBrowserCategory(bm) {
+        const list = this.BuildableObjectList;
+        const sel = bm ? bm.selectedObjectIndex : -1;
+        if(sel >= 0 && sel < list.length && list[sel]) return this.objectCategory(list[sel].name);
+        if(this._objBrowserCat) return this._objBrowserCat;
+        return list.length ? this.objectCategory(list[0].name) : null;
+    }
+
+    // (Re)build the tile row, showing ONLY the given category (up/down in build
+    // mode moves between categories, and the bar follows).
+    populateObjectBrowser(category) {
         if(!this.hud || !this.hud.objStack) return;
+        if(!category) category = this._objBrowserCat ||
+            (this.BuildableObjectList.length ? this.objectCategory(this.BuildableObjectList[0].name) : null);
         const stack = this.hud.objStack;
         stack.children.slice().forEach((c) => { stack.removeControl(c); c.dispose(); });
         this._objTiles = [];
         this._bakeQueue = [];
 
+        let shown = 0;
         this.BuildableObjectList.forEach((wo, index) => {
+            if(category && this.objectCategory(wo.name) !== category) return;
             const tile = this.makeObjectTile(wo, index);
             stack.addControl(tile.tile);
             this._objTiles.push(tile);
+            shown += 1;
             // Use a cached thumbnail if we already baked one this session.
             if(wo.thumbUrl) {
                 tile.image.source = wo.thumbUrl;
@@ -644,8 +660,10 @@ class App {
                 this._bakeQueue.push(tile);
             }
         });
+        this._objBrowserCat = category;
         this._objBrowserCount = this.BuildableObjectList.length;
         this._objBrowserSel = -2;     // force a highlight refresh
+        if(this.hud.objCat) this.hud.objCat.text = (category || '') + '  ·  ' + shown + '  ·  ↑/↓ to switch';
         this._bakeThumbnails();
     }
 
@@ -771,7 +789,8 @@ class App {
         const wo = this.BuildableObjectList[index];
         if(wo) {
             this.hud.objName.text = this.prettyName(wo.name);
-            this.hud.objCat.text = this.objectCategory(wo.name);
+            this.hud.objCat.text = this.objectCategory(wo.name) + '  ·  ' +
+                this._objTiles.length + '  ·  ↑/↓ to switch';
         }
     }
 
@@ -978,8 +997,13 @@ class App {
         if(this.hud.objBar) {
             this.hud.objBar.isVisible = buildHud;
             if(buildHud) {
-                if(this._objBrowserCount !== this.BuildableObjectList.length) {
-                    this.populateObjectBrowser();
+                // Rebuild the bar when objects finish loading OR the selection
+                // moved to another category (up/down) -- the bar shows only the
+                // current category.
+                const wantCat = this.desiredBrowserCategory(bm);
+                if(this._objBrowserCount !== this.BuildableObjectList.length ||
+                   this._objBrowserCat !== wantCat) {
+                    this.populateObjectBrowser(wantCat);
                 }
                 const sel = bm ? bm.selectedObjectIndex : -1;
                 if(sel !== this._objBrowserSel) {
@@ -1777,25 +1801,21 @@ class App {
                         prim.material = colMat;
                     }
 
-                    // apply procedural textures if required
+                    // Apply a procedural texture if required (tex: {id, ...}).
+                    // Composes with col: the diffuse colour tints the texture
+                    // (with a much subtler emissive so the pattern stays visible).
                     if(typeof p.tex != 'undefined') {
-                        switch(p.tex.id) {
-                        case 'brick':
-                            var mat = new BABYLON.StandardMaterial('brickMat['+prim.uniqueId+']', app.scene);
-                            var tex = new BABYLON.BrickProceduralTexture('brickTex['+prim.uniqueId+']', 512, app.scene);
-                            tex.numberOfBricksHeight = p.tex.h;
-                            tex.numberOfBricksWidth = p.tex.w;
+                        const tex = app.makeProceduralTexture(p.tex, prim.uniqueId);
+                        if(tex) {
+                            var mat = (prim.material instanceof BABYLON.StandardMaterial)
+                                ? prim.material
+                                : new BABYLON.StandardMaterial(p.tex.id + 'Mat[' + prim.uniqueId + ']', app.scene);
                             mat.diffuseTexture = tex;
+                            if(typeof p.col != 'undefined') {
+                                mat.emissiveColor = new BABYLON.Color3(p.col[0]*0.12, p.col[1]*0.12, p.col[2]*0.12);
+                            }
                             prim.material = mat;
-                            break;
-                        case 'wood':
-                            var mat = new BABYLON.StandardMaterial('woodMat['+prim.uniqueId+']', app.scene);
-                            var tex = new BABYLON.WoodProceduralTexture(name + "text", 1024, app.scene, null, true);
-                            tex.ampScale = p.tex.s;
-                            mat.diffuseTexture = tex;
-                            prim.material = mat;
-                            break;
-                        default:
+                        } else {
                             console.error('error in createWorldObject: tex definition has invalid id: `'+p.tex.id+'`', assetProps);
                         }
                     }
@@ -1820,6 +1840,55 @@ class App {
         } else {
             console.error('error in createWorldObject: cannot understand the assetProps:', assetProps);
         }
+    }
+
+    // Build a procedural texture from a prim tex spec ({id, ...tuning}).
+    // All are rendered ONCE (refreshRate 0) so they cost nothing per frame --
+    // important under software rendering. Returns null for unknown ids.
+    makeProceduralTexture(spec, uid) {
+        let tex = null;
+        try {
+            switch(spec.id) {
+            case 'brick':
+                tex = new BABYLON.BrickProceduralTexture('brickTex[' + uid + ']', 512, this.scene);
+                tex.numberOfBricksHeight = spec.h || 6;
+                tex.numberOfBricksWidth = spec.w || 10;
+                break;
+            case 'wood':
+                tex = new BABYLON.WoodProceduralTexture('woodTex[' + uid + ']', 1024, this.scene, null, true);
+                tex.ampScale = spec.s || 100;
+                break;
+            case 'grass':
+                tex = new BABYLON.GrassProceduralTexture('grassTex[' + uid + ']', 512, this.scene);
+                break;
+            case 'marble':
+                tex = new BABYLON.MarbleProceduralTexture('marbleTex[' + uid + ']', 512, this.scene);
+                tex.numberOfTilesHeight = spec.h || 1;
+                tex.numberOfTilesWidth = spec.w || 1;
+                break;
+            case 'noise':
+                tex = new BABYLON.PerlinNoiseProceduralTexture('noiseTex[' + uid + ']', 256, this.scene);
+                break;
+            case 'starfield':
+                tex = new BABYLON.StarfieldProceduralTexture('starTex[' + uid + ']', 512, this.scene);
+                break;
+            case 'cloud':
+                tex = new BABYLON.CloudProceduralTexture('cloudTex[' + uid + ']', 512, this.scene);
+                break;
+            case 'road':
+                tex = new BABYLON.RoadProceduralTexture('roadTex[' + uid + ']', 512, this.scene);
+                break;
+            }
+        } catch (e) {
+            console.error('makeProceduralTexture failed for `' + spec.id + '`:', e);
+            return null;
+        }
+        if(tex) {
+            tex.refreshRate = 0;               // render once, then it's a plain texture
+            if(spec.u) tex.uScale = spec.u;    // optional tiling
+            if(spec.v) tex.vScale = spec.v;
+        }
+        return tex;
     }
 
     // Create a material with diffuse color `r`,`g`,`b` and with `a` alpha transparency

@@ -23,7 +23,7 @@ class Manifest {
         app.createWorldObject('t_tile', {
             anchor: 'below',
             prims: [
-                     {ty: 'box',       s: [2, 1, 2], p: [0,0,0], col: [0.30, 0.52, 0.34]},
+                     {ty: 'box',       s: [2, 1, 2], p: [0,0,0], tex: {id: 'grass'}},
                   ]
         });
         
@@ -39,11 +39,11 @@ class Manifest {
                   ]
         }, 'TriggerScript');
 
-        // A basic enemy: a red blob that can be attacked in play mode and, when
-        // defeated, bursts into collectable pixels.
+        // A basic enemy: a red-marble blob that can be attacked in play mode
+        // and, when defeated, bursts into collectable pixels.
         app.createWorldObject('en_blob', {
             prims: [
-                     {ty: 'sphere',    s: [1.2], p: [0,0,0], col: [0.90, 0.16, 0.22]},
+                     {ty: 'sphere',    s: [1.2], p: [0,0,0], col: [0.90, 0.16, 0.22], tex: {id: 'marble', w: 2, h: 2}},
                   ]
         }, 'EnemyScript');
 
@@ -77,21 +77,21 @@ class Manifest {
         }, 'ScoreboardScript');
 
         // Pickups: collect by touching in play mode. One script drives all
-        // three; the col tint tells them apart (red = health, gold = pixels,
-        // bright yellow sphere = collectible star).
+        // three; texture + tint tell them apart (red marble = health, gold
+        // grain = pixels, cosmic starfield sphere = collectible star).
         app.createWorldObject('pk_health', {
             prims: [
-                     {ty: 'box',       s: [0.55, 0.55, 0.55], p: [0,0,0], col: [0.90, 0.20, 0.25]},
+                     {ty: 'box',       s: [0.55, 0.55, 0.55], p: [0,0,0], col: [0.95, 0.25, 0.30], tex: {id: 'marble', w: 1, h: 1}},
                   ]
         }, 'PickupScript');
         app.createWorldObject('pk_pixels', {
             prims: [
-                     {ty: 'box',       s: [0.55, 0.55, 0.55], p: [0,0,0], col: [1.00, 0.75, 0.15]},
+                     {ty: 'box',       s: [0.55, 0.55, 0.55], p: [0,0,0], col: [1.00, 0.78, 0.20], tex: {id: 'wood', s: 60}},
                   ]
         }, 'PickupScript');
         app.createWorldObject('pk_star', {
             prims: [
-                     {ty: 'sphere',    s: [0.6], p: [0,0,0], col: [1.00, 0.90, 0.25]},
+                     {ty: 'sphere',    s: [0.6], p: [0,0,0], tex: {id: 'starfield'}},
                   ]
         }, 'PickupScript');
 

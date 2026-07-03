@@ -154,15 +154,21 @@ class BuildMode {
     }
 
     // Return the index of the next owned object in scan direction dir (+1/-1),
-    // skipping locked (unpurchased) ones. Stays put if none are owned.
+    // staying WITHIN the current category (the bottom bar shows one category at
+    // a time; up/down switches category) and skipping locked (unpurchased)
+    // objects. Stays put if nothing else in the category is owned.
     nextBuildableIndex(dir) {
         const list = this.app.BuildableObjectList;
         const n = list.length;
         if (n === 0) return this.selectedObjectIndex;
+        const cur = (this.selectedObjectIndex >= 0 && this.selectedObjectIndex < n)
+            ? this.selectedObjectIndex : 0;
+        const cat = this.app.objectCategory(list[cur].name);
         let i = (this.selectedObjectIndex < 0) ? (dir > 0 ? -1 : 0) : this.selectedObjectIndex;
         for (let k = 0; k < n; k++) {
             i = (i + dir + n) % n;
-            if (this.app.isPurchased(list[i].name)) return i;
+            if (this.app.objectCategory(list[i].name) === cat &&
+                this.app.isPurchased(list[i].name)) return i;
         }
         return this.selectedObjectIndex;
     }
