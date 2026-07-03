@@ -21,6 +21,7 @@ const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
+const crypto = require('crypto');
 
 function requirePlaywright() {
     // Prefer a locally installed playwright, fall back to the global install
@@ -259,6 +260,52 @@ class GameHarness {
         await this.page.screenshot({ path: file });
         this.log('screenshot -> ' + path.relative(ROOT, file));
         return file;
+    }
+
+    // ---- animation / motion sampling ---------------------------------------
+
+    // Sample an in-page value across several animation frames. `fn` is evaluated
+    // in the page every `everyFrames` frames, `samples` times, and the results
+    // are returned in order. Because we step by animation frames (not wall-clock)
+    // this stays reliable under the low, variable software-rendering frame rate.
+    // Use it to prove things are actually moving/animating over time: sample a
+    // position, a bone matrix, an enemy count, etc., then assert it changes.
+    async sampleSeries(fn, { samples = 8, everyFrames = 3, arg } = {}) {
+        const out = [];
+        for (let i = 0; i < samples; i++) {
+            out.push(await this.page.evaluate(fn, arg));
+            if (i < samples - 1) await this.waitFrames(everyFrames);
+        }
+        return out;
+    }
+
+    // Capture a short "filmstrip": `frames` screenshots spaced `everyFrames`
+    // animation frames apart (i.e. sampling a few frames per second). Frames are
+    // saved as NN-<name>-fKK.png for visual review, and each frame's bytes are
+    // hashed so we can tell whether the scene is actually changing between frames
+    // (a frozen game renders byte-identical PNGs). Returns the files, the hashes,
+    // how many consecutive frames changed, and the count of distinct frames.
+    async filmstrip(name, { frames = 6, everyFrames = 4 } = {}) {
+        const files = [];
+        const hashes = [];
+        for (let i = 0; i < frames; i++) {
+            this._shotCount += 1;
+            const shotIdx = String(this._shotCount).padStart(2, '0');
+            const frameIdx = String(i).padStart(2, '0');
+            const file = path.join(this.shotDir, `${shotIdx}-${name}-f${frameIdx}.png`);
+            const buf = await this.page.screenshot({ path: file });
+            files.push(file);
+            hashes.push(crypto.createHash('sha1').update(buf).digest('hex'));
+            if (i < frames - 1) await this.waitFrames(everyFrames);
+        }
+        let framesChanged = 0;
+        for (let i = 1; i < hashes.length; i++) {
+            if (hashes[i] !== hashes[i - 1]) framesChanged += 1;
+        }
+        const distinctFrames = new Set(hashes).size;
+        this.log(`filmstrip '${name}': ${frames} frames, ` +
+            `${framesChanged}/${frames - 1} consecutive changed, ${distinctFrames} distinct`);
+        return { files, hashes, framesChanged, distinctFrames, frames };
     }
 
     // ---- teardown -----------------------------------------------------------

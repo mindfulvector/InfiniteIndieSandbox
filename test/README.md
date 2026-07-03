@@ -28,6 +28,7 @@ with no GPU.
 | `test-spawner.js` | The spawner object auto-opens a parameters popup, edits/persists its params, and spawns the chosen enemy type at its frequency up to the limit. |
 | `test-shop-gating.js` | Premium objects are locked in build mode and unlock via the shop for pixels. |
 | `test-wiring.js` | Trigger volumes fire wired output events into a spawner's inputs (directly and on player entry), wires persist through save/load, and the overhead 3D wiring view lifts the camera, shows the interactive objects, draws 3D wire meshes, and connects objects on click. |
+| `test-animation.js` | Samples the game a few frames per second to prove things move over time (not just look right in one frame): a walker closes on the player and swings its legs, pixel cubes fly to the player, and a captured filmstrip's frames actually differ. Also reports whether the player avatar's skeleton is animating. |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
 
@@ -114,6 +115,34 @@ const state = await h.getState();      // high-level snapshot for assertions
 await h.screenshot('my-step');         // saved under screenshots/NN-my-step.png
 await h.stop();
 ```
+
+### Sampling over time (animation / behaviour)
+
+A single screenshot can't tell a living scene from a frozen one. Two helpers
+sample the game a few frames per second so tests can assert things actually
+move and animate:
+
+```js
+// Sample an in-page value every few animation frames, N times, in order.
+// Prove motion by asserting the series changes (positions, a bone matrix, an
+// enemy count, pixels, ...).
+const series = await h.sampleSeries(() => {
+  const e = window.app.activeMode.enemyManager.enemies[0];
+  return e ? [e.mesh.position.x, e.mesh.position.z] : null;
+}, { samples: 8, everyFrames: 4 });
+
+// Capture a short filmstrip (NN-name-fKK.png) at a few frames per second and
+// report whether the render is actually changing. Each frame's PNG bytes are
+// hashed, so a frozen game shows up as byte-identical (distinctFrames === 1).
+const strip = await h.filmstrip('my-motion', { frames: 6, everyFrames: 4 });
+// strip => { files, hashes, framesChanged, distinctFrames, frames }
+```
+
+Because both step by animation frames (not wall-clock), they stay reliable
+under the low, variable software-rendering frame rate. Note the filmstrip only
+detects change that's actually *on screen*: motion behind the follow-camera (an
+enemy approaching from off-screen) won't move any pixels, so point it at
+on-screen motion (a pixel burst, an enemy in view, a camera move).
 
 ### Input model gotcha
 
