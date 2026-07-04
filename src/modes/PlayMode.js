@@ -129,6 +129,9 @@ class PlayMode {
         this.clearLockOn();
         if (this.blockMesh) { this.blockMesh.dispose(false, true); this.blockMesh = null; }
         if (this.sidekickMesh) { this.sidekickMesh.dispose(false, true); this.sidekickMesh = null; }
+        (this.companions || []).forEach((c) => c.root.dispose(false, false));
+        this.companions = [];
+        this._compSig = null;
         this.disposeSplitScreen();
         this.buddies.forEach((b, i) => {
             if (b) { b.root.dispose(false, false); this.buddies[i] = null; }
@@ -336,6 +339,7 @@ class PlayMode {
             this.cc.setJumpSpeed(this._normalJumpSpeed || 6);
         }
         this.updateBuddies();
+        this.updateCompanions();
         this.updateSidekick();
         this.updatePixelBursts();
         this.updateAttackFx();
@@ -1288,6 +1292,60 @@ class PlayMode {
             if (c) { c.dispose(); this._buddyCams[i] = null; }
         });
         this._buddyCam = null;
+    }
+
+    // ---- hired companions ------------------------------------------------------
+    // Ground-walking followers for the progression slot's hired roster.
+    // Rebuilt whenever the roster SIGNATURE changes (hire, dismiss, slot
+    // switch, world entry) -- the sidekick rebuild-on-name pattern at list
+    // level, which is exactly what makes companions "respawn when the slot
+    // is reloaded and a world is entered".
+    updateCompanions() {
+        const list = this.app.hiredCompanions || [];
+        const sig = list.join(',');
+        if (sig !== this._compSig) {
+            this._compSig = sig;
+            (this.companions || []).forEach((c) => c.root.dispose(false, false));
+            this.companions = list.slice(0, 3).map((id, i) => {
+                const comp = this.app.companionById(id);
+                const root = BABYLON.MeshBuilder.CreateBox('companion_' + id,
+                    { width: 0.5, height: 0.2, depth: 0.5 }, this.app.scene);
+                root.isVisible = false;
+                root.position = (this.player ? this.player.position : new BABYLON.Vector3(0, 1, 0))
+                    .add(new BABYLON.Vector3(-1.5 - i * 0.8, 1.5, 1 + i * 0.6));
+                const parts = this.enemyManager.buildBipedal(root,
+                    new BABYLON.Color3(comp.tint[0], comp.tint[1], comp.tint[2]));
+                const body = new GravityBody(this.app.scene, root, {
+                    ellipsoid: new BABYLON.Vector3(0.4, 1, 0.4),
+                    ellipsoidOffset: new BABYLON.Vector3(0, 1, 0),
+                });
+                return { id, root, parts, body, walkPhase: 0 };
+            });
+        }
+        if (!this.player || !this.companions) return;
+        this.companions.forEach((c, i) => {
+            const to = this.player.position.subtract(c.root.position);
+            to.y = 0;
+            const d = to.length();
+            let vx = 0, vz = 0, moving = false;
+            if (d > 3 + i) {
+                to.scaleInPlace(1 / d);
+                vx = to.x * 4; vz = to.z * 4;
+                c.root.rotation.y = Math.atan2(to.x, to.z);
+                moving = true;
+            }
+            if (c.root.position.y < this.player.position.y - 20 || d > 60) {
+                c.root.position = this.player.position.add(new BABYLON.Vector3(-1.5 - i, 1.5, 1));
+                c.body.vy = 0;
+            }
+            c.body.step(vx, vz);
+            if (moving) c.walkPhase += 0.24; else c.walkPhase *= 0.8;
+            const sw = Math.sin(c.walkPhase) * 0.5;
+            c.parts.leftHip.rotation.x = sw;
+            c.parts.rightHip.rotation.x = -sw;
+            c.parts.leftSh.rotation.x = -sw * 0.8;
+            c.parts.rightSh.rotation.x = sw * 0.8;
+        });
     }
 
     // ---- sidekick follower ---------------------------------------------------

@@ -311,6 +311,13 @@ flash as you pass and fire a *Flown Through* event, so wiring four of them
 into a **Race** controller (start, checkpoints, finish) builds a whole
 aerial time-trial. Rings notice your kart and Sky-Wing too, not just you.
 
+**Companions:** place a **Recruit** (Props) and walk up to them — a
+conversation opens. Talk, ask questions, and if you like them, hire them:
+Fern joins for free, Rusty and Lumen charge pixels. Hired companions walk
+at your side wherever you go, they belong to your **progression slot** (each
+character keeps their own crew), and they come right back whenever you load
+that slot and enter a world. Talk to their recruit spot again to part ways.
+
 **Couch co-op — up to four players:** press `B` — or press any button on a
 **second, third, or fourth gamepad** — and a friendly figure (green, orange,
 then violet) drops in beside you; when the party is full, `B` sends everyone

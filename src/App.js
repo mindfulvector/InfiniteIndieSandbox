@@ -16,6 +16,22 @@ const MENU_DISCS = 14;
 const MENU_SHARE = 15;
 const MENU_GEAR = 16;
 const MENU_SLOT = 17;
+const MENU_DIALOG = 18;
+
+// Hireable companions: recruited through a dialog tree at a pr_recruit,
+// saved with the active PROGRESSION SLOT (iis_companions is a progression
+// key), and respawned as followers whenever that slot enters a world.
+const COMPANIONS = [
+    { id: 'fern', name: 'Fern', cost: 0, tint: [0.4, 0.95, 0.55],
+      greeting: '"Oh! A traveler! I know every trail in these hills."',
+      about: '"I\'m Fern — a wanderer. No fee, just company. Take me along?"' },
+    { id: 'rusty', name: 'Rusty', cost: 40, tint: [0.9, 0.55, 0.25],
+      greeting: '"Hmph. You look like trouble finds you often."',
+      about: '"Rusty. Ex-arena. My time costs 40 pixels, paid once."' },
+    { id: 'lumen', name: 'Lumen', cost: 80, tint: [0.6, 0.7, 1.0],
+      greeting: '"The pixels whisper that you would come."',
+      about: '"I am Lumen. For 80 pixels, my light walks beside yours."' },
+];
 
 const MAX_LEVEL = 20;   // character level cap
 
@@ -1502,6 +1518,30 @@ class App {
                 }
             }
             break;
+        case MENU_DIALOG: {
+            const dlg = app.dialog;
+            if(!dlg) { app.menu.state = MENU_HUD; break; }
+            const choice = dlg.tree.nodes[dlg.node].choices[menuItem - 1];
+            if(!choice) break;
+            if(choice.next) {
+                dlg.node = choice.next;
+                app.menu.renderedState = -1;
+            } else if(choice.action === 'hire') {
+                // A refused hire (broke) keeps the conversation open.
+                if(app.hireCompanion(dlg.tree.comp.id)) {
+                    app.dialog = null;
+                    app.menu.state = MENU_HUD;
+                }
+            } else if(choice.action === 'dismiss') {
+                app.dismissCompanion(dlg.tree.comp.id);
+                app.dialog = null;
+                app.menu.state = MENU_HUD;
+            } else {   // 'bye'
+                app.dialog = null;
+                app.menu.state = MENU_HUD;
+            }
+            break;
+        }
         case MENU_SLOT:
             if(menuItem >= 1 && menuItem <= 3) {
                 app.selectSlot(menuItem);
@@ -1652,6 +1692,29 @@ class App {
                     }
                 });
                 break;
+            case MENU_DIALOG: {
+                this.MenuRect();
+                const dlg = this.dialog;
+                if (!dlg) break;
+                const node = dlg.tree.nodes[dlg.node];
+                this.MenuItem({
+                    type: 'text', name: 'dlgSpeaker',
+                    text: dlg.tree.speaker.toUpperCase(),
+                    fontSize: 22, accent: true,
+                });
+                this.MenuItem({
+                    type: 'text', name: 'dlgText',
+                    text: node.text, fontSize: 15, color: '#e8ecff',
+                });
+                node.choices.forEach((ch, i) => {
+                    this.MenuItem({
+                        type: 'button', name: 'dlgChoice_' + i,
+                        text: (i + 1) + '. ' + ch.text,
+                        handler: () => { app.triggerMenuItem(MENU_DIALOG, i + 1); }
+                    });
+                });
+                break;
+            }
             case MENU_SLOT: {
                 this.MenuRect();
                 this.MenuItem({
@@ -2670,7 +2733,73 @@ class App {
     _isProgressionKey(k) {
         return k === 'iis_pixels' || k === 'iis_figure' || k === 'iis_sidekick_active' ||
             k === 'iis_sk_food' || k === 'iis_discs_equipped' || k === 'iis_hex_active' ||
+            k === 'iis_companions' ||
             /^iis_fig_/.test(k) || /^iis_sk_.+_(level|xp|gear)$/.test(k);
+    }
+
+    // ---- companions (dialog-tree hiring) -------------------------------------
+
+    companionById(id) { return COMPANIONS.find((c) => c.id === id) || null; }
+    companionHired(id) { return (this.hiredCompanions || []).includes(id); }
+
+    hireCompanion(id) {
+        const comp = this.companionById(id);
+        if (!comp || this.companionHired(id)) return false;
+        if (comp.cost > 0 && this.pixels < comp.cost) {
+            this.toasty(comp.name + ' costs ' + comp.cost + ' pixels to hire.');
+            return false;
+        }
+        if (comp.cost > 0) this.pixels -= comp.cost;
+        this.hiredCompanions.push(id);
+        this.saveEconomy();
+        this.toasty(comp.name + ' joins you!');
+        return true;
+    }
+
+    dismissCompanion(id) {
+        const i = (this.hiredCompanions || []).indexOf(id);
+        if (i < 0) return false;
+        this.hiredCompanions.splice(i, 1);
+        this.saveEconomy();
+        this.toasty(this.companionById(id).name + ' waves goodbye.');
+        return true;
+    }
+
+    // The recruit's dialog tree: a hiring pitch, or (once hired) small talk
+    // with a parting option. Nodes are {text, choices:[{text, next|action}]}.
+    recruitTree(comp) {
+        if (this.companionHired(comp.id)) {
+            return { speaker: comp.name, comp, start: 'start', nodes: {
+                start: { text: '"Need something, boss?"', choices: [
+                    { text: 'Just checking in.', action: 'bye' },
+                    { text: 'Time to part ways…', next: 'part' },
+                ] },
+                part: { text: '"…I understand. Call if you need me."', choices: [
+                    { text: 'Dismiss ' + comp.name, action: 'dismiss' },
+                    { text: 'Actually — stay!', action: 'bye' },
+                ] },
+            } };
+        }
+        const hireLabel = comp.cost > 0
+            ? 'Hire ' + comp.name + '  (' + comp.cost + ' px)'
+            : 'Ask ' + comp.name + ' to join  (free)';
+        return { speaker: comp.name, comp, start: 'start', nodes: {
+            start: { text: comp.greeting, choices: [
+                { text: 'Who are you?', next: 'about' },
+                { text: hireLabel, action: 'hire' },
+                { text: 'Maybe later.', action: 'bye' },
+            ] },
+            about: { text: comp.about, choices: [
+                { text: hireLabel, action: 'hire' },
+                { text: 'Maybe later.', action: 'bye' },
+            ] },
+        } };
+    }
+
+    openDialog(tree) {
+        this.dialog = { tree, node: tree.start };
+        this.menu.state = MENU_DIALOG;
+        this.menu.renderedState = -1;
     }
 
     _progressionSnapshot() {
@@ -2792,6 +2921,9 @@ class App {
                 parseInt(window.localStorage.getItem('iis_sk_food'), 10) || 0);
             const gearOwned = JSON.parse(window.localStorage.getItem('iis_gear_owned') || '[]');
             this.ownedGear = new Set(Array.isArray(gearOwned) ? gearOwned : []);
+            const comps = JSON.parse(window.localStorage.getItem('iis_companions') || '[]');
+            this.hiredCompanions = (Array.isArray(comps) ? comps : [])
+                .filter((id) => this.companionById(id));
         } catch (e) {
             this.pixels = 0;
             this.purchasedSet = new Set();
@@ -2808,6 +2940,7 @@ class App {
             this.activeSidekick = null;
             this.sidekickFood = 0;
             this.ownedGear = new Set();
+            this.hiredCompanions = [];
         }
     }
 
@@ -2844,6 +2977,7 @@ class App {
             else window.localStorage.removeItem('iis_sidekick_active');
             window.localStorage.setItem('iis_sk_food', String(this.sidekickFood || 0));
             window.localStorage.setItem('iis_gear_owned', JSON.stringify([...(this.ownedGear || [])]));
+            window.localStorage.setItem('iis_companions', JSON.stringify(this.hiredCompanions || []));
         } catch (e) { /* storage may be unavailable */ }
     }
 

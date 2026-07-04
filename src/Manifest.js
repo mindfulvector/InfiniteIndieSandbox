@@ -186,6 +186,15 @@ class Manifest {
                   ]
         }, 'KartScript');
 
+        // A hireable-companion recruit: walk up to open their dialog tree.
+        app.createWorldObject('pr_recruit', {
+            prims: [
+                     {ty: 'box', s: [0.55, 1.1, 0.4],  p: [0, 0, 0],     col: [0.55, 0.5, 0.75], tex: {id: 'cloud'}},
+                     {ty: 'box', s: [0.42, 0.42, 0.4], p: [0, 0.8, 0],   col: [0.9, 0.8, 0.7],  tex: {id: 'cloud'}},
+                     {ty: 'box', s: [0.7, 0.12, 0.5],  p: [0, -0.65, 0], col: [0.35, 0.3, 0.5], tex: {id: 'marble'}},
+                  ]
+        }, 'RecruitScript');
+
         // A ridable mount: walk up to saddle it. Rides slower than the kart
         // but pivots in place and JUMPS (Space); C hops off. The mleg*
         // children trot while ridden.

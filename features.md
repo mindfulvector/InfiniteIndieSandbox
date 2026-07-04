@@ -50,6 +50,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Purchasable figure packs / à la carte | ✅ | Figures purchasable à la carte with pixels (`test-collection.js`); shop packs bundle figures + premium objects at a discount (Hero Pack, Winter/Neon Play Sets) — flat price grants all missing contents, ownership derived from contents (`test-figure-packs.js`) |
 | Collection screen as roster (select + spawn any owned figure) | ✅ | Collection menu (main + pause): 4 figures with colorways + stat leans; selecting applies live (`test-collection.js`) |
 | Per-figure progress saved to account | ✅ | Level/XP persisted per figure; switching figures swaps progression (`test-collection.js`) |
+| Hireable companions (dialog trees, per-slot crew) | ✅ | `pr_recruit` NPCs open digit-driven DIALOG TREES (MENU_DIALOG rides the stock menu system); Fern is free, Rusty 40 px, Lumen 80 px — broke hires refuse in-conversation; the roster is a PROGRESSION key so each slot keeps its own crew (shared-collection snapshots exclude it), and PlayMode rebuilds ground-walking follower rigs whenever the roster signature changes: hire, dismiss, slot switch, world entry (`test-companions.js`) |
 | Round power discs (abilities/buffs) | ✅ | 5 buyable discs (Ember +1 melee, Aegis +20 HP, Swift faster dodge, Fortune +25% pixels, Sage +25% XP), 2 equip slots, global across figures, persisted; Discs screen via Collection → 9 (`test-discs.js`) |
 | Hex discs (vehicles, gadgets, skies/terrain) | 🟡 | Sky/terrain theme hexes: Classic (free) / Midnight Vale / Emberfall / Verdant Haze — one active, swaps `scene.clearColor` + tints the shared terrain atlas, persists, Discs-screen rows (`test-hex-discs.js`); vehicle/gadget hexes planned |
 | Multiple discs stack/combine | ✅ | Two different equipped discs both apply (Ember + Aegis verified stacking in `test-discs.js`) |
@@ -114,6 +115,5 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Sound effects (procedurally synthesised, no asset files) | ✅ | `SoundManager` (Web Audio): per-surface footsteps (grass/dirt/wood/stone/metal — grass blocks resolve by face), jump/double-jump/land/glide, full combat + survival set, pickups/pixels/level-up/purchase, UI/build/wiring clicks; `M` = persistent mute (`test-sfx.js`) |
 
 ## Next up (suggested order)
-1. **USER REQUEST — companion system**: hire companions through a DIALOG TREE — some free, some costing pixels. Hired companions are saved with the active character-progression slot and respawn with the player whenever that slot is loaded and a world is entered. (Builds on the buddy/sidekick rigs; dialog tree is the new machinery.)
-2. NPC villagers (wander + talk bubbles + quest hooks) — natural dialog-tree partner for the companion system
-3. Water blocks (swim volumes, floating props)
+1. NPC villagers (wander + talk bubbles + quest hooks) — the dialog tree from the companion system is ready for them
+2. Water blocks (swim volumes, floating props)
