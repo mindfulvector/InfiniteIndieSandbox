@@ -86,6 +86,13 @@ of the nearest similar piece instead of stepping 45°.
 A **sidebar on the left** lists every object in the current category — click
 a row (or use the arrow keys) to switch what you're placing.
 
+**Ask the builder:** press `K` and type what you want — *"a walled arena"*,
+*"a star trail with 5 stars"*, *"a patrol"*, *"a snow tower"* — and the
+assistant assembles it around you, wiring included (the arena's trigger
+arms its spawner, the star trail scores itself). It's all local: no
+internet, no accounts, just a builder that understands a handful of
+requests and their size/count/theme tweaks.
+
 Some objects have **settings**: place a **Spawner** (Logic category) and a
 parameters popup opens automatically so you can choose the enemy type, spawn
 frequency and max-alive limit. To edit a placed object's settings later, enter

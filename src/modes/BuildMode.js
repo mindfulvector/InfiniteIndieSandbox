@@ -724,6 +724,14 @@ class BuildMode {
         right.y = 0;
         right.normalize();
 
+        // K asks the build assistant: type a request ("a walled arena",
+        // "a star trail") and it builds real objects around you.
+        if (this.app.keyPressed('K') && this.app.assistant) {
+            this.app.promptText('Ask the builder for…', 'a walled arena', (req) => {
+                if (req) this.app.assistant.run(req);
+            });
+        }
+
         // CapsLock latches snap mode on/off (Shift and pad LB hold it).
         if (this.app.keyPressed('CAPSLOCK')) {
             this.snapLatch = !this.snapLatch;

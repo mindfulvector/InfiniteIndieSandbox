@@ -301,6 +301,7 @@ class App {
 
         // Procedurally-synthesised sound effects (footsteps, combat, UI...).
         this.sound = new SoundManager(this);
+        this.assistant = new BuildAssistant(this);
 
         // Create a full-screen UI layer
         this.gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
