@@ -13,6 +13,7 @@ const MENU_WORLD_TEMPLATE = 11;
 const MENU_COLLECTION = 12;
 const MENU_SKILLS = 13;
 const MENU_DISCS = 14;
+const MENU_SHARE = 15;
 
 const MAX_LEVEL = 20;   // character level cap
 
@@ -1211,6 +1212,19 @@ class App {
                 break;
             case 5:                                 // Quit
                 break;
+            case 6:                                 // Share Worlds (export/import files)
+                app.menu.prevState = MENU_MAIN;
+                app.menu.state = MENU_SHARE;
+                break;
+            }
+            break;
+        case MENU_SHARE:
+            if(menuItem === 0) {
+                app.menu.state = app.menu.prevState || MENU_MAIN;
+            } else if(menuItem === 1) {
+                app.downloadWorld();
+            } else if(menuItem === 2) {
+                app.importWorldFromPicker();
             }
             break;
         case MENU_PAUSE:
@@ -1516,6 +1530,15 @@ class App {
                     text: '5. Quit',
                     handler: () => {
                         app.triggerMenuItem(MENU_MAIN, 5);
+                    }
+                });
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnShare',
+                    text: '6. Share Worlds',
+                    handler: () => {
+                        app.triggerMenuItem(MENU_MAIN, 6);
                     }
                 });
                 break;
@@ -1865,6 +1888,42 @@ class App {
                     name: 'btnDiscBack',
                     text: '0. Back',
                     handler: () => { app.triggerMenuItem(MENU_DISCS, 0); }
+                });
+                break;
+            }
+            case MENU_SHARE: {
+                this.MenuRect();
+                this.MenuItem({
+                    type: 'text',
+                    name: 'shareTitle',
+                    text: 'SHARE WORLDS',
+                    fontSize: 22,
+                    accent: true,
+                });
+                this.MenuItem({
+                    type: 'text',
+                    name: 'shareHint',
+                    text: 'Worlds travel as .json files — send them to friends.',
+                    fontSize: 14,
+                    color: '#9fb3c8',
+                });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnShareExport',
+                    text: '1. Export the current world to a file',
+                    handler: () => { app.triggerMenuItem(MENU_SHARE, 1); }
+                });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnShareImport',
+                    text: '2. Import a world file',
+                    handler: () => { app.triggerMenuItem(MENU_SHARE, 2); }
+                });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnShareBack',
+                    text: '0. Back',
+                    handler: () => { app.triggerMenuItem(MENU_SHARE, 0); }
                 });
                 break;
             }
@@ -2567,6 +2626,77 @@ class App {
         this.applySkillsToSession();
         this.saveEconomy();
         return true;
+    }
+
+    // ---- world sharing (export / import files) -------------------------------
+    // No server: sharing is a file. Export wraps the same snapshot the save
+    // slots store in a versioned envelope; import validates it and rebuilds
+    // the world. The DOM pieces (download link, file picker) are thin
+    // wrappers so tests drive exportWorld/importWorldData directly.
+
+    exportWorld() {
+        if (!this.world) {
+            this.toasty('No world to export — start or load a game first.');
+            return null;
+        }
+        return JSON.stringify({
+            format: 'iis-world',
+            version: 1,
+            objects: this.world.serialize().objects,
+        });
+    }
+
+    downloadWorld() {
+        const json = this.exportWorld();
+        if (!json) return false;
+        const blob = new Blob([json], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'iis-world.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        this.toasty('World exported — share the file!');
+        return true;
+    }
+
+    // Validate + load a world file's text. Returns true on success; every
+    // rejection toasts a reason and leaves the current world untouched.
+    importWorldData(text) {
+        let payload;
+        try { payload = JSON.parse(text); } catch (e) {
+            this.toasty('That file is not a world (bad JSON).');
+            return false;
+        }
+        if (!payload || payload.format !== 'iis-world' || !Array.isArray(payload.objects)) {
+            this.toasty('That file is not an Infinite Indie Sandbox world.');
+            return false;
+        }
+        if ((payload.version || 0) > 1) {
+            this.toasty('That world file needs a newer game version.');
+            return false;
+        }
+        if (!this.world) this.world = new SandboxWorld(this);
+        this.world.loadFromData({ objects: payload.objects });
+        this.toasty('World imported!');
+        return true;
+    }
+
+    importWorldFromPicker() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json,application/json';
+        input.onchange = () => {
+            const f = input.files && input.files[0];
+            if (!f) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                if (this.importWorldData(String(reader.result))) this.goto_buildMode();
+            };
+            reader.readAsText(f);
+        };
+        input.click();
     }
 
     // ---- sidekicks ----------------------------------------------------------

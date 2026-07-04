@@ -3,17 +3,22 @@ class SandboxWorld {
         this.app = app;
     }
 
-    saveToSlot(slot) {
-        console.log('[saveToSlot] :slot', slot);
-
+    // Compact world snapshot: the same structure the save slots store, also
+    // wrapped by App.exportWorld for shareable world files.
+    serialize() {
         let saveData = {
             'objects': [],
         }
-
-        // get compact data for each world object instance
         this.app.BuildableObjectList.forEach((woObject) => {
             saveData.objects = saveData.objects.concat(woObject.getAllInstanceData());
         });
+        return saveData;
+    }
+
+    saveToSlot(slot) {
+        console.log('[saveToSlot] :slot', slot);
+
+        const saveData = this.serialize();
 
         console.log('[saveToSlot] :saveData', saveData);
         const jsonData = JSON.stringify(saveData);
@@ -44,7 +49,14 @@ class SandboxWorld {
             return false;
         }
         console.log('[loadFromSlot] :saveData', saveData);
+        return this.loadFromData(saveData);
+    }
 
+    // Rebuild the world from snapshot data (shared by slot loads and world-
+    // file imports). Unknown object types are skipped with a warning so a
+    // file from a newer game degrades instead of failing.
+    loadFromData(saveData) {
+        const app = this.app;
         this.clearWorld();
         let loadedObjectCount = 0;
 
@@ -54,16 +66,16 @@ class SandboxWorld {
                 const inst = woObject.createInstance(instData);
                 if(inst != null) loadedObjectCount++;
             } else {
-                console.warn('[loadFromSlot] unknown object type `'+instData.wo+'`, skipping');
+                console.warn('[loadFromData] unknown object type `'+instData.wo+'`, skipping');
             }
         });
 
-        console.log('[loadFromSlot] :loadedObjectCount', loadedObjectCount);
+        console.log('[loadFromData] :loadedObjectCount', loadedObjectCount);
 
         // Only synthesise a terrain tile when the save was completely empty, so
         // a normal world is restored exactly as saved (no duplicate origin cube).
         if(loadedObjectCount === 0) {
-            console.log('[loadFromSlot] :empty world, building default terrain grid');
+            console.log('[loadFromData] :empty world, building default terrain grid');
             this.buildDefaultTerrain();
         }
 

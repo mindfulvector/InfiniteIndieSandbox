@@ -95,7 +95,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Feature | Status | Notes |
 |---|---|---|
 | Saving multiple Sandbox worlds locally | ✅ | 9 save slots, transforms/params/wires persist (`test-save-load.js`) |
-| Upload + share creations online | ⬜ | |
+| Upload + share creations online | 🟡 | Serverless sharing via world files: main menu → Share Worlds exports the current world as a versioned `.json` (same snapshot as save slots) and imports validate format/version, rejecting bad files without touching the world; unknown object types skip gracefully (`test-share.js`); online gallery planned |
 | Browse/rate/download community worlds | ⬜ | |
 | Featured/curated rotations | ⬜ | |
 
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Upload + share creations (export/import world files)
-2. 2P local co-op (second pad drives a second figure)
-3. Vehicle hex discs (drivable ground vehicle v1)
-4. Crop farming for sidekick food
+1. 2P local co-op (second pad drives a second figure)
+2. Vehicle hex discs (drivable ground vehicle v1)
+3. Crop farming for sidekick food
+4. Community browsing (import from a shared gallery URL)

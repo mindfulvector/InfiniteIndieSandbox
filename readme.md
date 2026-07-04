@@ -183,6 +183,11 @@ timers.
 **Saving:** Press `Esc` and choose Save Game / Load Game to store worlds in
 save slots.
 
+**Sharing:** the main menu's **Share Worlds** screen exports your current
+world as a `.json` file you can send to anyone, and imports world files you
+receive (the game checks they really are world files first). Imported worlds
+open straight into build mode.
+
 ### Play Mode
 In play mode, a default avatar will be dropped into the world at the origin `(0,0,0)`.
 
