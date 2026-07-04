@@ -267,6 +267,10 @@ pixels), and Sage Lens (+25% XP). You can equip **two at once**, and two
 different discs stack — pick a pair that fits your build. Discs persist like
 pixels and follow you across figure switches.
 
+Below the round discs live the **hex discs** — world themes that recolor the
+sky and terrain everywhere: Classic Meadow (free), Midnight Vale, Emberfall,
+and Verdant Haze. One is active at a time; pick a mood for your sandbox.
+
 ### Pixels & the Shop
 
 Defeated enemies burst into **pixels** — tiny multi-coloured cubes that fly to

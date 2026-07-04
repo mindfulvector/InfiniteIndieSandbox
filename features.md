@@ -50,7 +50,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Collection screen as roster (select + spawn any owned figure) | ✅ | Collection menu (main + pause): 4 figures with colorways + stat leans; selecting applies live (`test-collection.js`) |
 | Per-figure progress saved to account | ✅ | Level/XP persisted per figure; switching figures swaps progression (`test-collection.js`) |
 | Round power discs (abilities/buffs) | ✅ | 5 buyable discs (Ember +1 melee, Aegis +20 HP, Swift faster dodge, Fortune +25% pixels, Sage +25% XP), 2 equip slots, global across figures, persisted; Discs screen via Collection → 9 (`test-discs.js`) |
-| Hex discs (vehicles, gadgets, skies/terrain) | ⬜ | |
+| Hex discs (vehicles, gadgets, skies/terrain) | 🟡 | Sky/terrain theme hexes: Classic (free) / Midnight Vale / Emberfall / Verdant Haze — one active, swaps `scene.clearColor` + tints the shared terrain atlas, persists, Discs-screen rows (`test-hex-discs.js`); vehicle/gadget hexes planned |
 | Multiple discs stack/combine | ✅ | Two different equipped discs both apply (Ember + Aegis verified stacking in `test-discs.js`) |
 
 ## Sandbox Features
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Hex discs (skies/terrain themes)
-2. Sidekicks (collectible follower that levels)
-3. Upload + share creations (export/import world files)
-4. 2P local co-op (second pad drives a second figure)
+1. Sidekicks (collectible follower that levels)
+2. Upload + share creations (export/import world files)
+3. 2P local co-op (second pad drives a second figure)
+4. Vehicle hex discs (drivable ground vehicle v1)

@@ -42,6 +42,16 @@ const DISCS = [
 ];
 const DISC_SLOTS = 2;
 
+// Hex discs: world-theme tokens. Each swaps the sky colour and tints the
+// shared terrain atlas; exactly one is active at a time ('classic' is the
+// free default look). Ownership + the active choice persist with the economy.
+const HEX_DISCS = [
+    { id: 'classic',   name: 'Classic Meadow', price: 0,  sky: null,               tint: [1, 1, 1],          desc: 'The standard look' },
+    { id: 'midnight',  name: 'Midnight Vale',  price: 80, sky: [0.05, 0.06, 0.16], tint: [0.55, 0.62, 0.95], desc: 'Deep night, moonlit ground' },
+    { id: 'emberfall', name: 'Emberfall',      price: 80, sky: [0.35, 0.12, 0.08], tint: [1.0, 0.72, 0.5],   desc: 'Sunset blaze' },
+    { id: 'verdant',   name: 'Verdant Haze',   price: 80, sky: [0.08, 0.2, 0.1],   tint: [0.7, 1.0, 0.7],    desc: 'Toxic-green gloom' },
+];
+
 // Packs: bundles of figures and/or premium objects sold at a discount in the
 // shop. A pack has no owned-state of its own -- it counts as owned when every
 // piece of its contents is owned (buying grants whatever is still missing).
@@ -1253,10 +1263,17 @@ class App {
             if(menuItem === 0) {
                 app.menu.prevState = app.menu.discsPrevState || MENU_MAIN;
                 app.menu.state = MENU_COLLECTION;
-            } else {
+            } else if(menuItem <= DISCS.length) {
                 const disc = DISCS[menuItem - 1];
                 if(disc) {
                     app.buyDisc(disc.id);   // buys, or toggles equip if owned
+                    app.menu.renderedState = -1;
+                }
+            } else {
+                // Rows after the round discs are the hex world themes.
+                const hx = HEX_DISCS[menuItem - DISCS.length - 1];
+                if(hx) {
+                    app.buyHexDisc(hx.id);   // buys, or selects if owned
                     app.menu.renderedState = -1;
                 }
             }
@@ -1777,6 +1794,24 @@ class App {
                         name: 'btnDisc_' + disc.id,
                         text: (i + 1) + '. ' + disc.name + ' — ' + disc.desc + '   [' + status + ']',
                         handler: () => { app.triggerMenuItem(MENU_DISCS, i + 1); }
+                    });
+                });
+                this.MenuItem({
+                    type: 'text',
+                    name: 'hexHdr',
+                    text: '— WORLD THEMES (HEX) —',
+                    fontSize: 14,
+                    color: '#9fb3c8',
+                });
+                HEX_DISCS.forEach((hx, i) => {
+                    const n = DISCS.length + i + 1;
+                    const active = this.activeHexDisc === hx.id;
+                    const status = active ? '◉ ACTIVE' : (this.ownsHexDisc(hx.id) ? 'Owned' : hx.price + ' px');
+                    this.MenuItem({
+                        type: 'button',
+                        name: 'btnHex_' + hx.id,
+                        text: n + '. ' + hx.name + ' — ' + hx.desc + '   [' + status + ']',
+                        handler: () => { app.triggerMenuItem(MENU_DISCS, n); }
                     });
                 });
                 this.MenuItem({
@@ -2314,6 +2349,15 @@ class App {
             this.equippedDiscs = (Array.isArray(eq) ? eq : [])
                 .filter((id) => this.discById(id) && this.ownedDiscs.has(id))
                 .slice(0, DISC_SLOTS);
+
+            // Hex discs: 'classic' is always owned; the active one must be owned.
+            const hexOwned = JSON.parse(window.localStorage.getItem('iis_hex_owned') || '["classic"]');
+            this.ownedHex = new Set(Array.isArray(hexOwned) ? hexOwned : ['classic']);
+            this.ownedHex.add('classic');
+            const hexActive = window.localStorage.getItem('iis_hex_active');
+            this.activeHexDisc = (hexActive && this.hexById(hexActive) && this.ownedHex.has(hexActive))
+                ? hexActive : 'classic';
+            if (this.scene) this.applyHexTheme();
         } catch (e) {
             this.pixels = 0;
             this.purchasedSet = new Set();
@@ -2324,6 +2368,8 @@ class App {
             this.skillRanks = {};
             this.ownedDiscs = new Set();
             this.equippedDiscs = [];
+            this.ownedHex = new Set(['classic']);
+            this.activeHexDisc = 'classic';
         }
     }
 
@@ -2353,6 +2399,8 @@ class App {
             window.localStorage.setItem('iis_fig_' + this.activeFigure + '_skills', JSON.stringify(this.skillRanks || {}));
             window.localStorage.setItem('iis_discs_owned', JSON.stringify([...(this.ownedDiscs || [])]));
             window.localStorage.setItem('iis_discs_equipped', JSON.stringify(this.equippedDiscs || []));
+            window.localStorage.setItem('iis_hex_owned', JSON.stringify([...(this.ownedHex || [])]));
+            window.localStorage.setItem('iis_hex_active', this.activeHexDisc || 'classic');
         } catch (e) { /* storage may be unavailable */ }
     }
 
@@ -2459,6 +2507,49 @@ class App {
         this.applySkillsToSession();
         this.saveEconomy();
         return true;
+    }
+
+    // ---- hex discs (world themes) -------------------------------------------
+
+    hexDiscs() { return HEX_DISCS; }
+    hexById(id) { return HEX_DISCS.find((d) => d.id === id) || null; }
+    ownsHexDisc(id) { return !!(this.ownedHex && this.ownedHex.has(id)); }
+
+    buyHexDisc(id) {
+        const hx = this.hexById(id);
+        if (!hx) return false;
+        if (this.ownsHexDisc(id)) return this.selectHexDisc(id);
+        if (this.pixels < hx.price) {
+            this.toasty('Not enough pixels — ' + hx.name + ' costs ' + hx.price + '.');
+            return false;
+        }
+        this.pixels -= hx.price;
+        this.ownedHex.add(id);
+        this.toasty('Unlocked ' + hx.name + '!');
+        return this.selectHexDisc(id);
+    }
+
+    selectHexDisc(id) {
+        if (!this.ownsHexDisc(id)) return false;
+        this.activeHexDisc = id;
+        this.applyHexTheme();
+        this.saveEconomy();
+        return true;
+    }
+
+    // Apply the active hex theme: sky = scene clear colour (null = the
+    // captured engine default), ground = a diffuse tint multiplied over the
+    // shared terrain atlas (one material, so it stays instancing-safe).
+    applyHexTheme() {
+        const hx = this.hexById(this.activeHexDisc) || HEX_DISCS[0];
+        if (this.scene) {
+            if (!this._defaultClearColor) this._defaultClearColor = this.scene.clearColor.clone();
+            this.scene.clearColor = hx.sky
+                ? new BABYLON.Color4(hx.sky[0], hx.sky[1], hx.sky[2], 1)
+                : this._defaultClearColor.clone();
+        }
+        const mat = this.terrainAtlasMaterial();
+        mat.diffuseColor = new BABYLON.Color3(hx.tint[0], hx.tint[1], hx.tint[2]);
     }
 
     // ---- skill tree ---------------------------------------------------------
