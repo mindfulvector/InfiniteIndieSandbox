@@ -41,7 +41,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 |---|---|---|
 | 2P local split-screen campaigns (4P brawler) | ⬜ | |
 | Up to 4P Sandbox (local + online) | ⬜ | |
-| Drop-in/drop-out co-op | ⬜ | |
+| Drop-in/drop-out co-op | 🟡 | Drop-in buddy v1: `B` (or any button on a second gamepad) drops in a friendly bipedal rig on the shared GravityBody — second pad's stick moves it camera-relative, A jumps, X swings the shared frontal-arc melee; falls auto-rescue to P1's side; enemies/triggers still track P1 only (`test-coop.js`); full P2 figure + shared camera framing planned |
 
 ### Digital figures and collection
 | Feature | Status | Notes |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. 2P local co-op (second pad drives a second figure)
-2. Vehicle hex discs (drivable ground vehicle v1)
-3. Crop farming for sidekick food
-4. Community browsing (import from a shared gallery URL)
+1. Vehicle hex discs (drivable ground vehicle v1)
+2. Crop farming for sidekick food
+3. Community browsing (import from a shared gallery URL)
+4. Buddy upgrade: enemies target both players, buddy HP + shared camera

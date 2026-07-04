@@ -35,6 +35,10 @@ class PlayMode {
         this.sidekickMesh = null;
         this._sidekickPhase = 0;
 
+        // Drop-in buddy (local 2P v1): a friendly bipedal rig on the second
+        // gamepad. See updateBuddy for the honest scope notes.
+        this.buddy = null;
+
         // Lock-on targeting (toggled with T): ranged shots and the aim pose
         // track the locked enemy; a marker floats above it.
         this.lockTarget = null;     // {type:'em', rec} | {type:'inst', inst, wo}
@@ -88,6 +92,7 @@ class PlayMode {
         this.clearLockOn();
         if (this.blockMesh) { this.blockMesh.dispose(false, true); this.blockMesh = null; }
         if (this.sidekickMesh) { this.sidekickMesh.dispose(false, true); this.sidekickMesh = null; }
+        if (this.buddy) { this.buddy.root.dispose(false, false); this.buddy = null; }
         this.disposePlayer();
         this.enemyManager.dispose();
         this.pixelBursts.forEach((pb) => pb.mesh && pb.mesh.dispose());
@@ -261,6 +266,7 @@ class PlayMode {
 
         this.updatePadMovement();
         this.handleCombat();
+        this.updateBuddy();
         this.updateSidekick();
         this.updatePixelBursts();
         this.updateAttackFx();
@@ -317,6 +323,10 @@ class PlayMode {
         // Dodge roll: C key or a gamepad dodge button.
         if (this.app.keyPressed('C') || this.app.consumePad('dodge')) {
             this.startDodge();
+        }
+        // B toggles the drop-in buddy (a second pad joining does it too).
+        if (this.app.keyPressed('B')) {
+            if (this.buddy) this.buddyLeave(); else this.buddyJoin();
         }
         this.updateLockOn();
         this.updateDodge();
@@ -590,6 +600,110 @@ class PlayMode {
                 pr.mesh.dispose();
                 this.playerProjectiles.splice(i, 1);
             }
+        }
+    }
+
+    // ---- drop-in buddy (local 2P v1) ------------------------------------------
+    // The buddy is a friendly bipedal rig (the walker builder in a fixed
+    // friendly green) on the enemy-shared GravityBody -- deliberately NOT a
+    // second CharacterController, so there is no double keyboard binding and
+    // no camera fight. Honest v1 scope: the buddy moves, jumps and melees on
+    // the second pad; enemies still hunt player 1; triggers/pickups only see
+    // player 1; falling off the world auto-rescues the buddy to P1's side.
+
+    buddyJoin() {
+        if (this.buddy || !this.player) return;
+        const em = this.enemyManager;
+        const color = new BABYLON.Color3(0.35, 1.0, 0.55);
+        const root = BABYLON.MeshBuilder.CreateBox('coopBuddy', { width: 0.5, height: 0.2, depth: 0.5 }, this.app.scene);
+        root.isVisible = false;
+        root.position = this.player.position.add(new BABYLON.Vector3(1.6, 1.5, 0));
+        const parts = em.buildBipedal(root, color);
+        const body = new GravityBody(this.app.scene, root, {
+            ellipsoid: new BABYLON.Vector3(0.4, 1, 0.4),
+            ellipsoidOffset: new BABYLON.Vector3(0, 1, 0),
+        });
+        this.buddy = { root, parts, body, walkPhase: 0, attackCooldown: 0 };
+        this.app.toasty('Player 2 joined!');
+    }
+
+    buddyLeave() {
+        if (!this.buddy) return;
+        this.buddy.root.dispose(false, false);
+        this.buddy = null;
+        this.app.toasty('Player 2 left.');
+    }
+
+    // The buddy's melee: the same frontal-arc swing as P1, from the buddy.
+    buddyAttack() {
+        const b = this.buddy;
+        if (!b || b.attackCooldown > 0) return;
+        b.attackCooldown = 14;
+        const fwd = new BABYLON.Vector3(Math.sin(b.root.rotation.y), 0, Math.cos(b.root.rotation.y));
+        this.spawnAttackFx(b.root.position);
+        this.enemyManager.damageInArc(b.root.position, fwd, 3.0, 0.34, 1);
+        this.damageBlobsInArc(b.root.position, fwd, 3.0, 0.34, 1);
+    }
+
+    updateBuddy() {
+        const b = this.buddy;
+        if (!b) {
+            // A second pad pressing any button drops the buddy in.
+            if (this.app.buddyPad && this.app.buddyPad.wantsJoin) {
+                this.app.buddyPad.wantsJoin = false;
+                this.buddyJoin();
+            }
+            return;
+        }
+        if (b.attackCooldown > 0) b.attackCooldown--;
+
+        // Input: the harness hook, else live sticks from the second pad.
+        const test = this.app.testBuddyPad;
+        const pad2 = this.app.gamepads && this.app.gamepads[1];
+        const ls = (test && test.leftStick) || (pad2 && pad2.leftStick) || null;
+        const jumpHeld = test ? !!test.jumpHeld : this.app.buddyPad.jumpHeld;
+        let attack = false;
+        if (test && test.attackQueued) { attack = true; test.attackQueued = false; }
+        else if (this.app.buddyPad.attackQueued) { attack = true; this.app.buddyPad.attackQueued = false; }
+
+        // Camera-relative stick movement, dt-based like everything else.
+        let vx = 0, vz = 0, moving = false;
+        if (ls && (Math.abs(ls.x) > 0.25 || Math.abs(ls.y) > 0.25)) {
+            const camFwd = this.player
+                ? this.player.position.subtract(this.app.camera.position)
+                : new BABYLON.Vector3(0, 0, 1);
+            camFwd.y = 0;
+            if (camFwd.lengthSquared() < 0.0001) camFwd.copyFromFloats(0, 0, 1);
+            camFwd.normalize();
+            const camRight = BABYLON.Vector3.Cross(BABYLON.Vector3.Up(), camFwd);
+            const dir = camFwd.scale(-ls.y).add(camRight.scale(ls.x));
+            if (dir.lengthSquared() > 0.0001) {
+                dir.normalize();
+                const SPEED = 5;   // units/second
+                vx = dir.x * SPEED; vz = dir.z * SPEED;
+                b.root.rotation.y = Math.atan2(dir.x, dir.z);
+                moving = true;
+            }
+        }
+        if (jumpHeld && b.body.grounded) b.body.vy = 7;
+        b.body.step(vx, vz);
+        if (attack) this.buddyAttack();
+
+        // Walk cycle (the same leg swing the walkers use).
+        if (moving) b.walkPhase += 0.28; else b.walkPhase *= 0.8;
+        const sw = Math.sin(b.walkPhase) * 0.5;
+        b.parts.leftHip.rotation.x = sw;
+        b.parts.rightHip.rotation.x = -sw;
+        b.parts.leftSh.rotation.x = -sw * 0.8;
+        b.parts.rightSh.rotation.x = sw * 0.8;
+
+        // Fell off the world (or got left impossibly far behind): rescue to
+        // player 1's side instead of tumbling forever.
+        if (this.player &&
+            (b.root.position.y < this.player.position.y - 20 ||
+             BABYLON.Vector3.Distance(b.root.position, this.player.position) > 60)) {
+            b.root.position = this.player.position.add(new BABYLON.Vector3(1.6, 1.5, 0));
+            b.body.vy = 0;
         }
     }
 

@@ -222,6 +222,12 @@ until they land.
 
 Aim the ranged shot with the mouse; a gamepad auto-aims at the locked/nearest enemy.
 
+**Couch co-op (v1):** press `B` — or press any button on a **second
+gamepad** — and a friendly green figure drops in beside you. Player 2 moves
+with their left stick, jumps with `A` (hold), and swings melee with `X`.
+If they fall off the world they pop back at your side. For now enemies and
+triggers only pay attention to player 1 — the buddy is pure backup muscle.
+
 **Gamepad:** full pad play is supported. The **left stick** moves, the
 **right stick** orbits the camera, and **A** jumps (hold to glide, tap again
 mid-air to double-jump). `X` or the left trigger swings melee, the right
