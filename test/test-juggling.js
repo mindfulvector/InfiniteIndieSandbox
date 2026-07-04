@@ -55,53 +55,66 @@ async function main() {
         check('the launcher stuns the walker', launch.stun >= 40, launch);
         check('the launcher deals its damage', launch.dmg >= 1, launch);
 
-        // Wait for the rise by CONDITION: at unthrottled headless fps a few
-        // frames cover almost no wall-clock time (dt-based physics barely move).
-        await h.waitFor((y0) => window.__rec.mesh.position.y > y0 + 0.4, launch.y0, 20000);
-        const rise = await h.evaluate(() => ({
-            y: window.__rec.mesh.position.y,
-            airborne: window.app.activeMode.enemyManager.isAirborne(window.__rec),
-        }));
-        console.log('[1b] rise', { y0: launch.y0, y: rise.y, airborne: rise.airborne });
-        check('the walker rises above its launch height', rise.y > launch.y0 + 0.4, { launch, rise });
-        check('the walker counts as airborne mid-flight', rise.airborne === true, rise);
-        await h.screenshot('walker-launched');
-
-        // --- 2. A stunned walker can't melee even at point-blank ---
-        const noHit = await h.evaluate(() => {
-            const pm = window.app.activeMode;
-            pm.hurtCooldown = 0;
-            const hp0 = pm.playerHp;
-            window.__rec.meleeCd = 0;   // would swing instantly if allowed
-            return { hp0 };
-        });
-        await h.waitFrames(6);
-        const noHit1 = await h.evaluate(() => ({ hp: window.app.activeMode.playerHp, stun: window.__rec.stun }));
-        console.log('[2] stunned no-melee', { noHit, noHit1 });
-        check('a stunned walker deals no melee damage', noHit1.hp >= noHit.hp0, { noHit, noHit1 });
-
-        // --- 3. Airborne hits deal +1 and count the juggle ---
-        const juggle = await h.evaluate(() => {
-            const pm = window.app.activeMode, em = pm.enemyManager;
-            const rec = window.__rec;
-            const airborne = em.isAirborne(rec);
-            const hp0 = rec.hp;
-            const j0 = pm.juggleHits;
-            pm.attackCooldown = 0; pm.comboTimer = 0; pm.comboStage = 0;
-            // Swing at the airborne walker (aim at its ground shadow).
-            pm.meleeAttack(new BABYLON.Vector3(rec.mesh.position.x, pm.player.position.y, rec.mesh.position.z));
-            return {
-                airborne,
-                dmg: hp0 - rec.hp,
-                juggleDelta: pm.juggleHits - j0,
-                vyAfter: rec.body.vy,
+        // --- 1b + 3. Rise, then swing WHILE STILL AIRBORNE. The 45-frame
+        // stun is wall-clock-tiny at unthrottled headless fps, so the wait
+        // AND the swing happen inside one in-page RAF loop: zero protocol
+        // round-trips inside the stun window.
+        const juggle = await h.evaluate((y0) => new Promise((resolve) => {
+            const pm = window.app.activeMode, em = pm.enemyManager, rec = window.__rec;
+            let frames = 0, rose = false, riseY = 0;
+            const tick = () => {
+                frames++;
+                if (frames > 900) return resolve({ err: 'never rose', riseY });
+                riseY = Math.max(riseY, rec.mesh.position.y);
+                if (rec.mesh.position.y > y0 + 0.4 && em.isAirborne(rec)) {
+                    rose = true;
+                    const hp0 = rec.hp, j0 = pm.juggleHits;
+                    pm.attackCooldown = 0; pm.comboTimer = 0; pm.comboStage = 0;
+                    pm.meleeAttack(new BABYLON.Vector3(
+                        rec.mesh.position.x, pm.player.position.y, rec.mesh.position.z));
+                    return resolve({
+                        rose, riseY,
+                        dmg: hp0 - rec.hp,
+                        juggleDelta: pm.juggleHits - j0,
+                        vyAfter: rec.body.vy,
+                    });
+                }
+                requestAnimationFrame(tick);
             };
-        });
-        console.log('[3] airborne hit', juggle);
-        check('the target was still airborne when swung at', juggle.airborne === true, juggle);
+            requestAnimationFrame(tick);
+        }), launch.y0);
+        console.log('[1b+3] rise-and-swing', juggle);
+        check('the walker rises above its launch height', juggle.rose === true, juggle);
         check('an airborne hit deals +1 damage (2 total at level 1)', juggle.dmg === 2, juggle);
         check('the juggle counter increments', juggle.juggleDelta === 1, juggle);
         check('the hit re-pops the walker (vy boosted)', juggle.vyAfter >= 3.4, juggle);
+        await h.screenshot('walker-launched');
+
+        // --- 2. A stunned walker can't melee even at point-blank. Fresh
+        // launch; the whole watch runs in-page for the same reason.
+        const noMelee = await h.evaluate(() => new Promise((resolve) => {
+            const pm = window.app.activeMode, rec = window.__rec;
+            pm.hurtCooldown = 0;
+            pm.launcherCooldown = 0;
+            rec.hp = 50;
+            rec.mesh.position = pm.player.position.add(pm.playerForward().scale(1.6));
+            pm.launcherAttack();          // re-stun
+            rec.meleeCd = 0;              // would swing instantly if allowed
+            const hp0 = pm.playerHp;
+            let hurtWhileStunned = false, frames = 0;
+            const tick = () => {
+                frames++;
+                if (rec.stun > 0 && pm.playerHp < hp0) hurtWhileStunned = true;
+                if (rec.stun <= 0 || frames > 900) {
+                    return resolve({ hurtWhileStunned, stunEnded: rec.stun <= 0 });
+                }
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        }));
+        console.log('[2] stunned no-melee', noMelee);
+        check('a stunned walker deals no melee damage for the whole stun',
+            noMelee.hurtWhileStunned === false && noMelee.stunEnded, noMelee);
 
         // --- 4. The chain resets once everything lands ---
         await h.waitFor(() => {
