@@ -132,6 +132,9 @@ class PlayMode {
         (this.companions || []).forEach((c) => c.root.dispose(false, false));
         this.companions = [];
         this._compSig = null;
+        // The net ghost is scene-level: without this it lingers frozen in
+        // build mode. It regrows on the next play tick.
+        if (this.app.net && this.app.net.ghost) this.app.net._disposeGhost();
         this.disposeSplitScreen();
         this.buddies.forEach((b, i) => {
             if (b) { b.root.dispose(false, false); this.buddies[i] = null; }

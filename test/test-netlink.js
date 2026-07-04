@@ -196,6 +196,47 @@ async function main() {
         check('close() says bye across the wire and the ghost is disposed', true);
         await h.evaluate(() => { window.app.net = null; });
 
+        // --- 3b. A dropped link tears down and flags reconnect ---
+        const drop = await h.evaluate(() => {
+            const app = window.app;
+            const t = { send: () => {}, onMessage: null };
+            const link = new NetLink(app, t, true);
+            link.remoteIds['x#1'] = {};
+            link.ghostTarget = { p: [0, 1, 0], ry: 0 };
+            link.tick(app.activeMode);            // grows a ghost
+            const hadGhost = !!app.scene.getMeshByName('netGhost');
+            link._dropped();
+            app.net = link;
+            return {
+                hadGhost,
+                ghostGone: !app.scene.getMeshByName('netGhost'),
+                mapCleared: Object.keys(link.remoteIds).length === 0,
+                closed: link.closed, dropped: link.dropped,
+            };
+        });
+        console.log('[3b] drop', drop);
+        check('a dropped link disposes its ghost, clears its map, and flags reconnect',
+            drop.hadGhost && drop.ghostGone && drop.mapCleared && drop.closed && drop.dropped, drop);
+
+        // --- 3c. Mode switch never strands a frozen ghost ---
+        const strand = await h.evaluate(() => {
+            const app = window.app;
+            const t = { send: () => {}, onMessage: null };
+            const link = new NetLink(app, t, true);
+            app.net = link;
+            link.ghostTarget = { p: [2, 1, 2], ry: 0 };
+            link.tick(app.activeMode);
+            const before = !!app.scene.getMeshByName('netGhost');
+            app.goto_buildMode();
+            return { before, after: !!app.scene.getMeshByName('netGhost') };
+        });
+        await h.evaluate(() => { window.app.net = null; window.app.goto_playMode(); });
+        await h.waitFor(() => window.app.activeMode &&
+            window.app.activeMode.constructor.name === 'PlayMode', null, 20000);
+        console.log('[3c] strand', strand);
+        check('switching to build mode disposes the net ghost (no frozen stray)',
+            strand.before && !strand.after, strand);
+
         // --- 4. No unexpected page errors ---
         const realErrors = h.pageErrors.filter((e) => !h._isExpectedError(e));
         check('no page errors during netplay', realErrors.length === 0, realErrors.slice(0, 3));

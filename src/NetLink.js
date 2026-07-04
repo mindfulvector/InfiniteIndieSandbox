@@ -74,6 +74,19 @@ class NetLink {
         return this.remoteIds[wo + '#' + id] || this.app.findInstance(wo, id) || null;
     }
 
+    // The link DIED (channel closed / connection failed) rather than being
+    // ended politely: tear down render state and tell the player how to
+    // re-link. WebRTC links aren't resumable without a server -- reconnect
+    // means trading fresh codes, and the host's start() re-ships the world.
+    _dropped() {
+        if (this.closed) return;
+        this.closed = true;
+        this._disposeGhost();
+        this.remoteIds = {};
+        this.dropped = true;
+        this.app.toasty('Connection lost — open Online Co-op to re-link.');
+    }
+
     close() {
         if (this.closed) return;
         try { this.transport.send(JSON.stringify({ t: 'bye' })); } catch (e) { /* gone */ }
@@ -213,6 +226,11 @@ const NetRtc = {
         channel.onmessage = (ev) => { if (transport.onMessage) transport.onMessage(ev.data); };
         const link = new NetLink(app, transport, isHost);
         channel.onopen = () => { link.start(); app.toasty(isHost ? 'Friend connected!' : 'Connected to host!'); };
+        channel.onclose = () => link._dropped();
+        channel.onerror = () => link._dropped();
+        pc.onconnectionstatechange = () => {
+            if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') link._dropped();
+        };
         app.net = link;
         app._netPc = pc;
         return link;

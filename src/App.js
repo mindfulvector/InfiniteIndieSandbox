@@ -1748,7 +1748,9 @@ class App {
                 this.MenuItem({ type: 'text', name: 'netStatus',
                     text: (this.net && !this.net.closed)
                         ? ('Linked as ' + (this.net.isHost ? 'HOST' : 'GUEST') + ' — your friend appears as a ghost.')
-                        : 'Serverless WebRTC: trade two codes with a friend (chat, email, pigeon).',
+                        : (this.net && this.net.dropped)
+                            ? 'LINK LOST — trade fresh codes below to reconnect (the host re-sends the world).'
+                            : 'Serverless WebRTC: trade two codes with a friend (chat, email, pigeon).',
                     fontSize: 13, color: '#ff9bce' });
                 this.MenuItem({ type: 'button', name: 'btnNetHost',
                     text: '1. Host — create invite code',

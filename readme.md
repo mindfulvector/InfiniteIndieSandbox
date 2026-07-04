@@ -338,7 +338,8 @@ accounts: just two codes traded. The host's world crosses the link, the
 guest lands right in it, each player sees the other as a glowing ghost —
 and **you build together**: anything either of you places or removes
 appears and vanishes on the other side, live — wiring included, so you
-can build a contraption together.
+can build a contraption together. If the link drops, the Online screen
+says so: trade fresh codes and the host's world comes right back across.
 
 **Couch co-op — up to four players:** press `B` — or press any button on a
 **second, third, or fourth gamepad** — and a friendly figure (green, orange,
