@@ -135,6 +135,15 @@ class CellDoorScript {
         if (!isPlayMode) {
             if (this._wasPlay !== false) {
                 this._wasPlay = false;
+                // Entering build mode WHILE INSIDE the cell used to strand
+                // the camera 5000 units away staring at the void (the room
+                // is disposed below). Bring the view home to the doorstep.
+                if (this._inside && this.app.camera) {
+                    const back = (this._returnSpot || inst.position).clone();
+                    const delta = back.subtract(this.app.camera.target || back);
+                    if (this.app.camera.target) this.app.camera.target.copyFrom(back);
+                    if (this.app.camera.position) this.app.camera.position.addInPlace(delta);
+                }
                 this._inside = false;
                 this._disposeCell();
             }

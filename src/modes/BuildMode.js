@@ -60,6 +60,10 @@ class BuildMode {
         // The left sidebar object list (see _refreshSidebar).
         this._sidebar = null;
         this._sidebarKey = null;
+
+        // Snap-assisted placement: CapsLock latches it, Shift and the pad's
+        // left bumper hold it (see _snapActive / snapToNearest).
+        this.snapLatch = false;
     }
 
     dispose() {
@@ -147,6 +151,105 @@ class BuildMode {
 
         app.gui.addControl(panel);
         this._sidebar = panel;
+    }
+
+    // ---- snap-assisted placement (user request) ---------------------------
+    // With snap held (Shift / pad LB) or latched (CapsLock), movement keys
+    // JUMP the moving object flush against the nearest object in that
+    // direction, and rotation keys match the nearest similar piece's angle.
+
+    _snapActive() {
+        return this.app.keyDown('SHIFT') || this.snapLatch || this.app.padDown('block');
+    }
+
+    // Aggregated world-space bounds of an instance and its children.
+    _worldBounds(inst) {
+        inst.computeWorldMatrix(true);
+        let min = null, max = null;
+        [inst].concat(inst.getChildMeshes ? inst.getChildMeshes() : []).forEach((m) => {
+            if (!m.getBoundingInfo) return;
+            m.computeWorldMatrix(true);
+            const b = m.getBoundingInfo().boundingBox;
+            if (!min) { min = b.minimumWorld.clone(); max = b.maximumWorld.clone(); }
+            else {
+                min = BABYLON.Vector3.Minimize(min, b.minimumWorld);
+                max = BABYLON.Vector3.Maximize(max, b.maximumWorld);
+            }
+        });
+        return { min, max };
+    }
+
+    // Slide the moving object along `axis` (+/- sign) until its bounding box
+    // sits flush against the nearest object in that direction. Neighbors
+    // must overlap on the perpendicular axis and roughly in height, and must
+    // actually BE in that direction (small negative tolerance keeps an
+    // already-flush pair idempotent).
+    snapToNearest(axis, sign) {
+        const inst = this.currentInstance;
+        if (!inst) return false;
+        const bb = this._worldBounds(inst);
+        if (!bb.min) return false;
+        const other = axis === 'x' ? 'z' : 'x';
+        let bestGap = Infinity;
+        this.app.BuildableObjectList.forEach((wo) => {
+            wo.instances.forEach((o) => {
+                if (!o || o === inst) return;
+                const ob = this._worldBounds(o);
+                if (!ob.min) return;
+                if (ob.max[other] < bb.min[other] - 0.01 || ob.min[other] > bb.max[other] + 0.01) return;
+                if (ob.max.y < bb.min.y - 0.6 || ob.min.y > bb.max.y + 0.6) return;
+                const gap = sign > 0 ? ob.min[axis] - bb.max[axis] : bb.min[axis] - ob.max[axis];
+                if (gap < -0.02 || gap >= bestGap) return;
+                bestGap = gap;
+            });
+        });
+        if (bestGap === Infinity) {
+            this.app.toasty('Nothing to snap to that way.');
+            return false;
+        }
+        this.targetPosition[axis] += sign * bestGap;
+        return true;
+    }
+
+    // Match the rotation of the nearest piece that is the same TYPE or a
+    // SIMILAR SIZE (bounding volume within half-to-double of ours).
+    snapRotationToNeighbor() {
+        const inst = this.currentInstance;
+        if (!inst) return false;
+        const bb = this._worldBounds(inst);
+        if (!bb.min) return false;
+        const myVol = (bb.max.x - bb.min.x) * (bb.max.y - bb.min.y) * (bb.max.z - bb.min.z);
+        const myName = this.currentWorldObject ? this.currentWorldObject.name : null;
+        let best = null, bestD = Infinity;
+        this.app.BuildableObjectList.forEach((wo) => {
+            wo.instances.forEach((o) => {
+                if (!o || o === inst) return;
+                const sameType = o.worldObject && o.worldObject.name === myName;
+                let ok = sameType;
+                if (!ok) {
+                    const ob = this._worldBounds(o);
+                    if (!ob.min) return;
+                    const vol = (ob.max.x - ob.min.x) * (ob.max.y - ob.min.y) * (ob.max.z - ob.min.z);
+                    ok = vol > myVol * 0.5 && vol < myVol * 2.0;
+                }
+                if (!ok) return;
+                const d = BABYLON.Vector3.Distance(o.position, inst.position);
+                if (d > 12) return;   // "nearby" means NEARBY, not across the map
+                if (d < bestD) { bestD = d; best = o; }
+            });
+        });
+        if (!best) {
+            this.app.toasty('No similar piece nearby to match.');
+            return false;
+        }
+        this._lastRotMatch = (best.worldObject ? best.worldObject.name : '?') + '#' + best.worldId;
+        const q = best.rotationQuaternion
+            ? best.rotationQuaternion.clone()
+            : BABYLON.Quaternion.RotationYawPitchRoll(best.rotation ? best.rotation.y : 0, 0, 0);
+        inst.rotationQuaternion = q.clone();
+        this.targetRotation = q.clone();
+        this.app.toasty('Rotation matched.');
+        return true;
     }
 
     // Put the cursor on an instance and make it the selection (mouse path;
@@ -609,26 +712,49 @@ class BuildMode {
         right.y = 0;
         right.normalize();
 
-        // Movement control for currentInstance and mesh cursor
-        if (this.app.keyDown('W')) {
-            // Move forward along the ground plane
-            this.targetPosition.addInPlace(forward.scale(moveSpeed));
-            moved = true;
+        // CapsLock latches snap mode on/off (Shift and pad LB hold it).
+        if (this.app.keyPressed('CAPSLOCK')) {
+            this.snapLatch = !this.snapLatch;
+            this.app.toasty(this.snapLatch
+                ? 'Snap mode ON — movement keys snap to neighbors, rotation matches them.'
+                : 'Snap mode off.');
         }
-        if (this.app.keyDown('S')) {
-            // Move backward along the ground plane
-            this.targetPosition.subtractInPlace(forward.scale(moveSpeed));
-            moved = true;
-        }
-        if (this.app.keyDown('A')) {
-            // Move left along the ground plane
-            this.targetPosition.addInPlace(right.scale(moveSpeed));
-            moved = true;
-        }
-        if (this.app.keyDown('D')) {
-            // Move right along the ground plane
-            this.targetPosition.subtractInPlace(right.scale(moveSpeed));
-            moved = true;
+        const snapNow = this.currentInstance && this._snapActive();
+
+        // Movement control for currentInstance and mesh cursor. With snap
+        // active, each movement key PRESS jumps the object flush against the
+        // nearest neighbor along the dominant world axis of that direction.
+        const snapDir = (v) => {
+            const axis = Math.abs(v.x) >= Math.abs(v.z) ? 'x' : 'z';
+            const sign = (axis === 'x' ? v.x : v.z) >= 0 ? 1 : -1;
+            return this.snapToNearest(axis, sign);
+        };
+        if (snapNow) {
+            if (this.app.keyPressed('W')) moved = snapDir(forward) || moved;
+            if (this.app.keyPressed('S')) moved = snapDir(forward.scale(-1)) || moved;
+            if (this.app.keyPressed('A')) moved = snapDir(right) || moved;
+            if (this.app.keyPressed('D')) moved = snapDir(right.scale(-1)) || moved;
+        } else {
+            if (this.app.keyDown('W')) {
+                // Move forward along the ground plane
+                this.targetPosition.addInPlace(forward.scale(moveSpeed));
+                moved = true;
+            }
+            if (this.app.keyDown('S')) {
+                // Move backward along the ground plane
+                this.targetPosition.subtractInPlace(forward.scale(moveSpeed));
+                moved = true;
+            }
+            if (this.app.keyDown('A')) {
+                // Move left along the ground plane
+                this.targetPosition.addInPlace(right.scale(moveSpeed));
+                moved = true;
+            }
+            if (this.app.keyDown('D')) {
+                // Move right along the ground plane
+                this.targetPosition.subtractInPlace(right.scale(moveSpeed));
+                moved = true;
+            }
         }
 
         if (this.app.keyDown('R')) {
@@ -732,29 +858,34 @@ class BuildMode {
             
             // Some movement keys that we don't need for cursor mode (can't rotate the cursor)
 
-            // Buildable object for placement
+            // Buildable object for placement. With snap active, rotation
+            // keys MATCH the nearest similar piece's angle instead of
+            // stepping 45 degrees.
             if (this.app.keyPressed('Z')) {
-                // Rotate 45 degrees to the left (counter-clockwise)
-                if(null == this.currentInstance.rotationQuaternion) {
-                    this.currentInstance.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(0, 0, 0);
+                if (this._snapActive()) {
+                    this.snapRotationToNeighbor();
+                } else {
+                    // Rotate 45 degrees to the left (counter-clockwise)
+                    if(null == this.currentInstance.rotationQuaternion) {
+                        this.currentInstance.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(0, 0, 0);
+                    }
+                    this.currentInstance.rotationQuaternion
+                        = this.currentInstance.rotationQuaternion.multiply(BABYLON.Quaternion.RotationYawPitchRoll(-rotationAngle, 0, 0));
+                    this.targetRotation = this.currentInstance.rotationQuaternion.clone();
                 }
-                this.currentInstance.rotationQuaternion 
-                    = this.currentInstance.rotationQuaternion.multiply(BABYLON.Quaternion.RotationYawPitchRoll(-rotationAngle, 0, 0));
-                //this.guideMesh.rotationQuaternion = this.currentInstance.rotationQuaternion.clone();
-
-                this.targetRotation = this.currentInstance.rotationQuaternion.clone();
             }
             if (this.app.keyPressed('C')) {
-                if(null == this.currentInstance.rotationQuaternion) {
-                    this.currentInstance.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(0, 0, 0);
+                if (this._snapActive()) {
+                    this.snapRotationToNeighbor();
+                } else {
+                    if(null == this.currentInstance.rotationQuaternion) {
+                        this.currentInstance.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(0, 0, 0);
+                    }
+                    // Rotate 45 degrees to the right (clockwise)
+                    this.currentInstance.rotationQuaternion
+                        = this.currentInstance.rotationQuaternion.multiply(BABYLON.Quaternion.RotationYawPitchRoll(rotationAngle, 0, 0));
+                    this.targetRotation = this.currentInstance.rotationQuaternion.clone();
                 }
-                
-                // Rotate 45 degrees to the right (clockwise)
-                this.currentInstance.rotationQuaternion 
-                    = this.currentInstance.rotationQuaternion.multiply(BABYLON.Quaternion.RotationYawPitchRoll(rotationAngle, 0, 0));
-                //this.guideMesh.rotationQuaternion = this.currentInstance.rotationQuaternion.clone();
-
-                this.targetRotation = this.currentInstance.rotationQuaternion.clone();
             }
 
             // Calculate a grid size for object placement based on the current scale, but cap at 1.0
@@ -764,8 +895,11 @@ class BuildMode {
             // `targetPosition` is the anchor: the ground point the object's base
             // should rest on. Snap it horizontally to the grid when the player
             // isn't actively dragging the object.
+            // (Snap mode suspends the grid pull entirely: a flush vertex
+            // snap often lands off-grid, and the idle lerp below would
+            // quietly drag it back onto grid multiples.)
             let anchor = this.targetPosition.clone();
-            if (!moved) {
+            if (!moved && !snapNow) {
                 const snapped = new BABYLON.Vector3(
                     Math.round((anchor.x + Number.EPSILON) / gridSize) * gridSize,
                     anchor.y,

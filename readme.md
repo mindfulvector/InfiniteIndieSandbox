@@ -74,6 +74,12 @@ the cursor (a tree sits *on* the surface), while **terrain** tiles snap their
 the same walking surface and tile together seamlessly. Use `R`/`V` to raise or
 lower the object (and the whole surface height) before placing.
 
+**Snap mode:** hold `Shift` (or the controller's left bumper), or tap
+`CapsLock` to latch it on. While active, each movement key press **snaps the
+object flush** against the nearest thing in that direction — perfect for
+clicking blocks together seamlessly — and the rotate keys **match the angle**
+of the nearest similar piece instead of stepping 45°.
+
 A **sidebar on the left** lists every object in the current category — click
 a row (or use the arrow keys) to switch what you're placing.
 

@@ -62,6 +62,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Open building mode with placeable objects | ✅ | Object browser w/ runtime thumbnails, categories, arrow-key cycling |
 | Magic-wand: place / move / rotate / scale / link / delete | ✅ | Cursor mode: Space grabs (one key with placement), Shift+Space opens properties, mouse TAP selects any placed object; left sidebar lists the browsed category (arrow keys + clickable rows); R/V raise, Z/C rotate, [/] scale, Delete (`test-build-ux.js`, `test-move-object.js`); wiring view: tap an object for its inspector card (ports + wires), tap a wire for its card — Delete lives inside the card (`test-build-ux.js`) |
 | Terrain sculpting with block terrain, themes | 🟡 | Block tiles w/ top-snap anchor + rolling default grid; more themes planned |
+| Snap-assisted placement (vertex/rotation snapping) | ✅ | Hold Shift or pad LB (or latch with CapsLock): movement keys JUMP the moving object flush against the nearest object in that direction (dominant world axis, grid pull suspended, idempotent re-press); rotation keys MATCH the nearest same-type or similar-size piece within 12u (AABB similarity) (`test-snap.js`) |
 | Logic toys: triggers | ✅ | `l_trigger` volumes fire enter/exit events (`test-wiring.js`) |
 | Logic toys: spawners | ✅ | `l_spawner` w/ enemy type / frequency / limit params (`test-spawner.js`) |
 | Logic toys: counters | ✅ | `l_counter` — increment/decrement/reset inputs, reached/changed outputs (`test-logic-toys.js`) |
@@ -111,7 +112,8 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. **USER REQUEST — snap-assisted placement**: holding Shift (or CapsLock on, or the left bumper) while pressing movement keys vertex-snaps the moving object to the nearest object in that direction; while rotating in snap mode, snap to the rotation angle of the nearest piece of the same type or similar size
-2. NPC villagers (wander + talk bubbles + quest hooks)
-3. Water blocks (swim volumes, floating props)
-4. Built-in game SFX (combat/pickup/UI hooks on the chime synth)
+1. **USER REQUEST — editable interior cells as nested worlds**: replace the cell door's raw-mesh pocket room with REAL world-object instances built at the cell origin from a per-door template, editable in build mode like anything else and serialized inside the owning world's save (Disney-Infinity door-to-level model). Includes: build cursor/camera should follow into the cell area when entering build mode from inside.
+2. **USER REQUEST — named saves + slot rework**: name each root-level save (and each sub-level on creation); names replace slots for BUILT LEVELS, while numbered slots remain for CHARACTER PROGRESSION (pixels/XP/figures — collection stays shared). Pick a progression slot at session start; save/load levels by name at any time without returning to the main menu or touching the progression slot.
+3. **USER REQUEST — companion system**: hire companions through a DIALOG TREE — some free, some costing pixels. Hired companions are saved with the active character-progression slot and respawn with the player whenever that slot is loaded and a world is entered. (Builds on the buddy/sidekick rigs; dialog tree is the new machinery.)
+4. NPC villagers (wander + talk bubbles + quest hooks) — natural dialog-tree partner for the companion system
+5. Water blocks (swim volumes, floating props)
