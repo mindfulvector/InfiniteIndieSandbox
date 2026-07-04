@@ -1233,7 +1233,7 @@ class App {
             // Pick a starter world to build the new game from. Item 1 (Rolling
             // Hills) is the classic default, so pressing 1-1 from the main menu
             // still starts a standard game.
-            const kinds = { 1: 'rolling', 2: 'flat', 3: 'arena', 4: 'islands' };
+            const kinds = { 1: 'rolling', 2: 'flat', 3: 'arena', 4: 'islands', 5: 'hub' };
             if(menuItem === 0) {
                 app.menu.state = app.menu.prevState || MENU_MAIN;
             } else if(kinds[menuItem]) {
@@ -1749,6 +1749,7 @@ class App {
                     { n: 2, label: '2. Flat Plane — a blank canvas' },
                     { n: 3, label: '3. Arena — walled floor for combat games' },
                     { n: 4, label: '4. Floating Islands — platforming start' },
+                    { n: 5, label: '5. Sandbox Hub — pre-wired challenge park' },
                 ];
                 templates.forEach((t) => {
                     this.MenuItem({

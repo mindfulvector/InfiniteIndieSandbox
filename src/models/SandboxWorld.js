@@ -134,9 +134,22 @@ class SandboxWorld {
         case 'flat':    return this.buildFlatTemplate();
         case 'arena':   return this.buildArenaTemplate();
         case 'islands': return this.buildIslandsTemplate();
+        case 'hub':     return this.buildHubTemplate();
         case 'rolling':
         default:        return this.buildDefaultTerrain();
         }
+    }
+
+    // Place a (non-terrain) object instance with optional params (shared by
+    // the hub builder). Wires are pushed onto the returned instance directly.
+    _place(name, x, y, z, params, yaw) {
+        const wo = this.app.findWorldObject(name);
+        if(!wo) return null;
+        const inst = wo.createInstance();
+        inst.position = new BABYLON.Vector3(x, y, z);
+        if(yaw) inst.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(yaw, 0, 0);
+        if(params) Object.assign(inst.params, params);
+        return inst;
     }
 
     // Place one terrain tile with collisions at a grid cell (shared helper).
@@ -209,6 +222,107 @@ class SandboxWorld {
             }
         });
         this.spawnPoint = new BABYLON.Vector3(0, 3, 0);   // over the central island
+        return count;
+    }
+
+    // The Sandbox Hub: a central plaza with four pre-wired challenge zones,
+    // built entirely from the shipped toys so it doubles as a live tutorial.
+    //   N — Combat Yard: entry trigger cues a camera cut and wakes a spawner
+    //   E — Star Climb: 4 stars up a stair; counter -> scoreboard on all four
+    //   S — The Crossing: a ping-pong moving platform over a gap, loot +
+    //       a patrolling blob on the far ledge
+    //   W — Homestead: a furnished room-kit house with a sliding door and a
+    //       pocket-interior cell door
+    buildHubTemplate(tileSize = 2.0) {
+        const wo = this.app.findWorldObject('t_tile');
+        if(!wo) return 0;
+        let count = 0;
+        const tile = (x, y, z) => { this._tileAt(wo, x, y, z); count++; };
+
+        // Central plaza (8x8) + short bridges out to each zone.
+        for(let gx = -3.5; gx <= 3.5; gx++) {
+            for(let gz = -3.5; gz <= 3.5; gz++) tile(gx * tileSize, 0, gz * tileSize);
+        }
+        for(let i = 4.5; i <= 6.5; i++) {
+            tile(0, 0, i * tileSize); tile(-1 * tileSize, 0, i * tileSize);     // north
+            tile(i * tileSize, 0, 0); tile(i * tileSize, 0, -1 * tileSize);     // east
+            tile(-i * tileSize, 0, 0); tile(-i * tileSize, 0, -1 * tileSize);   // west
+        }
+
+        // --- N: Combat Yard (walled 6x6 at z +14..+24) ---
+        for(let gx = -3; gx <= 2; gx++) {
+            for(let gz = 7; gz <= 12; gz++) {
+                const x = gx * tileSize, z = gz * tileSize;
+                tile(x, 0, z);
+                const edge = (gx === -3 || gx === 2 || gz === 12) ||
+                             (gz === 7 && gx !== 0 && gx !== -1);   // mouth at the bridge
+                if(edge) tile(x, 1.0, z);
+            }
+        }
+        const yardTrig = this._place('l_trigger', -1, 1.2, 13);
+        const yardSpawner = this._place('l_spawner', -1, 0.7, 22,
+            { enemyType: 'walker', frequency: 5, limit: 3, startActive: 'no' });
+        const yardCam = this._place('l_camera', 4, 4.5, 15);
+        if(yardTrig && yardSpawner && yardCam) {
+            yardTrig.wires.push({ event: 'entered', toWo: 'l_spawner', toId: yardSpawner.worldId, action: 'spawn' });
+            yardTrig.wires.push({ event: 'entered', toWo: 'l_camera',  toId: yardCam.worldId,     action: 'activate' });
+        }
+
+        // --- E: Star Climb (rising steps with a star on each) ---
+        const steps = [
+            { x: 15, y: 0.75, z: 0 }, { x: 18, y: 1.5, z: 1 },
+            { x: 21, y: 2.25, z: 0 }, { x: 24, y: 3.0, z: -1 },
+        ];
+        const climbCounter = this._place('l_counter', 13, 1.0, -2, { threshold: 4, autoReset: 'no' });
+        const hubBoard = this._place('l_scoreboard', 2, 1.3, 8, { target: 5 });
+        steps.forEach((s) => {
+            tile(s.x, s.y, s.z * tileSize);
+            const star = this._place('pk_star', s.x, s.y + 1.0, s.z * tileSize);
+            if(star && climbCounter) {
+                star.wires.push({ event: 'collected', toWo: 'l_counter', toId: climbCounter.worldId, action: 'increment' });
+            }
+        });
+        if(climbCounter && hubBoard) {
+            climbCounter.wires.push({ event: 'reached', toWo: 'l_scoreboard', toId: hubBoard.worldId, action: 'add5' });
+        }
+
+        // --- S: The Crossing (a gap bridged only by a moving platform) ---
+        for(let gx = -1; gx <= 0; gx++) {
+            for(let gz = -12; gz <= -10; gz++) tile(gx * tileSize, 0, gz * tileSize);
+        }
+        const n1 = this._place('l_pathnode', -1, 1.0, -8);
+        const n2 = this._place('l_pathnode', -1, 1.0, -14);
+        const n3 = this._place('l_pathnode', -1, 1.0, -20);
+        const ferry = this._place('pr_platform_moving', -1, 1.0, -8, { speed: 2, mode: 'pingpong' });
+        if(n1 && n2 && n3 && ferry) {
+            n1.wires.push({ event: 'next', toWo: 'l_pathnode', toId: n2.worldId, action: 'chain' });
+            n2.wires.push({ event: 'next', toWo: 'l_pathnode', toId: n3.worldId, action: 'chain' });
+            ferry.wires.push({ event: 'follow', toWo: 'l_pathnode', toId: n1.worldId, action: 'chain' });
+        }
+        this._place('pk_pixels', -1, 1.0, -22);
+        this._place('pk_health', 1, 1.0, -22);
+        const guardA = this._place('l_pathnode', -3, 1.0, -21);
+        const guardB = this._place('l_pathnode', 3, 1.0, -21);
+        const guard = this._place('en_blob', -3, 1.3, -21, { patrolSpeed: 1, patrolMode: 'pingpong' });
+        if(guardA && guardB && guard) {
+            guardA.wires.push({ event: 'next', toWo: 'l_pathnode', toId: guardB.worldId, action: 'chain' });
+            guard.wires.push({ event: 'patrol', toWo: 'l_pathnode', toId: guardA.worldId, action: 'chain' });
+        }
+
+        // --- W: Homestead (room-kit house + sliding door + cell door) ---
+        this._place('in_floor', -20, 0.55, -1);
+        this._place('in_wall', -20, 2.0, 1);                                // back wall
+        this._place('in_wall_window', -21.4, 2.0, -3);                      // front, window
+        this._place('in_wall', -22, 2.0, -1, null, Math.PI / 2);            // west wall
+        this._place('in_wall_door', -18, 2.0, -2.4, null, Math.PI / 2);     // east wall, doorway
+        this._place('pr_door', -18, 2.0, -1.0, null, Math.PI / 2);
+        this._place('d_table', -20.6, 1.0, -0.2);
+        this._place('d_chair', -20.6, 0.85, -1.4);
+        this._place('d_lamp', -21.2, 1.1, 0.4);
+        this._place('d_rug', -19.6, 0.62, -1.2);
+        this._place('pr_door_cell', -21.3, 2.0, -0.2, null, Math.PI / 2);
+
+        this.spawnPoint = new BABYLON.Vector3(0, 3, 0);
         return count;
     }
 

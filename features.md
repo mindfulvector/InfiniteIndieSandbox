@@ -71,13 +71,13 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Interiors (rooms, doors, decoration) | ✅ | INTERIOR category room kit (`in_wall`, `in_wall_door`, `in_wall_window`, `in_floor` — walls block shots, openings pass), wirable sliding door (`pr_door`), furniture (`d_table/chair/lamp/rug`), multi-prim manifest support (`test-interiors.js`); pocket-interior cell door (`pr_door_cell`: walk in → teleport to a themed room built from raw meshes, exit pad returns, outdoor enemies freeze, entered/exited wiring events, dollhouse camera) (`test-interior-cells.js`) |
 | Path/track creation (races, patrols, moving platforms) | 🟡 | `l_pathnode` waypoints chain via wires (`next`→`chain`); `pr_platform_moving` follows the chain dt-based (speed/loop/pingpong/once params, start/stop/reset inputs, `arrived`/`completed` outputs, respawn reset, save-clean via `restPos`); `en_blob` patrols a wired chain (loop/pingpong, pauses to stare when the player nears, shared `resolvePathChain`) (`test-paths.js`); race packaging planned |
 | AI builder assistants | ⬜ | |
-| Templates / starter worlds | ✅ | New Game picker: Rolling Hills / Flat Plane / Arena / Floating Islands (`test-progression.js`) |
+| Templates / starter worlds | ✅ | New Game picker: Rolling Hills / Flat Plane / Arena / Floating Islands (`test-progression.js`) / Sandbox Hub challenge park (`test-hub.js`) |
 | Unlockable toys through play | ✅ | Pixels earned from enemies buy locked objects in the shop (`test-shop-gating.js`) |
 
 ### The Sandbox Hub
 | Feature | Status | Notes |
 |---|---|---|
-| Central hub world with zones/quests/challenges | ⬜ | |
+| Central hub world with zones/quests/challenges | 🟡 | New Game template 5 "Sandbox Hub": central plaza + 4 pre-wired zones — Combat Yard (trigger→spawner+camera cut), Star Climb (4 stars→counter→scoreboard), The Crossing (ping-pong ferry over a gap + patrolling guard), Homestead (room-kit house + sliding door + cell door) (`test-hub.js`); quest chains/rewards planned |
 
 ### Sidekicks
 | Feature | Status | Notes |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Sandbox Hub world (zones/quests/challenges)
-2. Race packaging (start gate + checkpoints + finish timer from existing toys)
-3. Character-specific movesets / special attacks
-4. Round power discs (abilities/buffs)
+1. Race packaging (start gate + checkpoints + finish timer from existing toys)
+2. Character-specific movesets / special attacks
+3. Round power discs (abilities/buffs)
+4. Hub quest chains (multi-step goals with rewards)

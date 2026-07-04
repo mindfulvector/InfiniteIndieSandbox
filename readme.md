@@ -41,8 +41,13 @@ Currently, the game starts in build mode. The active mode is listed at the top o
 
 **New Game** opens a **starter-world picker**: Rolling Hills (the classic
 gentle terrain), Flat Plane (a blank canvas), Arena (a walled floor for combat
-games), or Floating Islands (a platforming start). Pick one and customize it in
-build mode.
+games), Floating Islands (a platforming start), or the **Sandbox Hub** — a
+pre-wired challenge park with four zones: a Combat Yard whose entrance wakes a
+spawner (with a camera cut), a Star Climb that pays the scoreboard when you
+collect all four stars, a Crossing bridged only by a moving platform (watch
+the patrol on the far side), and a furnished Homestead with a sliding door
+and a pocket-interior cell door. It doubles as a live tour of everything the
+wiring system can do — open the Wiring view there and study the connections.
 
 To switch between modes, press the `Esc` key then to enter a new mode:
 
