@@ -292,7 +292,13 @@ screen — glowberries are the good stuff (1 food → 15 XP), with a 10-pixel
 snack as the fallback. Grow glowberries on a **Farm Plot** (Props): crops
 ripen on a timer, turn gold, and you harvest by walking over them (they
 replant themselves by default). Plots fire a *Harvested* wiring event, so a
-farm can drive counters and quests too. Each sidekick keeps its own progress, and
+farm can drive counters and quests too.
+
+Food also crafts **sidekick gear** in the **Sidekick Care** screen
+(Collection → 8): a Tiny Top Hat (+2 aura HP), a Silver Bell (their XP share
+rounds up), and a Micro Cape (heartier meals). One hat and one trinket per
+sidekick, each keeps its own outfit, and the accessories show on the little
+companion itself. Each sidekick keeps its own progress, and
 re-selecting the active one sends it home for a while.
 
 ### Power Discs

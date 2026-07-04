@@ -871,7 +871,13 @@ class PlayMode {
     // play updates and by App.selectSidekick when the choice changes.
     refreshSidekick() {
         const id = this.app.activeSidekick;
-        const wanted = id ? 'sidekick_' + id : null;
+        // The gear signature rides the mesh name, so an outfit change makes
+        // `wanted` differ and the existing rebuild-on-name-change redresses
+        // the follower with zero extra bookkeeping.
+        const outfit = id ? this.app.gearOf(id) : null;
+        const wanted = id
+            ? 'sidekick_' + id + '_' + (outfit.hat || 'nohat') + '_' + (outfit.trinket || 'notrinket')
+            : null;
         if (this.sidekickMesh && this.sidekickMesh.name === wanted) return;
         if (this.sidekickMesh) { this.sidekickMesh.dispose(false, true); this.sidekickMesh = null; }
         if (!id || !this.player) return;
@@ -886,6 +892,34 @@ class PlayMode {
         mesh.isPickable = false;
         mesh.checkCollisions = false;
         mesh.position = this.player.position.add(new BABYLON.Vector3(-0.8, 1.8, -0.8));
+
+        // Accessories: tiny child meshes so they ride the follower's bob.
+        const accessory = (name, maker, y, color) => {
+            const acc = maker();
+            acc.name = wanted + '.' + name;
+            const am = new BABYLON.StandardMaterial(acc.name + 'Mat', this.app.scene);
+            am.emissiveColor = color;
+            am.disableLighting = true;
+            acc.material = am;
+            acc.isPickable = false;
+            acc.checkCollisions = false;
+            acc.parent = mesh;
+            acc.position = new BABYLON.Vector3(0, y, 0);
+        };
+        if (outfit.hat === 'tophat') {
+            accessory('gear_tophat', () => BABYLON.MeshBuilder.CreateCylinder(
+                'g', { diameter: 0.22, height: 0.22, tessellation: 10 }, this.app.scene),
+                0.34, new BABYLON.Color3(0.12, 0.12, 0.16));
+        }
+        if (outfit.trinket === 'bell') {
+            accessory('gear_bell', () => BABYLON.MeshBuilder.CreateSphere(
+                'g', { diameter: 0.12, segments: 6 }, this.app.scene),
+                -0.32, new BABYLON.Color3(0.85, 0.85, 0.95));
+        } else if (outfit.trinket === 'cape') {
+            accessory('gear_cape', () => BABYLON.MeshBuilder.CreateBox(
+                'g', { width: 0.3, height: 0.34, depth: 0.04 }, this.app.scene),
+                -0.1, new BABYLON.Color3(0.8, 0.2, 0.25));
+        }
         this.sidekickMesh = mesh;
     }
 

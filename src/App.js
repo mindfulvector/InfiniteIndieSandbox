@@ -14,6 +14,7 @@ const MENU_COLLECTION = 12;
 const MENU_SKILLS = 13;
 const MENU_DISCS = 14;
 const MENU_SHARE = 15;
+const MENU_GEAR = 16;
 
 const MAX_LEVEL = 20;   // character level cap
 
@@ -53,6 +54,15 @@ const SIDEKICKS = [
     { id: 'spark',  name: 'Spark',  price: 80, tint: [1.0, 0.8, 0.3],   desc: 'An excitable ember' },
 ];
 const SIDEKICK_MAX_LEVEL = 10;
+
+// Sidekick gear: bought with FARMED FOOD (the farm's second sink), worn in a
+// hat slot and a trinket slot per sidekick. Each piece is a visible accessory
+// on the follower plus a small perk.
+const SIDEKICK_GEAR = [
+    { id: 'tophat', name: 'Tiny Top Hat', cost: 5, slot: 'hat',     desc: '+2 aura HP' },
+    { id: 'bell',   name: 'Silver Bell',  cost: 4, slot: 'trinket', desc: 'XP share rounds up' },
+    { id: 'cape',   name: 'Micro Cape',   cost: 6, slot: 'trinket', desc: '+5 XP on every meal' },
+];
 
 // Hex discs: world-theme tokens. Each swaps the sky colour and tints the
 // shared terrain atlas; exactly one is active at a time ('classic' is the
@@ -1303,8 +1313,8 @@ class App {
                 app.menu.discsPrevState = app.menu.prevState || MENU_MAIN;
                 app.menu.state = MENU_DISCS;
             } else if(menuItem === 8) {
-                app.feedSidekick();
-                app.menu.renderedState = -1;
+                app.menu.gearPrevState = app.menu.prevState || MENU_MAIN;
+                app.menu.state = MENU_GEAR;
             } else if(menuItem >= 5 && menuItem <= 4 + SIDEKICKS.length) {
                 const sk = SIDEKICKS[menuItem - 5];
                 if(sk) {
@@ -1317,6 +1327,22 @@ class App {
                     if(app.ownsFigure(fig.id)) app.selectFigure(fig.id);
                     else app.buyFigure(fig.id);
                     app.menu.renderedState = -1;   // re-render with new state
+                }
+            }
+            break;
+        }
+        case MENU_GEAR: {
+            if(menuItem === 0) {
+                app.menu.prevState = app.menu.gearPrevState || MENU_MAIN;
+                app.menu.state = MENU_COLLECTION;
+            } else if(menuItem === 1) {
+                app.feedSidekick();
+                app.menu.renderedState = -1;
+            } else {
+                const gear = SIDEKICK_GEAR[menuItem - 2];
+                if(gear) {
+                    app.buyOrWearGear(gear.id);
+                    app.menu.renderedState = -1;
                 }
             }
             break;
@@ -1848,10 +1874,8 @@ class App {
                 });
                 this.MenuItem({
                     type: 'button',
-                    name: 'btnSkFeed',
-                    text: '8. Feed sidekick  ' + ((this.sidekickFood || 0) > 0
-                        ? '(' + this.sidekickFood + ' food · 1 → 15 XP)'
-                        : '(10 px → 10 XP · grow food on a farm plot)'),
+                    name: 'btnSkCare',
+                    text: '8. Sidekick Care  (' + (this.sidekickFood || 0) + ' food · feed + wardrobe)',
                     handler: () => { app.triggerMenuItem(MENU_COLLECTION, 8); }
                 });
                 this.MenuItem({
@@ -1918,6 +1942,50 @@ class App {
                     name: 'btnDiscBack',
                     text: '0. Back',
                     handler: () => { app.triggerMenuItem(MENU_DISCS, 0); }
+                });
+                break;
+            }
+            case MENU_GEAR: {
+                this.MenuRect();
+                const skDef = this.activeSidekick ? this.sidekickById(this.activeSidekick) : null;
+                this.MenuItem({
+                    type: 'text',
+                    name: 'gearTitle',
+                    text: 'SIDEKICK CARE' + (skDef ? '  ·  ' + skDef.name + ' · LV ' + this.sidekickLevelOf(skDef.id) : ''),
+                    fontSize: 22,
+                    accent: true,
+                });
+                this.MenuItem({
+                    type: 'text',
+                    name: 'gearFood',
+                    text: (this.sidekickFood || 0) + ' food in the pantry  ·  gear is crafted from food',
+                    fontSize: 15,
+                    color: '#ff9bce',
+                });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnGearFeed',
+                    text: '1. Feed  ' + ((this.sidekickFood || 0) > 0
+                        ? '(1 food → ' + (this.gearWorn('cape') ? 20 : 15) + ' XP)'
+                        : '(10 px → 10 XP)'),
+                    handler: () => { app.triggerMenuItem(MENU_GEAR, 1); }
+                });
+                SIDEKICK_GEAR.forEach((g, i) => {
+                    const n = 2 + i;
+                    const status = this.gearWorn(g.id) ? '◉ WORN'
+                        : (this.ownsGear(g.id) ? 'Owned' : g.cost + ' food');
+                    this.MenuItem({
+                        type: 'button',
+                        name: 'btnGear_' + g.id,
+                        text: n + '. ' + g.name + ' (' + g.slot + ') — ' + g.desc + '   [' + status + ']',
+                        handler: () => { app.triggerMenuItem(MENU_GEAR, n); }
+                    });
+                });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnGearBack',
+                    text: '0. Back',
+                    handler: () => { app.triggerMenuItem(MENU_GEAR, 0); }
                 });
                 break;
             }
@@ -2524,6 +2592,8 @@ class App {
                 ? skActive : null;
             this.sidekickFood = Math.max(0,
                 parseInt(window.localStorage.getItem('iis_sk_food'), 10) || 0);
+            const gearOwned = JSON.parse(window.localStorage.getItem('iis_gear_owned') || '[]');
+            this.ownedGear = new Set(Array.isArray(gearOwned) ? gearOwned : []);
         } catch (e) {
             this.pixels = 0;
             this.purchasedSet = new Set();
@@ -2539,6 +2609,7 @@ class App {
             this.ownedSidekicks = new Set();
             this.activeSidekick = null;
             this.sidekickFood = 0;
+            this.ownedGear = new Set();
         }
     }
 
@@ -2574,6 +2645,7 @@ class App {
             if (this.activeSidekick) window.localStorage.setItem('iis_sidekick_active', this.activeSidekick);
             else window.localStorage.removeItem('iis_sidekick_active');
             window.localStorage.setItem('iis_sk_food', String(this.sidekickFood || 0));
+            window.localStorage.setItem('iis_gear_owned', JSON.stringify([...(this.ownedGear || [])]));
         } catch (e) { /* storage may be unavailable */ }
     }
 
@@ -2603,8 +2675,9 @@ class App {
         if (this.playerLevel >= MAX_LEVEL) { this.saveEconomy(); return; }
         // Sage Lens: +25% XP earned.
         if (this.discEquipped('sage')) n = Math.round(n * 1.25);
-        // The active sidekick learns alongside the player (half share).
-        this.addSidekickXp(Math.floor(n / 2));
+        // The active sidekick learns alongside the player (half share; the
+        // Silver Bell rounds the share up instead of down).
+        this.addSidekickXp(this.gearWorn('bell') ? Math.ceil(n / 2) : Math.floor(n / 2));
         this.playerXp += n;
         let leveled = false;
         while (this.playerLevel < MAX_LEVEL && this.playerXp >= this.xpToNext(this.playerLevel)) {
@@ -2813,9 +2886,11 @@ class App {
 
     sidekickXpToNext(level) { return 20 + (level - 1) * 10; }
 
-    // The active sidekick's aura: +2 max HP per sidekick level.
+    // The active sidekick's aura: +2 max HP per sidekick level, +2 more when
+    // it wears the Tiny Top Hat.
     sidekickBonus() {
-        return this.activeSidekick ? this.sidekickLevelOf(this.activeSidekick) * 2 : 0;
+        if (!this.activeSidekick) return 0;
+        return this.sidekickLevelOf(this.activeSidekick) * 2 + (this.gearWorn('tophat') ? 2 : 0);
     }
 
     adoptSidekick(id) {
@@ -2865,6 +2940,57 @@ class App {
         }
     }
 
+    // ---- sidekick gear -------------------------------------------------------
+
+    sidekickGear() { return SIDEKICK_GEAR; }
+    gearById(id) { return SIDEKICK_GEAR.find((g) => g.id === id) || null; }
+    ownsGear(id) { return !!(this.ownedGear && this.ownedGear.has(id)); }
+
+    // The active outfit of a sidekick: {hat, trinket} (ids or null).
+    gearOf(skId) {
+        try {
+            const raw = JSON.parse(window.localStorage.getItem('iis_sk_' + skId + '_gear') || '{}') || {};
+            return {
+                hat: (raw.hat && this.gearById(raw.hat) && this.ownsGear(raw.hat)) ? raw.hat : null,
+                trinket: (raw.trinket && this.gearById(raw.trinket) && this.ownsGear(raw.trinket)) ? raw.trinket : null,
+            };
+        } catch (e) { return { hat: null, trinket: null }; }
+    }
+
+    // True when the ACTIVE sidekick wears the piece.
+    gearWorn(id) {
+        if (!this.activeSidekick) return false;
+        const g = this.gearById(id);
+        if (!g) return false;
+        return this.gearOf(this.activeSidekick)[g.slot] === id;
+    }
+
+    // Buy with food (auto-wears), or toggle wear when already owned. A new
+    // piece in an occupied slot replaces what's worn (the old piece stays
+    // owned). Outfits are per sidekick.
+    buyOrWearGear(id) {
+        const gear = this.gearById(id);
+        if (!gear) return false;
+        if (!this.activeSidekick) { this.toasty('Adopt a sidekick first.'); return false; }
+        if (!this.ownsGear(id)) {
+            if ((this.sidekickFood || 0) < gear.cost) {
+                this.toasty(gear.name + ' costs ' + gear.cost + ' food — grow some glowberries.');
+                return false;
+            }
+            this.sidekickFood -= gear.cost;
+            this.ownedGear.add(id);
+            this.toasty('Crafted ' + gear.name + '!');
+        }
+        const outfit = this.gearOf(this.activeSidekick);
+        outfit[gear.slot] = (outfit[gear.slot] === id) ? null : id;   // toggle / replace
+        try {
+            window.localStorage.setItem('iis_sk_' + this.activeSidekick + '_gear', JSON.stringify(outfit));
+        } catch (e) { /* storage may be unavailable */ }
+        this.applySkillsToSession();   // hat HP applies live
+        this.saveEconomy();
+        return true;
+    }
+
     // Farmed sidekick food (harvested from pr_plot crops).
     addSidekickFood(n) {
         this.sidekickFood = Math.max(0, (this.sidekickFood || 0) + n);
@@ -2875,16 +3001,18 @@ class App {
     // 15 XP); with the pantry empty it falls back to 10 pixels -> 10 XP.
     feedSidekick() {
         if (!this.activeSidekick) { this.toasty('No sidekick to feed.'); return false; }
+        // The Micro Cape makes every meal heartier.
+        const capeBonus = this.gearWorn('cape') ? 5 : 0;
         if ((this.sidekickFood || 0) > 0) {
             this.sidekickFood -= 1;
-            this.addSidekickXp(15);
-            this.toasty('Yum — glowberries!  (+15 XP)');
+            this.addSidekickXp(15 + capeBonus);
+            this.toasty('Yum — glowberries!  (+' + (15 + capeBonus) + ' XP)');
             this.saveEconomy();
             return true;
         }
         if (this.pixels < 10) { this.toasty('Feeding costs 10 pixels (or grow food on a farm plot).'); return false; }
         this.pixels -= 10;
-        this.addSidekickXp(10);
+        this.addSidekickXp(10 + capeBonus);
         this.saveEconomy();
         return true;
     }

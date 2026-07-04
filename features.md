@@ -82,7 +82,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 ### Sidekicks
 | Feature | Status | Notes |
 |---|---|---|
-| Collectible sidekicks that follow/level/feed/equip | 🟡 | 3 adoptable sidekicks (Wisp/Pebble/Spark), one follows at a time (hover-follow, dt-based), levels from a half share of player XP or by feeding pixels (10 px → 10 XP), aura adds +2 max HP per sidekick level, per-sidekick progress persists, Collection rows 5–8 (`test-sidekicks.js`); equipment planned |
+| Collectible sidekicks that follow/level/feed/equip | ✅ | 3 adoptable sidekicks, hover-follow, half-share XP leveling + feeding, +2 max HP aura per level (`test-sidekicks.js`); gear crafted from farmed food (Top Hat +2 HP, Bell rounds XP share up, Cape +5 meal XP) worn per-sidekick in hat/trinket slots with visible accessories, managed on the Sidekick Care screen (`test-sidekick-gear.js`) |
 | Crop farming for sidekick food | ✅ | `pr_plot` grows glowberries dt-based (growTime/autoReplant params, per-instance crop material, green→gold stages); walking over a ripe plot harvests +2 food and fires a wirable `harvested`; food is the premium sidekick meal (1 → 15 XP, pixel fallback), persisted (`test-farming.js`) |
 
 ### Sandbox Expansion Games
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Sidekick equipment (hats/trinkets bought with food)
-2. Featured/curated gallery rotations
-3. Split-screen exploration (second camera viewport)
-4. Kart AI opponents (ghost karts on path chains)
+1. Featured/curated gallery rotations
+2. Split-screen exploration (second camera viewport)
+3. Kart AI opponents (ghost karts on path chains)
+4. Play Set campaign packaging (mission chains in a gallery world)

@@ -149,19 +149,23 @@ async function main() {
         check('ownership, choice, and level survive a reload',
             persist.active === 'wisp' && persist.owned.includes('wisp') && persist.level === 2, persist);
 
-        // --- 7. Collection digit path: row 6 adopts Pebble, row 8 feeds ---
+        // --- 7. Menu path: row 6 adopts Pebble; row 8 opens Sidekick Care,
+        // whose row 1 feeds ---
         const menu = await h.evaluate(() => {
             const app = window.app;
             app.pixels = 100;
+            app.sidekickFood = 0;         // force the pixel meal for exact math
             app.triggerMenuItem(12, 6);   // adopt Pebble (row 5=wisp, 6=pebble)
             const adopted = app.activeSidekick === 'pebble' && app.ownsSidekick('pebble');
             const xp0 = app.sidekickXpOf('pebble');
-            app.triggerMenuItem(12, 8);   // feed
-            return { adopted, fed: app.sidekickXpOf('pebble') - xp0, pixels: app.pixels };
+            app.triggerMenuItem(12, 8);   // open Sidekick Care
+            const careOpen = app.menu.state === 16;
+            app.triggerMenuItem(16, 1);   // feed
+            return { adopted, careOpen, fed: app.sidekickXpOf('pebble') - xp0, pixels: app.pixels };
         });
         console.log('[7] menu path', menu);
-        check('the Collection digits adopt (6) and feed (8)',
-            menu.adopted && menu.fed === 10 && menu.pixels === 100 - 50 - 10, menu);
+        check('the digits adopt (12/6), open Care (12/8), and feed (16/1)',
+            menu.adopted && menu.careOpen && menu.fed === 10 && menu.pixels === 100 - 50 - 10, menu);
 
         // --- 8. No unexpected page errors ---
         const realErrors = h.pageErrors.filter((e) => !h._isExpectedError(e));
