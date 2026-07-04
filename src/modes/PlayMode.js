@@ -328,6 +328,7 @@ class PlayMode {
         } else {
             this.updatePadMovement();
             this.handleCombat();
+            this.updateSwimming();
             // Footstep/jump/land sounds only apply on foot (driving and
             // grinding suspend the CharacterController).
             this.updateMovementSounds();
@@ -961,6 +962,70 @@ class PlayMode {
                     a.click();
                 }
             });
+    }
+
+    // ---- swimming --------------------------------------------------------------
+    // Inside a t_water volume: gravity drops to a gentle sink, move speed
+    // halves, and holding Space strokes upward -- capped just under the
+    // surface so you tread water instead of launching skyward. Everything
+    // restores on exit (and after respawn, since the check runs on-foot
+    // every frame).
+    updateSwimming() {
+        const cc = this.cc;
+        if (!cc || !this.player) return;
+        const wo = this.app.findWorldObject('t_water');
+        let vol = null;
+        if (wo) {
+            const p = this.player.position;
+            // Collect every block whose footprint contains the player, then
+            // find one containing them vertically -- and climb the STACK to
+            // the column's real surface, so strokes work mid-column in deep
+            // pools instead of capping at each block's own lid.
+            const cols = [];
+            wo.instances.forEach((w) => {
+                if (!w) return;
+                w.computeWorldMatrix(true);
+                const bb = w.getBoundingInfo().boundingBox;
+                const mn = bb.minimumWorld, mx = bb.maximumWorld;
+                if (p.x > mn.x && p.x < mx.x && p.z > mn.z && p.z < mx.z) {
+                    cols.push({ lo: mn.y, hi: mx.y });
+                }
+            });
+            const inside = cols.find((c) => p.y + 0.9 > c.lo && p.y + 0.4 < c.hi);
+            if (inside) {
+                let top = inside.hi, grew = true;
+                while (grew) {
+                    grew = false;
+                    for (const c of cols) {
+                        if (c.lo < top + 0.05 && c.hi > top) { top = c.hi; grew = true; }
+                    }
+                }
+                vol = { top };
+            }
+        }
+        if (vol && !this.swimming) {
+            this.swimming = true;
+            this._preSwim = {
+                gravity: cc._gravity,
+                walk: cc._actionMap.walk.speed,
+                run: cc._actionMap.run.speed,
+            };
+            cc.setGravity(1.5);
+            cc.setWalkSpeed(this._preSwim.walk * 0.55);
+            cc.setRunSpeed(this._preSwim.run * 0.55);
+            this.app.toasty('Splash!  Hold Space to swim up.');
+        } else if (!vol && this.swimming) {
+            this.swimming = false;
+            cc.setGravity(this._preSwim ? this._preSwim.gravity : 9.8);
+            cc.setWalkSpeed(this._preSwim ? this._preSwim.walk : 6);
+            cc.setRunSpeed(this._preSwim ? this._preSwim.run : 12);
+        }
+        if (this.swimming && vol) {
+            const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);
+            if (this.app.keyDown(' ') && this.player.position.y + 1.2 < vol.top) {
+                this.player.moveWithCollisions(new BABYLON.Vector3(0, 5 * dt, 0));
+            }
+        }
     }
 
     // ---- traversal toys: grind rails + trampolines ----------------------------

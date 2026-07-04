@@ -35,6 +35,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Flyable aircraft / dogfighting | 🟡 | The Sky-Wing (`pr_wing`, `vehicleProfile.canFly` on the shared seat): runway takeoff (throttle + held Space climbs with airspeed), release to glide with a capped sink rate, banks into turns, stalls below airspeed, `C` bails out (`test-aircraft.js`); `l_ring` aerial hoops fire edge-triggered `flown` for player OR ridden vehicle and wire straight into `l_race` for fly-through courses (`test-rings.js`); dogfighting planned |
 | Ridable mounts | ✅ | The Strider (`pr_mount`): walk-up saddling on the shared vehicle seat (per-vehicle profiles), slower than the kart but pivots in place, JUMPS on Space, dismounts on `C`, legs trot with speed; mount children are collision-free so the beast can't block its own jump (`test-mounts.js`) |
 | Climbing / jumping / double-jump / gliding / character traversal | 🟡 | Jump, double jump, and hold-to-glide (`test-traversal.js`); slope/step handling via CharacterController; climbing/swinging planned |
+| Water blocks (swim volumes) | ✅ | `t_water`: translucent intangible unpickable volumes (the ground-ray lesson inverted — pickable water would be walkable); submersion drops gravity to a gentle sink, halves move speed, held Space strokes upward capped at the COLUMN surface (stacked pools climb to the true top), everything restores exactly on exit (`test-water.js`); floating props planned |
 | Grind rails, trampolines, traversal toys | ✅ | `pr_rail` grinds a wired path chain hands-free (CC suspended, `grindStart`/`grindEnd` wiring edges, respawn bails cleanly); `t_tramp` launches at configurable power through the CC's own jump (speed borrowed then restored), squashes on launch, fires `bounced` (`test-traversal-toys.js`) |
 
 ### Multiplayer
@@ -116,4 +117,3 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Sound effects (procedurally synthesised, no asset files) | ✅ | `SoundManager` (Web Audio): per-surface footsteps (grass/dirt/wood/stone/metal — grass blocks resolve by face), jump/double-jump/land/glide, full combat + survival set, pickups/pixels/level-up/purchase, UI/build/wiring clicks; `M` = persistent mute (`test-sfx.js`) |
 
 ## Next up (suggested order)
-1. Water blocks (swim volumes, floating props)

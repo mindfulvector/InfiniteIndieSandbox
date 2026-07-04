@@ -186,6 +186,14 @@ class Manifest {
                   ]
         }, 'KartScript');
 
+        // A water block: a translucent swim volume (see WaterScript).
+        app.createWorldObject('t_water', {
+            anchor: 'below',
+            prims: [
+                     {ty: 'box', s: [2, 2, 2], p: [0, 0, 0], col: [0.3, 0.6, 0.95], tex: {id: 'cloud'}},
+                  ]
+        }, 'WaterScript');
+
         // An ambient villager: wanders its home patch, greets with a talk
         // bubble, edge-fires `talked` (quest fodder). Mood picks its lines.
         app.createWorldObject('pr_villager', {

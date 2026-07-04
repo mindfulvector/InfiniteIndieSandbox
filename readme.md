@@ -295,6 +295,11 @@ slips away, the camera comes off its leash (`WASD` to move, `R`/`F` for
 height, `Shift` to hurry, mouse to orbit), and `Enter` saves a PNG of your
 shot. Press `P` again to jump back into the fray exactly where it left off.
 
+**Water:** place **Water** blocks (Terrain) to build pools, moats, and
+lakes — they're translucent volumes you fall into. Underwater you sink
+gently, move slower, and **hold `Space` to swim up**; you'll tread just
+under the surface, and stacked water blocks make genuinely deep pools.
+
 **Traversal toys:** the **Trampoline** (Terrain) launches you sky-high when
 you land on it — set its bounce power in its options. The **Grind Rail**
 (Props) carries you hands-free: wire its *Rail Path* to a chain of path
