@@ -1495,8 +1495,14 @@ class PlayMode {
     }
 
     playerForward() {
+        // The avatar model's visual front is its local MINUS-z (proved by
+        // walking it forward with the CC and measuring: displacement dot
+        // local +z = -1). Everything aims/blocks/dodges relative to what the
+        // player SEES, so forward is -z here -- flipping this one vector
+        // once fixed dodge rolling forward and block/specials facing
+        // backward (user-reported).
         const m = this.player.getWorldMatrix();
-        const f = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, 1), m);
+        const f = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, -1), m);
         f.y = 0;
         return f.lengthSquared() > 0.0001 ? f.normalize() : new BABYLON.Vector3(0, 0, 1);
     }
