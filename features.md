@@ -76,6 +76,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Day/night cycle (wired sun, mood lighting) | ✅ | `l_sun`: play-mode time cycles the hemispheric light (bright noon → dim night, warm dawn/dusk tint) and darkens the sky from the CAPTURED baseline (hex themes compose); edge-fired `dawn`/`noon`/`dusk`/`midnight` wiring + `start`/`stop` inputs; build mode and removal restore exact daylight; play reset returns to dawn (`test-daynight.js`) |
 | Photo mode (freeze + free camera + capture) | ✅ | `P` in play mode freezes the whole world (update short-circuit) and hides the HUD; WASD/R/F dolly the free camera (Shift speeds it) with mouse orbit live; `Enter` captures a 1280×720 PNG via `CreateScreenshotUsingRenderTarget` (downloads, `app.lastPhotoData` for tests); `P` resumes, Esc-teardown restores the HUD (`test-photo.js`) |
 | AI builder assistants | ⬜ | |
+| Named world saves + progression slots | ✅ | Worlds save under NAMES (pause → Save/Load World, prompt with a test hook; overwrite rows; legacy numbered saves migrate to "Slot N"); 3 numbered PROGRESSION slots hold pixels/levels/skills/companions as snapshots (`iis_slotdata_N` — live keys always mirror the active slot) while ownership keys are never snapshotted, so the collection is shared by construction; slot picker on the main menu, world save/load mid-session (`test-named-saves.js`) |
 | Templates / starter worlds | ✅ | New Game picker: Rolling Hills / Flat Plane / Arena / Floating Islands (`test-progression.js`) / Sandbox Hub challenge park (`test-hub.js`) |
 | Unlockable toys through play | ✅ | Pixels earned from enemies buy locked objects in the shop (`test-shop-gating.js`) |
 
@@ -112,7 +113,6 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. **USER REQUEST — named saves + slot rework**: name each root-level save (and each sub-level on creation); names replace slots for BUILT LEVELS, while numbered slots remain for CHARACTER PROGRESSION (pixels/XP/figures — collection stays shared). Pick a progression slot at session start; save/load levels by name at any time without returning to the main menu or touching the progression slot.
-2. **USER REQUEST — companion system**: hire companions through a DIALOG TREE — some free, some costing pixels. Hired companions are saved with the active character-progression slot and respawn with the player whenever that slot is loaded and a world is entered. (Builds on the buddy/sidekick rigs; dialog tree is the new machinery.)
-3. NPC villagers (wander + talk bubbles + quest hooks) — natural dialog-tree partner for the companion system
-4. Water blocks (swim volumes, floating props)
+1. **USER REQUEST — companion system**: hire companions through a DIALOG TREE — some free, some costing pixels. Hired companions are saved with the active character-progression slot and respawn with the player whenever that slot is loaded and a world is entered. (Builds on the buddy/sidekick rigs; dialog tree is the new machinery.)
+2. NPC villagers (wander + talk bubbles + quest hooks) — natural dialog-tree partner for the companion system
+3. Water blocks (swim volumes, floating props)

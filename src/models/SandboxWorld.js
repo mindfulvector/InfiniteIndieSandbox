@@ -32,6 +32,22 @@ class SandboxWorld {
         return saveData.objects.length;
     }
 
+    // Named world saves: the player-facing replacement for numbered slots
+    // (numbered slots remain for character PROGRESSION; worlds get names).
+    saveNamed(name) {
+        const saveData = this.serialize();
+        window.localStorage.setItem('iis_world_' + name, JSON.stringify(saveData));
+        return saveData.objects.length;
+    }
+
+    loadNamed(name) {
+        let saveData = null;
+        try { saveData = JSON.parse(window.localStorage.getItem('iis_world_' + name)); }
+        catch (e) { return false; }
+        if (!saveData) return false;
+        return this.loadFromData(saveData);
+    }
+
     loadFromSlot(slot) {
         const app = this.app;
         console.log('[loadFromSlot] :slot', slot);

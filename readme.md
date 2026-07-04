@@ -204,8 +204,12 @@ timers.
 * Press `Shift+Space` to open its properties
 * Press `Delete` to remove the highlighted object
 
-**Saving:** Press `Esc` and choose Save Game / Load Game to store worlds in
-save slots.
+**Saving:** Press `Esc` and choose Save World / Load World — worlds save
+under **names you type**, and you can save or load at any time without
+leaving your session. Your character's **progression** (pixels, levels,
+skills, companions) lives separately in one of three **progression slots**
+(main menu → Progression Slot); everything you *own* is shared across
+slots, so buying a figure once means having it everywhere.
 
 **Sharing:** the main menu's **Share Worlds** screen exports your current
 world as a `.json` file you can send to anyone, and imports world files you
