@@ -25,9 +25,81 @@ class Manifest {
         app.createWorldObject('t_block_2', { anchor: 'below', grassBlock: { s: [2, 2, 2] } });
         app.createWorldObject('t_block_1', { anchor: 'below', grassBlock: { s: [1, 1, 1] } });
         
+        // A wirable sliding (pocket) door: two fixed jambs and a named 'panel'
+        // child that DoorScript slides sideways on open/close. Total footprint
+        // 1.5 wide x 3 tall -- exactly the gap in in_wall_door below.
         app.createWorldObject('pr_door', {
             prims: [
-                     {ty: 'box',       s: [1,3,0.5], p: [0,0,0], tex: {id: 'wood', s: 120}},
+                     {ty: 'box',       s: [0.15, 3, 0.4],  p: [0, 0, 0],      tex: {id: 'wood', s: 120}},
+                     {ty: 'box',       s: [0.15, 3, 0.4],  p: [1.35, 0, 0],   tex: {id: 'wood', s: 120}},
+                     {ty: 'box',       s: [1.2, 3, 0.18],  p: [0.675, 0, 0],  tex: {id: 'wood', s: 60}, nm: 'panel'},
+                  ]
+        }, 'DoorScript');
+
+        // ---- Interior building kit (in_*) ----------------------------------
+        // Room walls with a shared 4 x 3 footprint so they tile edge-to-edge.
+        // Multi-prim: the first prim is the root at p [0,0,0], later prims are
+        // children offset by p. The doorway gap (1.5 x 2.25) fits pr_door.
+        app.createWorldObject('in_wall', {
+            prims: [
+                     {ty: 'box', s: [4, 3, 0.3], p: [0, 0, 0], tex: {id: 'brick', w: 8, h: 5}},
+                  ]
+        });
+        app.createWorldObject('in_wall_door', {
+            prims: [
+                     {ty: 'box', s: [1.25, 3, 0.3],    p: [0, 0, 0],         tex: {id: 'brick', w: 3, h: 5}},
+                     {ty: 'box', s: [1.25, 3, 0.3],    p: [2.75, 0, 0],      tex: {id: 'brick', w: 3, h: 5}},
+                     {ty: 'box', s: [1.5, 0.75, 0.3],  p: [1.375, 1.125, 0], tex: {id: 'brick', w: 4, h: 2}},
+                  ]
+        });
+        app.createWorldObject('in_wall_window', {
+            prims: [
+                     {ty: 'box', s: [1.25, 3, 0.3],    p: [0, 0, 0],         tex: {id: 'brick', w: 3, h: 5}},
+                     {ty: 'box', s: [1.25, 3, 0.3],    p: [2.75, 0, 0],      tex: {id: 'brick', w: 3, h: 5}},
+                     {ty: 'box', s: [1.5, 0.9, 0.3],   p: [1.375, -1.05, 0], tex: {id: 'brick', w: 4, h: 2}},
+                     {ty: 'box', s: [1.5, 0.9, 0.3],   p: [1.375, 1.05, 0],  tex: {id: 'brick', w: 4, h: 2}},
+                  ]
+        });
+        // Interior floor panel: top snaps to the cursor like terrain so room
+        // floors line up with the ground they sit on.
+        app.createWorldObject('in_floor', {
+            anchor: 'below',
+            prims: [
+                     {ty: 'box', s: [4, 0.25, 4], p: [0, 0, 0], tex: {id: 'wood', s: 40}},
+                  ]
+        });
+
+        // ---- Furniture / decoration (d_*) -----------------------------------
+        app.createWorldObject('d_table', {
+            prims: [
+                     {ty: 'box', s: [1.8, 0.12, 1.0],   p: [0, 0, 0],           tex: {id: 'wood', s: 80}},
+                     {ty: 'box', s: [0.12, 0.72, 0.12], p: [-0.78, -0.42, -0.38], tex: {id: 'wood', s: 80}},
+                     {ty: 'box', s: [0.12, 0.72, 0.12], p: [0.78, -0.42, -0.38],  tex: {id: 'wood', s: 80}},
+                     {ty: 'box', s: [0.12, 0.72, 0.12], p: [-0.78, -0.42, 0.38],  tex: {id: 'wood', s: 80}},
+                     {ty: 'box', s: [0.12, 0.72, 0.12], p: [0.78, -0.42, 0.38],   tex: {id: 'wood', s: 80}},
+                  ]
+        });
+        app.createWorldObject('d_chair', {
+            prims: [
+                     {ty: 'box', s: [0.55, 0.1, 0.55],  p: [0, 0, 0],            tex: {id: 'wood', s: 60}},
+                     {ty: 'box', s: [0.55, 0.7, 0.08],  p: [0, 0.4, -0.235],     tex: {id: 'wood', s: 60}},
+                     {ty: 'box', s: [0.09, 0.5, 0.09],  p: [-0.21, -0.3, -0.21], tex: {id: 'wood', s: 60}},
+                     {ty: 'box', s: [0.09, 0.5, 0.09],  p: [0.21, -0.3, -0.21],  tex: {id: 'wood', s: 60}},
+                     {ty: 'box', s: [0.09, 0.5, 0.09],  p: [-0.21, -0.3, 0.21],  tex: {id: 'wood', s: 60}},
+                     {ty: 'box', s: [0.09, 0.5, 0.09],  p: [0.21, -0.3, 0.21],   tex: {id: 'wood', s: 60}},
+                  ]
+        });
+        // Floor lamp: cylinder base + pole, warm glowing shade on top.
+        app.createWorldObject('d_lamp', {
+            prims: [
+                     {ty: 'cylinder', s: [0.4, 0.06, 0.4, 16, 1],   p: [0, 0, 0],    tex: {id: 'wood', s: 40}},
+                     {ty: 'cylinder', s: [0.07, 1.2, 0.07, 10, 1],  p: [0, 0.63, 0], tex: {id: 'wood', s: 40}},
+                     {ty: 'cylinder', s: [0.55, 0.45, 0.35, 16, 1], p: [0, 1.4, 0],  col: [1.0, 0.9, 0.6], tex: {id: 'cloud'}},
+                  ]
+        });
+        app.createWorldObject('d_rug', {
+            prims: [
+                     {ty: 'box', s: [2.2, 0.05, 1.5], p: [0, 0, 0], col: [0.65, 0.25, 0.3], tex: {id: 'cloud'}},
                   ]
         });
 

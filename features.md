@@ -68,7 +68,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Logic toys: scoreboards | ✅ | `l_scoreboard` — add/subtract/reset inputs, HUD score display, edge-triggered `reached` output (`test-progression.js`) |
 | Logic toys: cameras | ✅ | `l_camera` — wires cut the view to it for N seconds (player-tracking or fixed shot), `started`/`finished` outputs chain cinematics (`test-camera-toy.js`) |
 | Event wiring between logic toys | ✅ | Overhead 3D wiring view; wires persist in saves (`test-wiring.js`) |
-| Interiors (rooms, doors, decoration) | ⬜ | |
+| Interiors (rooms, doors, decoration) | 🟡 | INTERIOR category room kit (`in_wall`, `in_wall_door`, `in_wall_window`, `in_floor` — walls block shots, openings pass), wirable sliding door (`pr_door`: open/close/toggle inputs, opened/closed outputs, startOpen param), furniture (`d_table/chair/lamp/rug`); multi-prim object support added to the manifest parser (`test-interiors.js`); separate interior "cells" planned |
 | Path/track creation (races, patrols, moving platforms) | ⬜ | |
 | AI builder assistants | ⬜ | |
 | Templates / starter worlds | ✅ | New Game picker: Rolling Hills / Flat Plane / Arena / Floating Islands (`test-progression.js`) |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Interiors (rooms, doors, decoration)
-2. Figure packs / Play Set bundles
-3. Path/track creation (races, patrols, moving platforms)
-4. Aerial juggling (launcher attacks + air combos)
+1. Figure packs / Play Set bundles
+2. Path/track creation (races, patrols, moving platforms)
+3. Aerial juggling (launcher attacks + air combos)
+4. Interior cells (enter a door → decorated room scene)

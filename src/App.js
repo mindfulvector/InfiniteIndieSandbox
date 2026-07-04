@@ -834,7 +834,7 @@ class App {
         return ({
             t: 'TERRAIN', pr: 'PROPS', al: 'ARCHITECTURE',
             cp: 'CYBERPUNK', d: 'DECOR', l: 'LOGIC', en: 'ENEMIES',
-            pk: 'PICKUPS'
+            pk: 'PICKUPS', in: 'INTERIOR'
         })[p] || 'OBJECTS';
     }
 
@@ -1890,10 +1890,14 @@ class App {
             app.uploadLoadingMessage();
         }
 
-        // Primitive based objects
+        // Primitive based objects. A single prim becomes the object directly
+        // (instanced per placement); multiple prims form a hierarchy -- the
+        // FIRST prim is the root (author it at p [0,0,0]; placement re-centres
+        // by bounding box anyway) and later prims become children offset by
+        // their `p`, so the whole group clones as one placeable object.
         else if(typeof assetProps.prims != 'undefined') {
             var object = null;
-            var nestedMeshes = assetProps.prims > 1;
+            var nestedMeshes = assetProps.prims.length > 1;
             assetProps.prims.forEach((p) => {
                 var prim = null;
 
@@ -1921,8 +1925,15 @@ class App {
                 if(null != prim) {
                     prim.isVisible = false;
 
+                    // Optional addressable name (nm) so scripts can find a
+                    // specific child on instances (e.g. a door's sliding
+                    // panel); otherwise keep the generic prim.<type> name.
+                    if(typeof p.nm != 'undefined') prim.name = p.nm;
                     // make name unique by adding uniqueId to it
                     prim.name += '[' + prim.uniqueId + ']';
+
+                    // Place the prim at its offset within the object.
+                    if(p.p) prim.position = new BABYLON.Vector3(p.p[0], p.p[1], p.p[2]);
 
                     // apply a solid colour if required (col: [r,g,b])
                     if(typeof p.col != 'undefined') {
@@ -1953,6 +1964,8 @@ class App {
 
                     if(null == object) {
                         object = prim;
+                    } else {
+                        prim.parent = object;   // children clone with the root
                     }
                 }
             });

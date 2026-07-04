@@ -105,6 +105,18 @@ player what their trigger just did — then fires *Cut Finished*, so cameras can
 chain into mini-cinematics). Chain them freely: trigger → counter → spawner,
 timer → spawner, star → scoreboard, trigger → camera, and so on.
 
+#### Interiors: rooms, doors, decoration
+
+The **Interior** category is a room-building kit: solid walls, a wall with a
+**doorway**, a wall with a **window**, and a wood **floor** panel (its top
+snaps to the cursor like terrain, so room floors sit flush with the ground).
+Walls block movement and shots; the doorway and window openings genuinely let
+things through. The **Door** (Props category) is a sliding pocket door sized
+to the doorway gap — in the Wiring view it accepts *Open* / *Close* /
+*Open-Close* actions and fires *Opened* / *Closed* events, so a trigger or
+counter can unlock a room (a settings option makes it start open instead).
+Furnish with the **Decor** category: table, chair, floor lamp, and rug.
+
 #### Pickups
 
 The **Pickups** category has placeable collectables that bob and spin in play

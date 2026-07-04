@@ -59,6 +59,11 @@ class WorldObject {
         // optimization? Unless there is some significant downside of course...
         if(this.nestedMeshes) {
             var inst = this.mesh.clone(instName);
+            // A clone inherits the template's invisibility on the ROOT mesh;
+            // showAll below only walks children, so multi-prim roots (which
+            // have real geometry, unlike gltf transform roots) must be shown
+            // here. InstancedMesh (the else branch) renders regardless.
+            inst.isVisible = true;
         } else {
             var inst = this.mesh.createInstance(instName);
         }

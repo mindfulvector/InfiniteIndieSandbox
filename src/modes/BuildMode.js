@@ -377,9 +377,13 @@ class BuildMode {
                 if(wasGrabbed) {
                     cursorMode = true;
                     this.selectedObjectIndex = -1;
-                } else if(placed && placed.script && placed.script.paramDefs && placed.script.paramDefs.length) {
+                } else if(placed && placed.script && placed.script.paramDefs && placed.script.paramDefs.length
+                        && !placed.script.noAutoParams) {
                     // Freshly placed a configurable object (e.g. a spawner):
-                    // open its parameters popup automatically.
+                    // open its parameters popup automatically. Scripts whose
+                    // defaults are almost always right (e.g. the door) set
+                    // noAutoParams so repeated placement stays uninterrupted;
+                    // their settings remain reachable via cursor mode + Space.
                     this._openParamsAfter = placed;
                 }
             }
