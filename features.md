@@ -23,7 +23,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Lock-on targeting | ✅ | `T` toggles lock-on to nearest enemy; marker + auto-aim (`test-combat-combo.js`) |
 | Character-specific movesets / special attacks / super moves | ⬜ | Single starter avatar today |
 | Avatar animation (locomotion clips + idle) | ✅ | Authored walk/run/jump/strafe clips via the character controller; procedural breathing idle replaces the rig's frozen 2-frame idle range (`test-idle-animation.js`) |
-| Character leveling (to 20) with skill trees | 🟡 | XP from defeating enemies, level 1–20 persisted, +5 max HP/level, +1 melee dmg per 5 levels, HUD badge + XP bar (`test-progression.js`); skill trees planned |
+| Character leveling (to 20) with skill trees | ✅ | XP from defeating enemies, level 1–20 persisted, +5 max HP/level, +1 melee dmg per 5 levels, HUD badge + XP bar (`test-progression.js`); skill tree: 1 point per level-up (derived from level), 4 skills (Vitality/Power/Trigger/Agility) with flat ranks, per-figure persistence, free respec, Esc→Skills menu (`test-skill-tree.js`) |
 | Health + respawn | ✅ | HP bar, hurt cooldown, respawn at spawn point; respawn is deferred to the next frame so dying mid-combat can't crash the enemy loops (`test-death.js`) |
 | Pickups: health, currency, collectibles | ✅ | `pk_health`, `pk_pixels`, `pk_star` placeable objects (`test-pickups.js`) |
 
@@ -107,8 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Skill tree for spending level-ups
-2. Interiors (rooms, doors, decoration)
-3. Figure packs / Play Set bundles
-4. Path/track creation (races, patrols, moving platforms)
-5. Aerial juggling (launcher attacks + air combos)
+1. Interiors (rooms, doors, decoration)
+2. Figure packs / Play Set bundles
+3. Path/track creation (races, patrols, moving platforms)
+4. Aerial juggling (launcher attacks + air combos)

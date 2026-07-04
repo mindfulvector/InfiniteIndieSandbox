@@ -498,7 +498,7 @@ class PlayMode {
             dir.normalize();
         }
         this.dodgeFrames = 12;
-        this.dodgeCooldown = 40;
+        this.dodgeCooldown = this.app.dodgeCooldownFrames ? this.app.dodgeCooldownFrames() : 40;
         this.dodgeVel = dir.scale(0.5);
         this.dodgeCount++;
     }

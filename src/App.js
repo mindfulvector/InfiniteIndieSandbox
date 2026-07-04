@@ -11,6 +11,7 @@ const MENU_OBJ_PARAMS = 9;
 const MENU_WIRING = 10;
 const MENU_WORLD_TEMPLATE = 11;
 const MENU_COLLECTION = 12;
+const MENU_SKILLS = 13;
 
 const MAX_LEVEL = 20;   // character level cap
 
@@ -22,6 +23,16 @@ const FIGURES = [
     { id: 'blaze', name: 'Blaze', price: 150, tint: [1.00, 0.45, 0.35], hpBonus: 0,  meleeBonus: 1, rangedHaste: 0, desc: '+1 melee damage' },
     { id: 'frost', name: 'Frost', price: 150, tint: [0.55, 0.75, 1.00], hpBonus: 25, meleeBonus: 0, rangedHaste: 0, desc: '+25 max HP' },
     { id: 'volt',  name: 'Volt',  price: 250, tint: [1.00, 0.95, 0.40], hpBonus: 10, meleeBonus: 0, rangedHaste: 6, desc: 'Faster ranged fire, +10 HP' },
+];
+
+// Skill tree: every level-up grants one skill point. Points EARNED are derived
+// from the level (level - 1), never stored, so they can't desync; only SPENT
+// ranks persist (per figure, like level/XP). Flat ranks, no prerequisites.
+const SKILLS = [
+    { id: 'vitality', name: 'Vitality', max: 5, desc: '+10 max HP per rank' },
+    { id: 'power',    name: 'Power',    max: 5, desc: '+1 melee damage per rank' },
+    { id: 'trigger',  name: 'Trigger',  max: 3, desc: 'Faster ranged fire per rank' },
+    { id: 'agility',  name: 'Agility',  max: 2, desc: 'Shorter dodge cooldown per rank' },
 ];
 
 // HUD / menu theme
@@ -1163,6 +1174,10 @@ class App {
                 app.menu.prevState = MENU_PAUSE;
                 app.menu.state = MENU_COLLECTION;
                 break;
+            case 9:                                 // Skill tree
+                app.menu.prevState = MENU_PAUSE;
+                app.menu.state = MENU_SKILLS;
+                break;
             }
             break;
         case MENU_COLLECTION: {
@@ -1174,6 +1189,21 @@ class App {
                     if(app.ownsFigure(fig.id)) app.selectFigure(fig.id);
                     else app.buyFigure(fig.id);
                     app.menu.renderedState = -1;   // re-render with new state
+                }
+            }
+            break;
+        }
+        case MENU_SKILLS: {
+            if(menuItem === 0) {
+                app.menu.state = app.menu.prevState || MENU_PAUSE;
+            } else if(menuItem === 9) {
+                app.resetSkills();
+                app.menu.renderedState = -1;       // re-render with refunded points
+            } else {
+                const skill = SKILLS[menuItem - 1];
+                if(skill) {
+                    app.spendSkillPoint(skill.id);
+                    app.menu.renderedState = -1;   // re-render with new ranks
                 }
             }
             break;
@@ -1455,6 +1485,14 @@ class App {
                     }
                 });
 
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnSkills',
+                    text: '9. Skills' + (this.skillPointsUnspent() > 0 ? '   ● ' + this.skillPointsUnspent() + ' point' + (this.skillPointsUnspent() === 1 ? '' : 's') : ''),
+                    handler: () => {
+                        app.triggerMenuItem(MENU_PAUSE, 9);
+                    }
+                });
 
                 break;
             case MENU_SHOP:
@@ -1601,6 +1639,48 @@ class App {
                     name: 'btnColBack',
                     text: '0. Back',
                     handler: () => { app.triggerMenuItem(MENU_COLLECTION, 0); }
+                });
+                break;
+            }
+            case MENU_SKILLS: {
+                this.MenuRect();
+                this.MenuItem({
+                    type: 'text',
+                    name: 'skillTitle',
+                    text: 'SKILLS — ' + this.activeFigureDef().name + ' · LV ' + this.playerLevel,
+                    fontSize: 22,
+                    accent: true,
+                });
+                this.MenuItem({
+                    type: 'text',
+                    name: 'skillPoints',
+                    text: this.skillPointsUnspent() + ' point' + (this.skillPointsUnspent() === 1 ? '' : 's') +
+                          ' to spend  ·  1 earned per level-up',
+                    fontSize: 15,
+                    color: '#ff9bce',
+                });
+                SKILLS.forEach((s, i) => {
+                    const rank = this.skillRank(s.id);
+                    const pips = '●'.repeat(rank) + '○'.repeat(s.max - rank);
+                    this.MenuItem({
+                        type: 'button',
+                        name: 'btnSkill_' + s.id,
+                        text: (i + 1) + '. ' + s.name + '  ' + pips + '   ' + s.desc +
+                              (rank >= s.max ? '   [MAX]' : ''),
+                        handler: () => { app.triggerMenuItem(MENU_SKILLS, i + 1); }
+                    });
+                });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnSkillReset',
+                    text: '9. Reset skills (free)',
+                    handler: () => { app.triggerMenuItem(MENU_SKILLS, 9); }
+                });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnSkillBack',
+                    text: '0. Back',
+                    handler: () => { app.triggerMenuItem(MENU_SKILLS, 0); }
                 });
                 break;
             }
@@ -2054,6 +2134,7 @@ class App {
                 parseInt(window.localStorage.getItem('iis_fig_' + this.activeFigure + '_level'), 10) || 1));
             this.playerXp = Math.max(0,
                 parseInt(window.localStorage.getItem('iis_fig_' + this.activeFigure + '_xp'), 10) || 0);
+            this.skillRanks = this.loadSkillRanks(this.activeFigure);
         } catch (e) {
             this.pixels = 0;
             this.purchasedSet = new Set();
@@ -2061,7 +2142,22 @@ class App {
             this.activeFigure = 'scout';
             this.playerLevel = 1;
             this.playerXp = 0;
+            this.skillRanks = {};
         }
+    }
+
+    // Read a figure's spent skill ranks from storage, sanitized: only known
+    // skill ids, each clamped to [0, max].
+    loadSkillRanks(figId) {
+        let raw = {};
+        try { raw = JSON.parse(window.localStorage.getItem('iis_fig_' + figId + '_skills') || '{}') || {}; }
+        catch (e) { raw = {}; }
+        const out = {};
+        SKILLS.forEach((s) => {
+            const r = parseInt(raw[s.id], 10) || 0;
+            if (r > 0) out[s.id] = Math.min(s.max, r);
+        });
+        return out;
     }
 
     saveEconomy() {
@@ -2070,9 +2166,10 @@ class App {
             window.localStorage.setItem('iis_purchased', JSON.stringify([...this.purchasedSet]));
             window.localStorage.setItem('iis_figures_owned', JSON.stringify([...this.ownedFigures]));
             window.localStorage.setItem('iis_figure', this.activeFigure);
-            // Level/XP belong to the active figure.
+            // Level/XP/skills belong to the active figure.
             window.localStorage.setItem('iis_fig_' + this.activeFigure + '_level', String(this.playerLevel));
             window.localStorage.setItem('iis_fig_' + this.activeFigure + '_xp', String(this.playerXp));
+            window.localStorage.setItem('iis_fig_' + this.activeFigure + '_skills', JSON.stringify(this.skillRanks || {}));
         } catch (e) { /* storage may be unavailable */ }
     }
 
@@ -2101,7 +2198,7 @@ class App {
         }
         if (this.playerLevel >= MAX_LEVEL) this.playerXp = 0;
         if (leveled) {
-            this.toasty('LEVEL UP!  Now level ' + this.playerLevel);
+            this.toasty('LEVEL UP!  Now level ' + this.playerLevel + '  (+1 skill point — Esc → Skills)');
             // Apply growth to the live play session immediately.
             const pm = this.activeMode;
             if (pm && pm.constructor.name === 'PlayMode') {
@@ -2114,11 +2211,63 @@ class App {
     }
 
     // Stat growth: +5 max HP per level, +1 melee damage every 5 levels, plus
-    // the active figure's own stat lean.
-    maxHpForLevel() { return 100 + (this.playerLevel - 1) * 5 + this.activeFigureDef().hpBonus; }
-    meleeBonus()    { return Math.floor(this.playerLevel / 5) + this.activeFigureDef().meleeBonus; }
-    // Frames between ranged shots (some figures fire faster).
-    rangedCooldownFrames() { return Math.max(8, 18 - this.activeFigureDef().rangedHaste); }
+    // the active figure's own stat lean, plus spent skill ranks.
+    maxHpForLevel() { return 100 + (this.playerLevel - 1) * 5 + this.activeFigureDef().hpBonus + this.skillRank('vitality') * 10; }
+    meleeBonus()    { return Math.floor(this.playerLevel / 5) + this.activeFigureDef().meleeBonus + this.skillRank('power'); }
+    // Frames between ranged shots (some figures fire faster; Trigger ranks
+    // shave 2 frames each). The old floor of 8 never bound (no figure has
+    // haste > 10), so lowering it to 6 changes nothing without skills.
+    rangedCooldownFrames() { return Math.max(6, 18 - this.activeFigureDef().rangedHaste - this.skillRank('trigger') * 2); }
+    // Frames between dodge rolls (Agility ranks shave 8 each).
+    dodgeCooldownFrames() { return Math.max(15, 40 - this.skillRank('agility') * 8); }
+
+    // ---- skill tree ---------------------------------------------------------
+    // One point per level-up. Earned is DERIVED from the level so it can never
+    // desync from progression; only spent ranks are stored (per figure).
+
+    skillRank(id) { return (this.skillRanks && this.skillRanks[id]) || 0; }
+    skillPointsEarned() { return this.playerLevel - 1; }
+    skillPointsSpent() { return SKILLS.reduce((sum, s) => sum + this.skillRank(s.id), 0); }
+    skillPointsUnspent() { return Math.max(0, this.skillPointsEarned() - this.skillPointsSpent()); }
+    skills() { return SKILLS; }
+
+    // Spend one point on a skill. Refuses (with a toast) when out of points or
+    // the skill is at max rank. Live-applies HP growth like a level-up does.
+    spendSkillPoint(id) {
+        const skill = SKILLS.find((s) => s.id === id);
+        if (!skill) return false;
+        if (this.skillPointsUnspent() <= 0) {
+            this.toasty('No skill points — level up to earn more.');
+            return false;
+        }
+        if (this.skillRank(id) >= skill.max) {
+            this.toasty(skill.name + ' is already at max rank.');
+            return false;
+        }
+        this.skillRanks[id] = this.skillRank(id) + 1;
+        this.applySkillsToSession();
+        this.saveEconomy();
+        this.toasty(skill.name + ' rank ' + this.skillRanks[id] + ' — ' + skill.desc);
+        return true;
+    }
+
+    // Free respec: refund every spent point.
+    resetSkills() {
+        this.skillRanks = {};
+        this.applySkillsToSession();
+        this.saveEconomy();
+        this.toasty('Skills reset — all points refunded.');
+    }
+
+    // Push skill-derived stats into a live play session (same pattern as the
+    // level-up growth in addXp). HP never exceeds the new max.
+    applySkillsToSession() {
+        const pm = this.activeMode;
+        if (pm && pm.constructor.name === 'PlayMode') {
+            pm.playerMaxHp = this.maxHpForLevel();
+            pm.playerHp = Math.min(pm.playerHp, pm.playerMaxHp);
+        }
+    }
 
     // ---- digital figures (roster) -------------------------------------------
 
@@ -2162,6 +2311,7 @@ class App {
                 parseInt(window.localStorage.getItem('iis_fig_' + id + '_level'), 10) || 1));
             this.playerXp = Math.max(0, parseInt(window.localStorage.getItem('iis_fig_' + id + '_xp'), 10) || 0);
         } catch (e) { this.playerLevel = 1; this.playerXp = 0; }
+        this.skillRanks = this.loadSkillRanks(id);
         this.saveEconomy();
 
         // Live-apply to the current play session, if any.

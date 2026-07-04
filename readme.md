@@ -171,6 +171,12 @@ Defeating enemies also grants **XP**. Your character levels up (to level 20,
 shown top-left with an XP bar): each level adds max HP, and every 5 levels
 adds +1 melee damage. Progress persists between sessions, like pixels.
 
+Every level-up also grants a **skill point**. Press `Esc` → **Skills** to spend
+points on four skills: **Vitality** (+10 max HP per rank), **Power** (+1 melee
+damage), **Trigger** (faster ranged fire), and **Agility** (shorter dodge
+cooldown). Skill ranks are per-figure, persist like XP, and can be reset for
+free at any time from the same screen.
+
 ### The Collection (figures)
 
 The **Collection** screen (main menu, or `Esc` → Collection in game) is your
