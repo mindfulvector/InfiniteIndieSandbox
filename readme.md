@@ -217,9 +217,11 @@ until they land.
 
 Aim the ranged shot with the mouse; a gamepad auto-aims at the locked/nearest enemy.
 
-**Gamepad:** the right trigger / right bumper fires a ranged attack, the left
-trigger / `X` swings a melee attack, `Y` dodge rolls, and holding the left
-bumper blocks (in addition to the movement stick).
+**Gamepad:** full pad play is supported. The **left stick** moves, the
+**right stick** orbits the camera, and **A** jumps (hold to glide, tap again
+mid-air to double-jump). `X` or the left trigger swings melee, the right
+bumper/trigger shoots, `B` dodge-rolls, `Y` fires your figure's special,
+holding `LB` blocks, and clicking the right stick toggles lock-on.
 
 ### Survival
 

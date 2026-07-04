@@ -254,6 +254,7 @@ class PlayMode {
             wo.updateAllInstances(true, this);
         });
 
+        this.updatePadMovement();
         this.handleCombat();
         this.updatePixelBursts();
         this.updateAttackFx();
@@ -302,9 +303,9 @@ class PlayMode {
         if (this.app.consumePad('rangedAttack')) {
             this.rangedAttack();
         }
-        // T toggles lock-on targeting. (Q/E are the character controller's
-        // strafe keys, so lock-on gets its own key.)
-        if (this.app.keyPressed('T')) {
+        // T (pad: right-stick click) toggles lock-on targeting. (Q/E are the
+        // character controller's strafe keys, so lock-on gets its own key.)
+        if (this.app.keyPressed('T') || this.app.consumePad('lockOn')) {
             this.toggleLockOn();
         }
         // Dodge roll: C key or a gamepad dodge button.
@@ -583,6 +584,50 @@ class PlayMode {
                 pr.mesh.dispose();
                 this.playerProjectiles.splice(i, 1);
             }
+        }
+    }
+
+    // ---- gamepad locomotion --------------------------------------------------
+
+    // The left stick drives the character through the controller's REAL key
+    // handlers -- digital 8-way with hysteresis (press past 0.45, release
+    // under 0.30), since the controller is key-based. The right stick orbits
+    // the ArcRotate camera, dt-scaled. Pad jump (A) is level-triggered so
+    // holding glides and each fresh press double-jumps. app.testPad lets the
+    // harness inject stick state without hardware.
+    updatePadMovement() {
+        const cc = this.cc;
+        if (!cc) return;
+        const pad = this.app.testPad || this.app.gamepad;
+        const ls = pad && pad.leftStick;
+        const rs = pad && pad.rightStick;
+        if (!this._padKeys) this._padKeys = { w: false, s: false, a: false, d: false };
+        const want = (cur, v) => (cur ? v > 0.30 : v > 0.45);
+        const desired = {
+            w: !!ls && want(this._padKeys.w, -ls.y),   // stick up is negative y
+            s: !!ls && want(this._padKeys.s, ls.y),
+            a: !!ls && want(this._padKeys.a, -ls.x),
+            d: !!ls && want(this._padKeys.d, ls.x),
+        };
+        for (const k of ['w', 's', 'a', 'd']) {
+            if (desired[k] === this._padKeys[k]) continue;
+            this._padKeys[k] = desired[k];
+            if (desired[k]) cc._onKeyDown({ key: k });
+            else cc._onKeyUp({ key: k });
+        }
+
+        const jumpHeld = this.app.padDown('jump');
+        if (jumpHeld !== !!this._padJumpHeld) {
+            this._padJumpHeld = jumpHeld;
+            if (jumpHeld) cc._onKeyDown({ key: ' ' });
+            else cc._onKeyUp({ key: ' ' });
+        }
+
+        if (rs && (Math.abs(rs.x) > 0.15 || Math.abs(rs.y) > 0.15)) {
+            const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);
+            this.app.camera.alpha -= rs.x * 2.2 * dt;
+            this.app.camera.beta = Math.min(1.45, Math.max(0.35,
+                this.app.camera.beta - rs.y * 1.6 * dt));
         }
     }
 

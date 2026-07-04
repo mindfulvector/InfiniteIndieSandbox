@@ -112,39 +112,42 @@ class App {
           );
         });
 
-        // Edge-triggered gamepad action flags, consumed once per press by the
-        // active mode (see consumePad), plus level-triggered "held" flags read
-        // via padDown (e.g. hold-to-block). Combat maps:
-        //   Right Trigger / Right Bumper / B  -> ranged attack (shoot)
-        //   X / Left Trigger / A              -> melee attack
-        //   Y                                 -> dodge roll
-        //   Left Bumper (hold)                -> block
+        // Gamepad input abstraction. PAD_MAP is the ONE declarative table of
+        // button -> action; every button edge flows through handlePadButton
+        // (also the tests' entry point). Edge actions land in padActions
+        // (consumePad); held actions land in padHeld (padDown). The map:
+        //   A (hold)         -> jump (holding glides; re-press double-jumps)
+        //   X / Left Trigger -> melee attack
+        //   B                -> dodge roll
+        //   Y                -> figure special
+        //   RB / Right Trig  -> ranged attack
+        //   LB (hold)        -> block
+        //   Right-stick club -> lock-on
         // Buttons arrive as an Xbox360Button enum (Xbox pads) or a raw index
-        // (generic pads); we map both to the same action names.
+        // (generic pads); each entry lists both.
+        const XB = BABYLON.Xbox360Button || {};
+        this.PAD_MAP = [
+            { buttons: [XB.A, 0],           action: 'jump', held: true },
+            { buttons: [XB.X, 2],           action: 'meleeAttack' },
+            { buttons: [XB.B, 1],           action: 'dodge' },
+            { buttons: [XB.Y, 3],           action: 'special' },
+            { buttons: [XB.RB, 5],          action: 'rangedAttack' },
+            { buttons: [XB.LB, 4],          action: 'block', held: true },
+            { buttons: [XB.RightStick, 11], action: 'lockOn' },
+        ];
         this.padActions = {};
         this.padHeld = {};
         this.gamepad = null;
+        this.testPad = null;   // harness hook: {leftStick:{x,y}, rightStick:{x,y}}
         const gamepadManager = new BABYLON.GamepadManager();
         gamepadManager.onGamepadConnectedObservable.add((gamepad) => {
             console.log('gamepad connected', gamepad && gamepad.id);
             this.gamepad = gamepad;
-            const X = BABYLON.Xbox360Button || {};
-            const rangedButtons = new Set([X.RB, X.B, 5 /*RB*/, 1 /*B*/].filter((v) => v !== undefined));
-            const meleeButtons  = new Set([X.X, X.A, 2 /*X*/, 0 /*A*/].filter((v) => v !== undefined));
-            const dodgeButtons  = new Set([X.Y, 3 /*Y*/].filter((v) => v !== undefined));
-            const blockButtons  = new Set([X.LB, 4 /*LB*/].filter((v) => v !== undefined));
             if(gamepad.onButtonDownObservable) {
-                gamepad.onButtonDownObservable.add((button) => {
-                    if(rangedButtons.has(button)) this.padActions.rangedAttack = true;
-                    else if(meleeButtons.has(button)) this.padActions.meleeAttack = true;
-                    else if(dodgeButtons.has(button)) this.padActions.dodge = true;
-                    else if(blockButtons.has(button)) this.padHeld.block = true;
-                });
+                gamepad.onButtonDownObservable.add((button) => this.handlePadButton(button, true));
             }
             if(gamepad.onButtonUpObservable) {
-                gamepad.onButtonUpObservable.add((button) => {
-                    if(blockButtons.has(button)) this.padHeld.block = false;
-                });
+                gamepad.onButtonUpObservable.add((button) => this.handlePadButton(button, false));
             }
             // Analog triggers on Xbox pads: press past halfway = shoot / melee.
             if(gamepad.onrighttriggerchanged) {
@@ -2255,6 +2258,18 @@ class App {
     // as long as the button is held -- mirrors keyDown().
     padDown(action) {
         return !!(this.padHeld && this.padHeld[action]);
+    }
+
+    // Route one gamepad button edge through PAD_MAP. Returns the mapped
+    // action name (or null) so tests can assert the table directly.
+    handlePadButton(button, down) {
+        for (const m of this.PAD_MAP) {
+            if (m.buttons.indexOf(button) < 0) continue;
+            if (m.held) this.padHeld[m.action] = down;
+            else if (down) this.padActions[m.action] = true;
+            return m.action;
+        }
+        return null;
     }
 
     keyDown(key) {

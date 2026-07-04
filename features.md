@@ -103,11 +103,11 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Feature | Status | Notes |
 |---|---|---|
 | Linux/CI test harness (headless, screenshots, frame sampling) | ✅ | `test/harness.js`, 16+ suites, GitHub Actions CI |
-| Gamepad bindings (attack actions) | 🟡 | Melee/ranged/dodge (Y) buttons + hold-LB block mapped; movement + full abstraction planned |
+| Gamepad bindings (attack actions) | ✅ | Declarative `PAD_MAP` behind one `handlePadButton` entry point: A hold = jump/glide, X/LT melee, B dodge, Y special, RB/RT ranged, LB hold block, right-stick click lock-on; left stick drives movement through the controller's real key handlers (8-way + hysteresis), right stick orbits the camera; `app.testPad` harness hook (`test-gamepad.js`) |
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Gamepad movement + full input abstraction
-2. Hex discs (skies/terrain themes)
-3. Sidekicks (collectible follower that levels)
-4. Upload + share creations (export/import world files)
+1. Hex discs (skies/terrain themes)
+2. Sidekicks (collectible follower that levels)
+3. Upload + share creations (export/import world files)
+4. 2P local co-op (second pad drives a second figure)
