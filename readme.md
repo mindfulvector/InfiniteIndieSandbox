@@ -241,6 +241,7 @@ Keys:
 * Press `C` to **dodge roll** — a quick burst of movement in the direction
   you're moving (or a back-hop if standing still); anything that hits you
   mid-roll is ignored entirely. There's a short cooldown between rolls.
+* Press `M` to **mute/unmute** all sound (remembered across sessions)
 
 **Combos:** land melee swings back-to-back to chain a 3-hit combo — the third
 hit is a finisher that deals triple damage.
@@ -404,6 +405,20 @@ discount (the listing shows how much you save): the **Hero Pack** (all three
 premium figures) and themed **Play Sets** that pair a figure with matching
 objects. Buying a pack grants everything in it you don't already own, and a
 pack shows as owned once you have all its contents, however you got them.
+
+### Sound
+
+Every sound in the game is **synthesised at runtime** with the Web Audio API —
+there are no audio files to download. Footsteps change with the surface
+underfoot: grass and dirt (terrain blocks even sound different per face — walk
+on a block's grassy top vs. a dirt side turned upward), wooden props, stone,
+and metal platforms. Jumping, double-jumping, landing, gliding, every attack
+and hit, pickups, level-ups, purchases, and the build/wiring tools all have
+their own effects. Press `M` to mute or unmute (the setting is remembered).
+
+The **Chime** logic toy (`l_chime`) is a separate, placeable instrument: wire
+any event into it and it sings a configured pattern (jingle, alarm, gong,
+powerup), so a door can ring a gong or a quest can play a fanfare.
 
 ## Contributing
 

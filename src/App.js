@@ -273,6 +273,9 @@ class App {
         // Temporary camera target during loading
         //this.camera.lockedTarget = this.defaultSphere;
 
+        // Procedurally-synthesised sound effects (footsteps, combat, UI...).
+        this.sound = new SoundManager(this);
+
         // Create a full-screen UI layer
         this.gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
         //this.gui.parseFromURLAsync('./assets/gui/main.json');
@@ -1220,6 +1223,12 @@ class App {
             }
         }
 
+        // M toggles all sound (persists across sessions).
+        if(this.keyPressed('M')) {
+            const nowMuted = this.sound.toggleMuted();
+            this.toasty(nowMuted ? 'Sound muted.  (M to unmute)' : 'Sound on.');
+        }
+
         if(this.menu.state != MENU_HUD) {
             if(this.keyPressed('1')) this.triggerMenuItem(this.menu.state, 1);
             if(this.keyPressed('2')) this.triggerMenuItem(this.menu.state, 2);
@@ -1236,6 +1245,7 @@ class App {
 
     triggerMenuItem(menuState, menuItem) {
         const app = this;
+        this.sound.play('menu-select');
         switch(menuState) {
         case MENU_MAIN:
             switch(menuItem) {
@@ -2279,6 +2289,7 @@ class App {
                 app.disableCollisionsTree(object);
                 let woNewAsset = new WorldObject(app, objectName, object, nestedMeshes, scriptClass);
                 if(assetProps.anchor) woNewAsset.anchor = assetProps.anchor;
+                if(assetProps.surface) woNewAsset.surface = assetProps.surface;
                 app.BuildableObjectList.push(woNewAsset);
                 app.manifestObjectCount++;
                 app.uploadLoadingMessage();
@@ -2311,6 +2322,9 @@ class App {
             app.disableCollisionsTree(box);
             let woNewAsset = new WorldObject(app, objectName, box, false, scriptClass);
             if(assetProps.anchor) woNewAsset.anchor = assetProps.anchor;
+            // Footsteps read the atlas by face: grass on the top, dirt on the
+            // sides (see PlayMode.footstepSurface).
+            woNewAsset.surface = assetProps.surface || 'grassblock';
             this.BuildableObjectList.push(woNewAsset);
             app.manifestObjectCount++;
             app.uploadLoadingMessage();
@@ -2401,6 +2415,14 @@ class App {
                 app.disableCollisionsTree(object);
                 let woNewAsset = new WorldObject(app, objectName, object, nestedMeshes, scriptClass);
                 if(assetProps.anchor) woNewAsset.anchor = assetProps.anchor;
+                // Footstep surface: explicit tag, else infer from the first
+                // prim's texture (wood sounds wooden, marble reads as stone).
+                if(assetProps.surface) woNewAsset.surface = assetProps.surface;
+                else {
+                    const texId = assetProps.prims[0] && assetProps.prims[0].tex && assetProps.prims[0].tex.id;
+                    if(texId === 'wood') woNewAsset.surface = 'wood';
+                    else if(texId === 'marble' || texId === 'starfield') woNewAsset.surface = 'stone';
+                }
                 this.BuildableObjectList.push(woNewAsset);
                 app.manifestObjectCount++;
                 app.uploadLoadingMessage();
@@ -2707,6 +2729,7 @@ class App {
         }
         if (this.playerLevel >= MAX_LEVEL) this.playerXp = 0;
         if (leveled) {
+            this.sound.play('levelup');
             this.toasty('LEVEL UP!  Now level ' + this.playerLevel + '  (+1 skill point — Esc → Skills)');
             // Apply growth to the live play session immediately.
             const pm = this.activeMode;
@@ -3188,11 +3211,13 @@ class App {
         if (!fig) return false;
         if (this.ownsFigure(id)) return this.selectFigure(id);
         if (this.pixels < fig.price) {
+            this.sound.play('denied');
             this.toasty('Not enough pixels — ' + fig.name + ' costs ' + fig.price + '.');
             return false;
         }
         this.pixels -= fig.price;
         this.ownedFigures.add(id);
+        this.sound.play('purchase');
         this.toasty('Unlocked ' + fig.name + '!');
         return this.selectFigure(id);
     }
@@ -3359,12 +3384,14 @@ class App {
         if (this.isPurchased(name)) return true;
         const price = this.priceOf(name);
         if (this.pixels < price) {
+            this.sound.play('denied');
             this.toasty('Not enough pixels — need ' + price + '.');
             return false;
         }
         this.pixels -= price;
         this.purchasedSet.add(name);
         this.saveEconomy();
+        this.sound.play('purchase');
         this.toasty('Purchased ' + this.prettyName(name) + '!');
         return true;
     }
@@ -3510,12 +3537,14 @@ class App {
         if(!inst.wires) inst.wires = [];
         if(this.hasWire(inst, event, toWo, toId, action)) return;
         inst.wires.push({ event: event, toWo: toWo, toId: toId, action: action });
+        this.sound.play('wire-connect');
     }
 
     removeWire(inst, event, toWo, toId, action) {
         if(!inst || !inst.wires) return;
         inst.wires = inst.wires.filter((w) => !(w.event === event && w.toWo === toWo &&
             w.toId == toId && w.action === action));
+        this.sound.play('wire-delete');
     }
 
     // Add the wire if absent, remove it if present. Returns true if now wired.
@@ -3670,6 +3699,7 @@ class App {
                 if(btn.textBlock) btn.textBlock.color = "#eaf2ff";
             });
             if(typeof opts.handler == 'function') {
+                btn.onPointerUpObservable.add(() => { this.sound.play('menu-select'); });
                 btn.onPointerUpObservable.add(opts.handler);
             }
             stack.addControl(btn);
@@ -3700,7 +3730,10 @@ class App {
                 b.background = "rgba(36,58,92,0.55)";
                 b.onPointerEnterObservable.add(() => { b.background = HUD_ACCENT; });
                 b.onPointerOutObservable.add(() => { b.background = "rgba(36,58,92,0.55)"; });
-                if(typeof handler == 'function') b.onPointerUpObservable.add(handler);
+                if(typeof handler == 'function') {
+                    b.onPointerUpObservable.add(() => { this.sound.play('menu-move'); });
+                    b.onPointerUpObservable.add(handler);
+                }
                 return b;
             };
             row.addControl(mkStep("◀", opts.onPrev));   // ◀

@@ -109,6 +109,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Linux/CI test harness (headless, screenshots, frame sampling) | ✅ | `test/harness.js`, 16+ suites, GitHub Actions CI |
 | Gamepad bindings (attack actions) | ✅ | Declarative `PAD_MAP` behind one `handlePadButton` entry point: A hold = jump/glide, X/LT melee, B dodge, Y special, RB/RT ranged, LB hold block, right-stick click lock-on; left stick drives movement through the controller's real key handlers (8-way + hysteresis), right stick orbits the camera; `app.testPad` harness hook (`test-gamepad.js`) |
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
+| Sound effects (procedurally synthesised, no asset files) | ✅ | `SoundManager` (Web Audio): per-surface footsteps (grass/dirt/wood/stone/metal — grass blocks resolve by face), jump/double-jump/land/glide, full combat + survival set, pickups/pixels/level-up/purchase, UI/build/wiring clicks; `M` = persistent mute (`test-sfx.js`) |
 
 ## Next up (suggested order)
 1. **USER REQUEST — snap-assisted placement**: holding Shift (or CapsLock on, or the left bumper) while pressing movement keys vertex-snaps the moving object to the nearest object in that direction; while rotating in snap mode, snap to the rotation angle of the nearest piece of the same type or similar size

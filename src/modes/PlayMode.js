@@ -90,6 +90,14 @@ class PlayMode {
         // Collectible stars gathered this play session (pk_star pickups).
         this.starsCollected = 0;
 
+        // Sound-state tracking: footstep cadence and edges for jump/land/glide
+        // (the character controller doesn't emit events, so we watch its state).
+        this._stepTimer = 0;
+        this._wasAirborne = false;
+        this._prevJumping = false;
+        this._prevJumpsUsed = 0;
+        this._glideSoundTimer = 0;
+
         // Player survival state. Max HP grows with the character's level.
         this.playerMaxHp = this.app.maxHpForLevel ? this.app.maxHpForLevel() : 100;
         this.playerHp = this.playerMaxHp;
@@ -317,6 +325,9 @@ class PlayMode {
         } else {
             this.updatePadMovement();
             this.handleCombat();
+            // Footstep/jump/land sounds only apply on foot (driving and
+            // grinding suspend the CharacterController).
+            this.updateMovementSounds();
         }
 
         // A trampoline bounce borrows the CC's jump speed; give it back
@@ -341,6 +352,76 @@ class PlayMode {
 
     renderUI() {
 
+    }
+
+    // ---- sound: footsteps + traversal -----------------------------------------
+
+    // What the player is standing on, for the per-surface footstep sounds.
+    // A short ray straight down finds the ground mesh; walking up its parent
+    // chain finds the owning WorldObject and its `surface` tag. The grass/dirt
+    // atlas blocks resolve by FACE: grass on top, dirt on the sides.
+    footstepSurface() {
+        if (!this.player) return 'grass';
+        const origin = this.player.position.add(new BABYLON.Vector3(0, 0.5, 0));
+        const ray = new BABYLON.Ray(origin, BABYLON.Vector3.Down(), 4);
+        const pick = this.app.scene.pickWithRay(ray, (m) =>
+            m.checkCollisions && m.isEnabled() && m !== this.player &&
+            !(m.isDescendantOf && m.isDescendantOf(this.player)));
+        if (!pick || !pick.hit || !pick.pickedMesh) return 'grass';
+        let node = pick.pickedMesh;
+        while (node && !node.worldObject) node = node.parent;
+        const surface = node && node.worldObject && node.worldObject.surface;
+        if (surface === 'grassblock') {
+            // The atlas is mapped in LOCAL space (grass on the local top face,
+            // dirt on the sides), so read the local normal: a rotated block
+            // with a dirt side turned upward correctly sounds like dirt.
+            const n = pick.getNormal(false);
+            return (n && n.y > 0.5) ? 'grass' : 'dirt';
+        }
+        return surface || 'grass';   // untagged ground reads as grass
+    }
+
+    // Watch the character controller's state each frame and turn its edges
+    // into sounds: footsteps while walking (cadenced, per-surface), jump /
+    // double-jump starts, landings, and the glide wind.
+    updateMovementSounds() {
+        const cc = this.cc, s = this.app.sound;
+        if (!cc || !this.player || !s) return;
+
+        const jumping = !!(cc._act && cc._act._jump);
+        const airborne = jumping || !!cc._inFreeFall;
+        const jumpsUsed = cc._jumpsUsed || 0;
+
+        // Air jumps increment _jumpsUsed; a plain ground jump only raises the
+        // _act._jump flag (so don't double-report when an air jump converts a
+        // freefall into a jump).
+        if (jumpsUsed > this._prevJumpsUsed) s.play('doubleJump');
+        else if (jumping && !this._prevJumping) s.play('jump');
+        this._prevJumping = jumping;
+        this._prevJumpsUsed = jumpsUsed;
+
+        if (this._wasAirborne && !airborne) {
+            s.play('land', { surface: this.footstepSurface() });
+            this._stepTimer = 8;   // don't step in the same instant as the thud
+        }
+        this._wasAirborne = airborne;
+
+        // Glide wind: a soft looped whoosh while holding the glide.
+        const gliding = !!(cc._glideEnabled && cc._jumpKeyHeld && cc._inFreeFall);
+        if (gliding && --this._glideSoundTimer <= 0) {
+            s.play('glide');
+            this._glideSoundTimer = 14;
+        }
+
+        // Footsteps: cadence while moving on the ground.
+        if (!airborne && cc.anyMovement && cc.anyMovement()) {
+            if (--this._stepTimer <= 0) {
+                s.play('footstep', { surface: this.footstepSurface() });
+                this._stepTimer = 16;
+            }
+        } else if (this._stepTimer > 4) {
+            this._stepTimer = 4;   // first step lands quickly when walking resumes
+        }
     }
 
     // ---- combat -------------------------------------------------------------
@@ -432,8 +513,10 @@ class PlayMode {
         if (!dir || dir.lengthSquared() < 0.0001) dir = this.playerForward();
         dir.normalize();
 
+        this.app.sound.play(finisher ? 'melee-finisher' : 'melee-swing');
+
         // Auto-spawned TRON enemies.
-        this.enemyManager.damageInArc(p, dir, range, COS_HALF, dmg);
+        let hits = this.enemyManager.damageInArc(p, dir, range, COS_HALF, dmg);
         // Player-placed enemy objects (en_blob).
         this.app.BuildableObjectList.forEach((wo) => {
             wo.instances.forEach((inst) => {
@@ -448,10 +531,12 @@ class PlayMode {
                         if (to.x * dir.x + to.z * dir.z < COS_HALF) return;
                     }
                     inst.hp -= dmg;
+                    hits++;
                     if (inst.hp <= 0) this.defeatEnemy(inst, wo);
                 }
             });
         });
+        if (hits > 0) this.app.sound.play('melee-hit');
     }
 
     // The launcher: an upward swing that knocks enemies in the frontal arc
@@ -604,6 +689,7 @@ class PlayMode {
         proj.isPickable = false;
         proj.checkCollisions = false;
         this.playerProjectiles.push({ mesh: proj, vel: dir.scale(0.7), life: 120 });
+        this.app.sound.play('ranged-shot');
         this.spawnAttackFx(from);
     }
 
@@ -629,6 +715,7 @@ class PlayMode {
             const pr = this.playerProjectiles[i];
             // Walls and terrain stop shots.
             if (this.projectileBlocked(pr.mesh.position, pr.vel)) {
+                this.app.sound.play('shot-blocked');
                 pr.mesh.dispose();
                 this.playerProjectiles.splice(i, 1);
                 continue;
@@ -656,6 +743,7 @@ class PlayMode {
                     if (hit) break;
                 }
             }
+            if (hit) this.app.sound.play('shot-hit');
             if (hit || pr.life <= 0) {
                 pr.mesh.dispose();
                 this.playerProjectiles.splice(i, 1);
@@ -1412,7 +1500,7 @@ class PlayMode {
     // T toggles a lock onto the nearest enemy in range. While locked, ranged
     // shots and the aim pose track that enemy and a marker floats above it.
     toggleLockOn() {
-        if (this.lockTarget) { this.clearLockOn(); return; }
+        if (this.lockTarget) { this.clearLockOn(); this.app.sound.play('lock-off'); return; }
         const p = this.player.position;
         let best = null, bestD = 25;
         this.enemyManager.enemies.forEach((rec) => {
@@ -1439,6 +1527,7 @@ class PlayMode {
         marker.isPickable = false;
         marker.checkCollisions = false;
         this.lockMarker = marker;
+        this.app.sound.play('lock-on');
     }
 
     clearLockOn() {
@@ -1736,10 +1825,14 @@ class PlayMode {
         if (this.playerHp <= 0) {
             this.playerHp = 0;
             this._pendingRespawn = true;
+            this.app.sound.play('player-death');
+        } else {
+            this.app.sound.play('player-hurt');
         }
     }
 
     respawn() {
+        this.app.sound.play('respawn');
         if (this.driving) this.dismountKart();   // death mid-drive: on foot first
         this.endGrind();                          // death mid-grind: off the rail
         // The whole party comes back with P1, healthy and at their side.
@@ -1794,6 +1887,7 @@ class PlayMode {
 
     defeatEnemy(inst, wo) {
         inst.defeated = true;
+        this.app.sound.play('enemy-defeat');
         // Scripted enemies (the boss) own their defeat: rewards, wiring
         // events, and a RESETTABLE hide instead of disposal.
         if (inst.script && inst.script.onDefeated) {
@@ -1865,6 +1959,7 @@ class PlayMode {
                     pb.mesh.dispose();
                     this.pixelBursts.splice(i, 1);
                     this.app.addPixels(1);   // always credited, never lost
+                    this.app.sound.play('pixel');   // rate-limited inside the manager
                     continue;
                 }
                 dir.normalize();

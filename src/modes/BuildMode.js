@@ -172,6 +172,7 @@ class BuildMode {
         this.placedInstances.push({ wo: this.currentWorldObject, inst: this.currentInstance });
         this.currentInstance = null;
         this.grabbed = false;
+        this.app.sound.play('place');
     }
 
     // Pick up the object currently highlighted by the cursor so it can be moved.
@@ -235,7 +236,10 @@ class BuildMode {
                 n++;
             });
             this.selection = [];
-            if (n > 0) this.app.toasty('Removed ' + n + ' object' + (n === 1 ? '' : 's') + '.');
+            if (n > 0) {
+                this.app.sound.play('delete');
+                this.app.toasty('Removed ' + n + ' object' + (n === 1 ? '' : 's') + '.');
+            }
             else if (locked > 0) this.app.toasty('Locked — purchase in the shop to remove.');
         } else if (this.placedInstances.length > 0) {
             const last = this.placedInstances.pop();
@@ -243,6 +247,7 @@ class BuildMode {
                 this.app.showBoundingBoxAll(last.inst, false);
                 this.removePlacedInstance(last.inst);
             }
+            this.app.sound.play('delete');
             this.app.toasty('Removed last placed object.');
         } else {
             this.app.toasty('Nothing to remove. Press 0 to select placed objects.');
@@ -405,11 +410,13 @@ class BuildMode {
         if (this.app.keyPressed('ArrowLeft')) {
             this.selectedObjectIndex = this.nextBuildableIndex(-1);
             objectChanged = true;
+            this.app.sound.play('menu-move');
         }
 
         if (this.app.keyPressed('ArrowRight')) {
             this.selectedObjectIndex = this.nextBuildableIndex(1);
             objectChanged = true;
+            this.app.sound.play('menu-move');
         }
 
         // Up/Down arrows jump between object categories (the bar follows). A
@@ -421,6 +428,7 @@ class BuildMode {
         if (catJumpDir !== 0) {
             const jump = this.categoryJump(catJumpDir);
             if (jump) {
+                this.app.sound.play('menu-move');
                 this.browseCat = jump.cat;
                 if (jump.ownedIdx >= 0) {
                     this.selectedObjectIndex = jump.ownedIdx;

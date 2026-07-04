@@ -4,16 +4,16 @@
 class Manifest {
     constructor(app) {
 
-        app.createWorldObject('al_wall',        Object.assign({}, Assets.meshes.wall_glb,           { colliderMeshes: ['wall'] }));
-        app.createWorldObject('al_wallArch',    Object.assign({}, Assets.meshes.wallArch_glb,       { colliderMeshes: ['wallArch'] }));
-        app.createWorldObject('al_wallCorner',  Object.assign({}, Assets.meshes.wallCorner_glb,     { colliderMeshes: ['wallCorner'] }));
-        app.createWorldObject('al_rocks1',      Object.assign({}, Assets.meshes.rocks1_glb,         { colliderMeshes: ['rocks1'] }));
+        app.createWorldObject('al_wall',        Object.assign({}, Assets.meshes.wall_glb,           { colliderMeshes: ['wall'], surface: 'stone' }));
+        app.createWorldObject('al_wallArch',    Object.assign({}, Assets.meshes.wallArch_glb,       { colliderMeshes: ['wallArch'], surface: 'stone' }));
+        app.createWorldObject('al_wallCorner',  Object.assign({}, Assets.meshes.wallCorner_glb,     { colliderMeshes: ['wallCorner'], surface: 'stone' }));
+        app.createWorldObject('al_rocks1',      Object.assign({}, Assets.meshes.rocks1_glb,         { colliderMeshes: ['rocks1'], surface: 'stone' }));
         const assetsBaseUrl     = './assets/';
         // Terrain snaps its TOP to the cursor (anchor:'below') so tiles of
         // different thicknesses (a thin floor panel, a full cube) share a seamless
         // top walking surface at the cursor height.
-        app.createWorldObject('t_floor_1x1',    { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_floor_1x1.gltf', anchor: 'below' });
-        app.createWorldObject('t_cube_1x1',     { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf', anchor: 'below' });
+        app.createWorldObject('t_floor_1x1',    { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_floor_1x1.gltf', anchor: 'below', surface: 'grass' });
+        app.createWorldObject('t_cube_1x1',     { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf', anchor: 'below', surface: 'grass' });
 
         // Lightweight terrain blocks: boxes wearing the REAL grass (top) and
         // dirt (sides) textures via one shared atlas material, so they stay
