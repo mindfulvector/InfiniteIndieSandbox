@@ -68,7 +68,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Logic toys: scoreboards | ✅ | `l_scoreboard` — add/subtract/reset inputs, HUD score display, edge-triggered `reached` output (`test-progression.js`) |
 | Logic toys: cameras | ✅ | `l_camera` — wires cut the view to it for N seconds (player-tracking or fixed shot), `started`/`finished` outputs chain cinematics (`test-camera-toy.js`) |
 | Event wiring between logic toys | ✅ | Overhead 3D wiring view; wires persist in saves (`test-wiring.js`) |
-| Interiors (rooms, doors, decoration) | 🟡 | INTERIOR category room kit (`in_wall`, `in_wall_door`, `in_wall_window`, `in_floor` — walls block shots, openings pass), wirable sliding door (`pr_door`: open/close/toggle inputs, opened/closed outputs, startOpen param), furniture (`d_table/chair/lamp/rug`); multi-prim object support added to the manifest parser (`test-interiors.js`); separate interior "cells" planned |
+| Interiors (rooms, doors, decoration) | ✅ | INTERIOR category room kit (`in_wall`, `in_wall_door`, `in_wall_window`, `in_floor` — walls block shots, openings pass), wirable sliding door (`pr_door`), furniture (`d_table/chair/lamp/rug`), multi-prim manifest support (`test-interiors.js`); pocket-interior cell door (`pr_door_cell`: walk in → teleport to a themed room built from raw meshes, exit pad returns, outdoor enemies freeze, entered/exited wiring events, dollhouse camera) (`test-interior-cells.js`) |
 | Path/track creation (races, patrols, moving platforms) | 🟡 | `l_pathnode` waypoints chain via wires (`next`→`chain`); `pr_platform_moving` follows the chain dt-based (speed/loop/pingpong/once params, start/stop/reset inputs, `arrived`/`completed` outputs, respawn reset, save-clean via `restPos`); `en_blob` patrols a wired chain (loop/pingpong, pauses to stare when the player nears, shared `resolvePathChain`) (`test-paths.js`); race packaging planned |
 | AI builder assistants | ⬜ | |
 | Templates / starter worlds | ✅ | New Game picker: Rolling Hills / Flat Plane / Arena / Floating Islands (`test-progression.js`) |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Interior cells (enter a door → decorated room scene)
-2. Sandbox Hub world (zones/quests/challenges)
-3. Race packaging (start gate + checkpoints + finish timer from existing toys)
-4. Character-specific movesets / special attacks
+1. Sandbox Hub world (zones/quests/challenges)
+2. Race packaging (start gate + checkpoints + finish timer from existing toys)
+3. Character-specific movesets / special attacks
+4. Round power discs (abilities/buffs)

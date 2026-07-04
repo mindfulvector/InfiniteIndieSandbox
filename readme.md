@@ -117,6 +117,14 @@ to the doorway gap — in the Wiring view it accepts *Open* / *Close* /
 counter can unlock a room (a settings option makes it start open instead).
 Furnish with the **Decor** category: table, chair, floor lamp, and rug.
 
+For a whole room behind a single door, place a **Cell Door** (Props) — its
+glowing panel is a portal: walk into it in play mode and you're teleported
+into a small decorated interior (its settings pick the theme, a cozy den or a
+columned hall). Step on the glowing exit pad to return to where you entered.
+While you're inside, enemies outside politely freeze. The door fires *Player
+Entered* / *Player Exited* wiring events, so entering a room can start timers,
+cut cameras, or count visits.
+
 #### Paths and moving platforms
 
 Place **Path Node** markers (Logic category) and chain them in the Wiring

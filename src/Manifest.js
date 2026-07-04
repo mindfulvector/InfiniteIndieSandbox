@@ -36,6 +36,18 @@ class Manifest {
                   ]
         }, 'DoorScript');
 
+        // A doorway into a pocket interior: walk into the glowing panel to
+        // teleport into a small decorated room (theme param), step on the
+        // exit pad to come back. Fires entered/exited wiring events.
+        app.createWorldObject('pr_door_cell', {
+            prims: [
+                     {ty: 'box', s: [0.2, 3, 0.45],  p: [0, 0, 0],     tex: {id: 'brick', w: 1, h: 6}},
+                     {ty: 'box', s: [0.2, 3, 0.45],  p: [1.6, 0, 0],   tex: {id: 'brick', w: 1, h: 6}},
+                     {ty: 'box', s: [1.8, 0.3, 0.45], p: [0.8, 1.65, 0], tex: {id: 'brick', w: 4, h: 1}},
+                     {ty: 'box', s: [1.4, 2.9, 0.12], p: [0.8, -0.05, 0], col: [0.45, 0.85, 1.0], tex: {id: 'cloud'}, nm: 'cellglow'},
+                  ]
+        }, 'CellDoorScript');
+
         // ---- Interior building kit (in_*) ----------------------------------
         // Room walls with a shared 4 x 3 footprint so they tile edge-to-edge.
         // Multi-prim: the first prim is the root at p [0,0,0], later prims are

@@ -238,6 +238,14 @@ class EnemyManager {
 
     update() {
         if (!this.enabled || !this.pm.player) return;
+        // The player is off in a pocket interior: the outside world waits.
+        // Effects/projectiles still tick down so nothing is frozen mid-air
+        // when they return.
+        if (this.pm.insideCell) {
+            this.updateProjectiles();
+            this.updateEffects();
+            return;
+        }
         this.frame++;
         const p = this.pm.player.position;
 

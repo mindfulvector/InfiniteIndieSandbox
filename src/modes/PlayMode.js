@@ -23,6 +23,10 @@ class PlayMode {
         this.launcherCooldown = 0;
         this.juggleHits = 0;
 
+        // True while the player is inside a pocket interior (see
+        // CellDoorScript); the outdoor enemies freeze while it's set.
+        this.insideCell = false;
+
         // Lock-on targeting (toggled with T): ranged shots and the aim pose
         // track the locked enemy; a marker floats above it.
         this.lockTarget = null;     // {type:'em', rec} | {type:'inst', inst, wo}
