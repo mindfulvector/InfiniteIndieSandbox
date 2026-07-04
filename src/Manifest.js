@@ -200,6 +200,17 @@ class Manifest {
                   ]
         }, 'MountScript');
 
+        // A flyable glider: build speed, hold Space to climb, release to
+        // glide; C bails out. Banks into turns (WingScript).
+        app.createWorldObject('pr_wing', {
+            prims: [
+                     {ty: 'box', s: [0.7, 0.35, 2.6],  p: [0, 0, 0],        col: [0.55, 0.8, 1.0],  tex: {id: 'cloud'}},
+                     {ty: 'box', s: [2.6, 0.08, 0.9],  p: [-1.6, 0.15, 0.2], col: [0.7, 0.9, 1.0],  tex: {id: 'cloud'}, nm: 'wingL'},
+                     {ty: 'box', s: [2.6, 0.08, 0.9],  p: [1.6, 0.15, 0.2],  col: [0.7, 0.9, 1.0],  tex: {id: 'cloud'}, nm: 'wingR'},
+                     {ty: 'box', s: [0.08, 0.5, 0.5],  p: [0, 0.4, -1.15],   col: [0.7, 0.9, 1.0],  tex: {id: 'cloud'}, nm: 'tail'},
+                  ]
+        }, 'WingScript');
+
         // A ghost kart: a translucent AI rival that laps a wired path chain
         // (wire its `follow` to the first path node). Intangible pace-setter.
         app.createWorldObject('pr_kart_ghost', {

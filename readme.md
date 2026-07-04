@@ -245,6 +245,11 @@ way. It's slower than the kart but turns on the spot, its legs trot as you
 ride, and `Space` makes it **jump** — `C` hops off. Perfect for bounding
 around rough terrain the kart hates.
 
+**Flying:** the **Sky-Wing** (Props) is a glider you board like any vehicle.
+Build speed with `W`, then **hold `Space`** to climb — release it and you
+glide, sinking gently as long as you keep your airspeed. Bank into turns,
+mind your speed (slow too much and you stall), and press `C` to bail out.
+
 **Couch co-op — up to four players:** press `B` — or press any button on a
 **second, third, or fourth gamepad** — and a friendly figure (green, orange,
 then violet) drops in beside you; when the party is full, `B` sends everyone

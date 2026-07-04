@@ -31,7 +31,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Feature | Status | Notes |
 |---|---|---|
 | Drivable ground vehicles (cars, bikes, tanks) | 🟡 | `pr_kart` hover-kart (premium, 60 px): walk-up mount stops the CharacterController, momentum driving on the shared GravityBody (throttle/drag/speed-scaled steering, WASD or left stick), Space dismounts, respawn parks it home, mid-drive saves store the parked spot (`test-vehicles.js`); more vehicle types planned |
-| Flyable aircraft / dogfighting | ⬜ | |
+| Flyable aircraft / dogfighting | 🟡 | The Sky-Wing (`pr_wing`, `vehicleProfile.canFly` on the shared seat): runway takeoff (throttle + held Space climbs with airspeed), release to glide with a capped sink rate, banks into turns, stalls below airspeed, `C` bails out (`test-aircraft.js`); dogfighting planned |
 | Ridable mounts | ✅ | The Strider (`pr_mount`): walk-up saddling on the shared vehicle seat (per-vehicle profiles), slower than the kart but pivots in place, JUMPS on Space, dismounts on `C`, legs trot with speed; mount children are collision-free so the beast can't block its own jump (`test-mounts.js`) |
 | Climbing / jumping / double-jump / gliding / character traversal | 🟡 | Jump, double jump, and hold-to-glide (`test-traversal.js`); slope/step handling via CharacterController; climbing/swinging planned |
 | Grind rails, trampolines, traversal toys | ⬜ | |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Flyable aircraft (glide-kart hybrid)
-2. Online co-op exploration (WebRTC world sync spike)
-3. Grind rails / trampolines (traversal toys)
-4. Photo mode (freeze + free camera + screenshot)
+1. Grind rails / trampolines (traversal toys)
+2. Photo mode (freeze + free camera + screenshot)
+3. Online co-op exploration (WebRTC world sync spike)
+4. Aerial rings course (fly-through checkpoint races)

@@ -645,6 +645,7 @@ class PlayMode {
             turn: p.turn != null ? p.turn : 2.4,
             seatY: p.seatY != null ? p.seatY : 1.0,
             canJump: !!p.canJump,
+            canFly: !!p.canFly,
             turnInPlace: !!p.turnInPlace,
             hint: p.hint || 'Hop in!  WASD drives · Space hops out',
         };
@@ -694,7 +695,11 @@ class PlayMode {
         const a = this.app;
 
         // Kart: Space hops out. Mounts: Space JUMPS, C hops off.
-        if (prof.canJump) {
+        // Aircraft: Space is CLIMB (held, handled with the physics below),
+        // C hops off.
+        if (prof.canFly) {
+            if (a.keyPressed('C')) { this.dismountKart(); return; }
+        } else if (prof.canJump) {
             if (a.keyPressed('C')) { this.dismountKart(); return; }
             if ((a.keyPressed(' ') || a.consumePad('jump')) &&
                 inst._kartBody && inst._kartBody.grounded) {
@@ -730,6 +735,20 @@ class PlayMode {
         const authority = prof.turnInPlace
             ? 1 : Math.max(0.25, Math.min(1, Math.abs(speed) / 4)) * Math.sign(speed || 1);
         inst.rotation.y += steer * prof.turn * dt * authority;
+        inst._lastSteer = steer;   // scripts read this (wing banking)
+
+        // Flight: with airspeed, holding Space climbs; without the climb
+        // key the wing GLIDES (sink rate capped) as long as it keeps speed.
+        // Slow below stall speed and gravity is all yours again.
+        if (prof.canFly && inst._kartBody) {
+            const airspeed = Math.abs(speed);
+            const climbHeld = a.keyDown(' ') || a.padDown('jump');
+            if (climbHeld && airspeed > 3) {
+                inst._kartBody.vy = Math.min(inst._kartBody.vy + 30 * dt, 6);
+            } else if (!inst._kartBody.grounded && airspeed > 2) {
+                inst._kartBody.vy = Math.max(inst._kartBody.vy, -2.5);
+            }
+        }
 
         const vx = Math.sin(inst.rotation.y) * speed;
         const vz = Math.cos(inst.rotation.y) * speed;
