@@ -130,7 +130,8 @@ Keys:
 
 * Press `W`,`A`,`S`,`D` to move
 * Hold down `Shift` to run
-* Press `Space` to jump
+* Press `Space` to jump — press again mid-air for a **double jump**, and
+  **hold** `Space` while falling to **glide** down slowly
 * **Left click** for a melee attack (also `F` for keyboard-only play)
 * **Right click** for a ranged attack — the character turns to aim their hand and
   fires a neon shot toward the cursor

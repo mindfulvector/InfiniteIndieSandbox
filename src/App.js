@@ -892,7 +892,7 @@ class App {
             this.setControlHints([
                 {k:'WASD',  label:'Move'},
                 {k:'Shift', label:'Run'},
-                {k:'Space', label:'Jump'},
+                {k:'Space', label:'Jump ×2 · hold: Glide'},
                 {k:'LMB',   label:'Melee'},
                 {k:'RMB',   label:'Shoot'},
                 {k:'T',     label:'Lock-on'},

@@ -40,6 +40,7 @@ with no GPU.
 | `test-collection.js` | The figure Collection: roster with the free default active, locked figures stay locked without pixels, buying unlocks + selects (colorway tint on the live avatar, stat leans apply), and level/XP progress is tracked per figure across switches. |
 | `test-texture-category.js` | Every non-logic prim object has a textured surface (grass terrain, marble enemies/health, gold-grain pixels, starfield stars) while logic toys stay flat; the object bar shows only the current category, Down re-filters it, Left/Right cycling never leaves the category, and locked-only categories are still browsable with priced tiles. |
 | `test-camera-toy.js` | The camera logic toy: a wired `activate` cuts the view to it (input paused), the cut ends after its duration and fires `finished` (wired into a counter), `release` ends early, and a trigger can drive it end-to-end. |
+| `test-traversal.js` | Double jump + glide: a mid-air second press reaches clearly higher than a single jump, holding Space falls at a slow constant glide (vs. a clearly faster released fall), and landing restores the air jumps. Drives the CharacterController through its real key handlers. |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
 

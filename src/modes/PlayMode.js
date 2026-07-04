@@ -152,6 +152,11 @@ class PlayMode {
 
             playMode.cc.makeObstructionInvisible(false);
 
+            // Traversal extensions: a mid-air double jump, and holding Space
+            // while falling glides down slowly.
+            if (playMode.cc.setJumpCount) playMode.cc.setJumpCount(2);
+            if (playMode.cc.enableGlide) playMode.cc.enableGlide(true);
+
             playMode.cc.start();
 
             // Cache the bones used to aim the upper body / fire from the hand, and

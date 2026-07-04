@@ -33,7 +33,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Drivable ground vehicles (cars, bikes, tanks) | ⬜ | |
 | Flyable aircraft / dogfighting | ⬜ | |
 | Ridable mounts | ⬜ | |
-| Climbing / jumping / double-jump / gliding / character traversal | 🟡 | Jump + slope/step handling via CharacterController; rest planned |
+| Climbing / jumping / double-jump / gliding / character traversal | 🟡 | Jump, double jump, and hold-to-glide (`test-traversal.js`); slope/step handling via CharacterController; climbing/swinging planned |
 | Grind rails, trampolines, traversal toys | ⬜ | |
 
 ### Multiplayer
@@ -107,9 +107,8 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Double-jump + glide traversal
-2. Blocking/dodging in melee combat
-3. Skill tree for spending level-ups
-4. Interiors (rooms, doors, decoration)
-5. Figure packs / Play Set bundles
-6. Path/track creation (races, patrols, moving platforms)
+1. Blocking/dodging in melee combat
+2. Skill tree for spending level-ups
+3. Interiors (rooms, doors, decoration)
+4. Figure packs / Play Set bundles
+5. Path/track creation (races, patrols, moving platforms)
