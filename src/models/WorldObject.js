@@ -73,6 +73,14 @@ class WorldObject {
 
         // Make all sub-nodes visible and add colliders to them
         this.app.showAll(inst);
+
+        // showAll only walks CHILD meshes, so single-mesh instances (all the
+        // primitive objects, incl. the terrain tiles) never got a collider on
+        // this path -- terrain placed by New Game set it explicitly, but tiles
+        // recreated by loadFromSlot did not, so loaded worlds had walk-through
+        // ground. Enable it on the instance root here; scripts that must not
+        // collide (triggers, pickups) already disable it every frame.
+        inst.checkCollisions = true;
         
         // Store reference to the engine object for use in scripts, etc.
         inst.worldObject = this;

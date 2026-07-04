@@ -20,6 +20,10 @@ class BuildMode {
         // point at a category with no owned objects (browse + buy from tiles).
         this.browseCat = null;
 
+        // The camera radius (zoom) is framed once on the first selection, then
+        // the player's zoom is respected for the rest of the mode.
+        this._framedOnce = false;
+
         this.cursorMats = [];
         for(let i = 0; i < 100; i++) {
             let g = 1.0 / 100 * i;
@@ -262,14 +266,19 @@ class BuildMode {
         return new BABYLON.Vector3(anchor.x, anchor.y + centerYOffset, anchor.z);
     }
 
-    // Point the orbit camera at the object's centre and pull back enough that the
-    // whole object is framed at a consistent on-screen size.
+    // Point the orbit camera at the object's centre. The zoom (radius) is only
+    // set ONCE, when build mode first frames an object -- after that the
+    // player's chosen zoom level is respected across selection changes,
+    // category jumps, tile clicks and grabs.
     frameCameraToInstance(inst) {
         inst.computeWorldMatrix(true);
         const bb = this.computeWorldBBox(inst);
         if (!bb) return;
-        const maxDim = Math.max(bb.size.x, bb.size.y, bb.size.z, 0.5);
-        this.app.camera.radius = Math.min(Math.max(maxDim * 2.4, 4), 60);
+        if (!this._framedOnce) {
+            const maxDim = Math.max(bb.size.x, bb.size.y, bb.size.z, 0.5);
+            this.app.camera.radius = Math.min(Math.max(maxDim * 2.4, 4), 60);
+            this._framedOnce = true;
+        }
         this.camFocus.position.copyFrom(bb.center);
         this.app.camera.lockedTarget = this.camFocus;
     }

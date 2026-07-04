@@ -87,6 +87,16 @@ async function main() {
         }
         check('positions, rotations and scales restored faithfully', mismatches.length === 0, mismatches);
 
+        // Regression guard: instances recreated by loadFromSlot must collide —
+        // loaded terrain tiles used to come back without checkCollisions, so the
+        // player fell straight through the ground of a loaded world.
+        const collide = await h.evaluate(() => {
+            const tiles = window.app.findWorldObject('t_tile').instances.filter(Boolean);
+            return { tiles: tiles.length, colliding: tiles.filter((t) => t.checkCollisions === true).length };
+        });
+        check('loaded terrain tiles have collision enabled',
+            collide.tiles > 0 && collide.colliding === collide.tiles, collide);
+
         console.log('\n========================================');
         console.log(failures === 0
             ? 'RESULT: PASS — world round-trips through save/load with transforms intact.'

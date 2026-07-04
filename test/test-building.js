@@ -114,6 +114,18 @@ async function main() {
         check('selector landed on target object',
             s.buildSelectedIndex === (await h.evaluate(() => window.__targetIdx)), s);
 
+        // Regression guard: the player's zoom must survive selection changes —
+        // only the FIRST framing on entering build mode may set the radius.
+        const zoom = await h.evaluate(() => { window.app.camera.radius = 33; return 33; });
+        await h.tapUntil('ArrowUp', () => window.app.activeMode.selectedObjectIndex !== window.__targetIdx);
+        await h.waitFrames(4);
+        const zoomAfter = await h.evaluate(() => Math.round(window.app.camera.radius * 10) / 10);
+        check('camera zoom is preserved across selection changes', zoomAfter === zoom, { zoom, zoomAfter });
+        // Return to the door for the placement steps below.
+        await h.tapUntil('ArrowDown', () => window.app.activeMode.currentInstance &&
+            window.app.activeMode.selectedObjectIndex === window.__targetIdx);
+        await h.waitFrames(3);
+
         // --- 5. Move the object, then place it (Space) -----------------------
         const startPos = await h.evaluate(() => {
             const p = window.app.activeMode.currentInstance.position;
