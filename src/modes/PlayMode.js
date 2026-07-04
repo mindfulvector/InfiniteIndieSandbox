@@ -42,6 +42,10 @@ class PlayMode {
         // The kart instance being driven, or null on foot (see mountKart).
         this.driving = null;
 
+        // Split-screen state (see updateSplitScreen).
+        this._split = false;
+        this._buddyCam = null;
+
         // Lock-on targeting (toggled with T): ranged shots and the aim pose
         // track the locked enemy; a marker floats above it.
         this.lockTarget = null;     // {type:'em', rec} | {type:'inst', inst, wo}
@@ -95,6 +99,7 @@ class PlayMode {
         this.clearLockOn();
         if (this.blockMesh) { this.blockMesh.dispose(false, true); this.blockMesh = null; }
         if (this.sidekickMesh) { this.sidekickMesh.dispose(false, true); this.sidekickMesh = null; }
+        this.disposeSplitScreen();
         if (this.buddy) { this.buddy.root.dispose(false, false); this.buddy = null; }
         this.driving = null;   // the kart instance belongs to the world, not us
         this.disposePlayer();
@@ -726,6 +731,7 @@ class PlayMode {
 
     buddyLeave() {
         if (!this.buddy) return;
+        this.disposeSplitScreen();
         this.buddy.root.dispose(false, false);
         this.buddy = null;
         this.app.toasty('Player 2 left.');
@@ -855,7 +861,8 @@ class PlayMode {
         // Frame both players: when the buddy roams, ease the orbit radius out
         // so both stay on screen. Camera elasticity is OFF, so the controller
         // leaves the radius to us and the mouse wheel; we only ever widen.
-        if (this.player) {
+        // (While split, each pane frames its own player instead.)
+        if (this.player && !this._split) {
             const sep = BABYLON.Vector3.Distance(b.root.position, this.player.position);
             if (sep > 8 && this.app.camera.radius < Math.min(46, sep * 1.4)) {
                 const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);
@@ -863,6 +870,63 @@ class PlayMode {
                 this.app.camera.radius += (want - this.app.camera.radius) * Math.min(1, 2.5 * dt);
             }
         }
+
+        this.updateSplitScreen();
+    }
+
+    // Automatic split-screen: past comfortable framing range the view splits
+    // (P1 left, buddy right, a FollowCamera trailing the buddy); reuniting
+    // merges back. Split at >26, merge at <18 -- hysteresis so hovering at
+    // the boundary can't flicker the panes. The fullscreen HUD is masked out
+    // of the buddy pane via layer masks (the classic multi-viewport trap:
+    // without it the GUI renders once per camera).
+    updateSplitScreen() {
+        const b = this.buddy;
+        const cam = this.app.camera;
+        const scene = this.app.scene;
+        const sep = (b && this.player)
+            ? BABYLON.Vector3.Distance(b.root.position, this.player.position) : 0;
+        const want = !!(b && this.player && (this._split ? sep > 18 : sep > 26));
+        if (want === this._split) return;
+        this._split = want;
+        if (want) {
+            if (!this._buddyCam) {
+                const bc = new BABYLON.FollowCamera('buddyCam',
+                    b.root.position.add(new BABYLON.Vector3(0, 6, -10)), scene);
+                bc.radius = 11;
+                bc.heightOffset = 5;
+                bc.cameraAcceleration = 0.06;
+                bc.maxCameraSpeed = 25;
+                this._buddyCam = bc;
+            }
+            // HUD only in P1's pane: the GUI layer gets a bit only P1's
+            // camera carries; meshes keep the default mask both cameras see.
+            if (this.app.gui && this.app.gui.layer) {
+                this.app.gui.layer.layerMask = 0x10000000;
+                cam.layerMask = 0x1FFFFFFF;
+                this._buddyCam.layerMask = 0x0FFFFFFF;
+            }
+            this._buddyCam.lockedTarget = b.root;
+            cam.viewport = new BABYLON.Viewport(0, 0, 0.5, 1);
+            this._buddyCam.viewport = new BABYLON.Viewport(0.5, 0, 0.5, 1);
+            scene.activeCameras = [cam, this._buddyCam];
+            this.app.toasty('Split screen — reunite to merge!');
+        } else {
+            scene.activeCameras = null;
+            scene.activeCamera = cam;
+            cam.viewport = new BABYLON.Viewport(0, 0, 1, 1);
+        }
+    }
+
+    // Tear the split down (buddy left, mode exit): merge and free the camera.
+    disposeSplitScreen() {
+        if (this._split) {
+            this.app.scene.activeCameras = null;
+            this.app.scene.activeCamera = this.app.camera;
+            this.app.camera.viewport = new BABYLON.Viewport(0, 0, 1, 1);
+            this._split = false;
+        }
+        if (this._buddyCam) { this._buddyCam.dispose(); this._buddyCam = null; }
     }
 
     // ---- sidekick follower ---------------------------------------------------

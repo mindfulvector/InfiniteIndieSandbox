@@ -39,7 +39,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 ### Multiplayer
 | Feature | Status | Notes |
 |---|---|---|
-| 2P local split-screen campaigns (4P brawler) | ⬜ | |
+| 2P local split-screen campaigns (4P brawler) | 🟡 | Automatic co-op split-screen: past 26 units the view splits (P1 + HUD left, buddy FollowCamera right), merges under 18 (hysteresis); the fullscreen GUI is layer-masked out of the buddy pane (`test-splitscreen.js`); campaigns/4P planned |
 | Up to 4P Sandbox (local + online) | ⬜ | |
 | Drop-in/drop-out co-op | ✅ | Drop-in buddy: `B` or any second-pad button joins; stick/A/X drive move/jump/melee; enemies hunt the NEAREST player (flyers, walker melee, projectiles all route via `combatTargets`/`damageTarget`), buddy has 60 HP with a downed-then-revive-at-half cycle (out of targeting while down), falls auto-rescue, respawn restores it, and the camera widens to frame both players (`test-coop.js`); full P2 figure avatar planned |
 
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Split-screen exploration (second camera viewport)
-2. Kart AI opponents (ghost karts on path chains)
-3. Play Set campaign packaging (mission chains in a gallery world)
-4. Mission structure for collectibles (story/side missions)
+1. Kart AI opponents (ghost karts on path chains)
+2. Play Set campaign packaging (mission chains in a gallery world)
+3. Mission structure for collectibles (story/side missions)
+4. 4P support (more buddies, more panes)

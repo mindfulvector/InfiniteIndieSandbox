@@ -236,9 +236,10 @@ and a friendly green figure drops in beside you. Player 2 moves with their
 left stick, jumps with `A` (hold), and swings melee with `X`. Enemies hunt
 whichever of you is **closer**, and player 2 has their own health: at zero
 they slump for a few seconds (enemies lose interest) and pop back up at half.
-Falls teleport them back to your side, the camera widens when you split up,
-and dying together respawns you together. Triggers and pickups still only
-answer to player 1.
+Falls teleport them back to your side, the camera widens when you split up —
+and if you wander really far apart, the screen **splits in two** (your HUD
+stays on your side) and merges back when you reunite. Dying together respawns
+you together. Triggers and pickups still only answer to player 1.
 
 **Gamepad:** full pad play is supported. The **left stick** moves, the
 **right stick** orbits the camera, and **A** jumps (hold to glide, tap again
