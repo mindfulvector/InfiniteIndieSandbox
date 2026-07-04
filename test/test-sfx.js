@@ -1,6 +1,6 @@
 /*
- * Sound-system test
- * -----------------
+ * Sound-effects (SFX) test
+ * ------------------------
  * The game synthesises all sound effects at runtime (Web Audio, no asset
  * files) via app.sound (SoundManager). Every play() request is logged to
  * app.sound.recent even when no audio device exists, so a headless run can
