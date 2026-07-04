@@ -80,9 +80,9 @@ async function main() {
         }));
         console.log('\n[1] wire', wire);
         check('a real loopback RTC pair opens (no server, direct signaling)', wire.open, wire);
-        check('the world snapshot crosses the wire intact',
-            wire.guestLog.length === 1 && wire.guestLog[0].t === 'world' &&
-            wire.guestLog[0].objects === wire.expected, wire);
+        check('the world snapshot crosses the wire intact (after the welcome)',
+            wire.guestLog.some((l) => l.t === 'welcome') &&
+            wire.guestLog.some((l) => l.t === 'world' && l.objects === wire.expected), wire);
 
         // --- 2. Transform stream -> ghost glides to the host's position ---
         const ghost = await h.evaluate(() => new Promise((resolve) => {
@@ -96,7 +96,7 @@ async function main() {
             const tick = () => {
                 n++;
                 window.__guest.tick(pm);  // the guest renders its ghost here
-                const g = app.scene.getMeshByName('netGhost');
+                const g = app.scene.meshes.find((m) => m.name.indexOf('netGhost') === 0);
                 if (g && converged === 0 &&
                     BABYLON.Vector3.Distance(g.position, pm.player.position) < 1) converged = n;
                 if (n >= 90) {
@@ -190,7 +190,7 @@ async function main() {
 
         // --- 3. Goodbye disposes the ghost ---
         await h.evaluate(() => { window.__host.close(); });
-        await h.waitFor(() => !window.app.scene.getMeshByName('netGhost') &&
+        await h.waitFor(() => !window.app.scene.meshes.find((m) => m.name.indexOf('netGhost') === 0) &&
             window.__guest.log.some((l) => l.t === 'bye'), null, 20000);
         console.log('[3] bye');
         check('close() says bye across the wire and the ghost is disposed', true);
@@ -202,14 +202,14 @@ async function main() {
             const t = { send: () => {}, onMessage: null };
             const link = new NetLink(app, t, true);
             link.remoteIds['x#1'] = {};
-            link.ghostTarget = { p: [0, 1, 0], ry: 0 };
+            link.ghostTargets['x'] = { p: [0, 1, 0], ry: 0 };
             link.tick(app.activeMode);            // grows a ghost
-            const hadGhost = !!app.scene.getMeshByName('netGhost');
+            const hadGhost = !!app.scene.meshes.find((m) => m.name.indexOf('netGhost') === 0);
             link._dropped();
             app.net = link;
             return {
                 hadGhost,
-                ghostGone: !app.scene.getMeshByName('netGhost'),
+                ghostGone: !app.scene.meshes.find((m) => m.name.indexOf('netGhost') === 0),
                 mapCleared: Object.keys(link.remoteIds).length === 0,
                 closed: link.closed, dropped: link.dropped,
             };
@@ -224,11 +224,11 @@ async function main() {
             const t = { send: () => {}, onMessage: null };
             const link = new NetLink(app, t, true);
             app.net = link;
-            link.ghostTarget = { p: [2, 1, 2], ry: 0 };
+            link.ghostTargets['x'] = { p: [2, 1, 2], ry: 0 };
             link.tick(app.activeMode);
-            const before = !!app.scene.getMeshByName('netGhost');
+            const before = !!app.scene.meshes.find((m) => m.name.indexOf('netGhost') === 0);
             app.goto_buildMode();
-            return { before, after: !!app.scene.getMeshByName('netGhost') };
+            return { before, after: !!app.scene.meshes.find((m) => m.name.indexOf('netGhost') === 0) };
         });
         await h.evaluate(() => { window.app.net = null; window.app.goto_playMode(); });
         await h.waitFor(() => window.app.activeMode &&
@@ -236,6 +236,48 @@ async function main() {
         console.log('[3c] strand', strand);
         check('switching to build mode disposes the net ghost (no frozen stray)',
             strand.before && !strand.after, strand);
+
+        // --- 3d. Three players: the host's hub relays guest traffic ---
+        const star = await h.evaluate(() => new Promise((resolve) => {
+            const app = window.app;
+            // Two fake pipes host<->g1 and host<->g2 (the RTC wire itself is
+            // proven above; the star logic is transport-agnostic).
+            const pipe = () => {
+                const a = { send: null, onMessage: null }, b = { send: null, onMessage: null };
+                a.send = (s) => { if (b.onMessage) b.onMessage(s); };
+                b.send = (s) => { if (a.onMessage) a.onMessage(s); };
+                return [a, b];
+            };
+            const [h1, g1t] = pipe();
+            const [h2, g2t] = pipe();
+            const hub = new NetHub(app);
+            const hl1 = new NetLink(app, h1, true);
+            const hl2 = new NetLink(app, h2, true);
+            hub.addLink(hl1);
+            hub.addLink(hl2);
+            const guest1 = new NetLink(app, g1t, false, { applyWorld: false });
+            const guest2 = new NetLink(app, g2t, false, { applyWorld: false });
+            hl1.start(); hl2.start();
+            // guest1 speaks: a transform + a placement.
+            guest1.transport.send(JSON.stringify({ t: 'tf', who: guest1.selfId, p: [3, 1, 3], ry: 0 }));
+            const c = app.findWorldObject('l_counter').createInstance();
+            c.position = new BABYLON.Vector3(4, 4, 4);
+            guest1.sendAdd(c);
+            setTimeout(() => {
+                resolve({
+                    ids: [guest1.selfId, guest2.selfId],
+                    hostSaw: !!hub.links[0].ghostTargets['g1'],
+                    relayedTf: !!guest2.ghostTargets['g1'],
+                    relayedAdd: guest2.log.some((l) => l.t === 'add'),
+                    tints: ['g1', 'g2'].map((w) => guest1._ghostTint(w).r),
+                });
+            }, 300);
+        }));
+        console.log('[3d] star', star);
+        check('the host welcomes guests with distinct player ids',
+            star.ids[0] === 'g1' && star.ids[1] === 'g2', star);
+        check('guest traffic reaches the host AND relays to the other guest',
+            star.hostSaw && star.relayedTf && star.relayedAdd, star);
 
         // --- 4. No unexpected page errors ---
         const realErrors = h.pageErrors.filter((e) => !h._isExpectedError(e));

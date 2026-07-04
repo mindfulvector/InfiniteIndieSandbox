@@ -21,9 +21,11 @@ class NetLink {
         this.applyWorld = !(opts && opts.applyWorld === false);
         this.log = [];            // received message summaries (tests read this)
         this.sent = 0;            // tf messages sent (throttle assertions)
-        this.ghostTarget = null;  // latest remote transform
+        this.ghostTargets = {};   // who -> latest remote transform
+        this.ghosts = {};         // who -> ghost rig
+        this.selfId = isHost ? 'host' : null;   // guests learn theirs via welcome
+        this.onRelay = null;      // hub hook: host relays guest traffic
         this.remoteIds = {};      // 'wo#remoteId' -> local instance (edit stream)
-        this.ghost = null;
         this._sendTimer = 0;
         this.closed = false;
         transport.onMessage = (raw) => this._recv(raw);
@@ -31,6 +33,9 @@ class NetLink {
 
     start() {
         if (this.isHost && this.app.world) {
+            // Assign the guest their player id, then ship the world.
+            this.peerId = this.peerId || 'g1';
+            this.transport.send(JSON.stringify({ t: 'welcome', you: this.peerId }));
             const data = this.app.world.serialize();
             this.transport.send(JSON.stringify({ t: 'world', data: data, name: 'shared' }));
         }
@@ -97,7 +102,15 @@ class NetLink {
     _recv(raw) {
         let msg = null;
         try { msg = JSON.parse(raw); } catch (e) { return; }
-        if (msg.t === 'world') {
+        // Star topology: the host relays guest traffic to the other guests
+        // (the hub sets onRelay; tf/add/del/wire fan out, world/welcome not).
+        if (this.onRelay && (msg.t === 'tf' || msg.t === 'add' || msg.t === 'del' || msg.t === 'wire')) {
+            this.onRelay(this, raw);
+        }
+        if (msg.t === 'welcome') {
+            this.selfId = msg.you;
+            this.log.push({ t: 'welcome', you: msg.you });
+        } else if (msg.t === 'world') {
             this.log.push({ t: 'world', objects: msg.data.objects.length });
             // A guest sitting at the fresh main menu has no world yet --
             // create one to receive into (same as the Load path does).
@@ -148,7 +161,7 @@ class NetLink {
                 } finally { this.app._netMute = false; }
             }
         } else if (msg.t === 'tf') {
-            this.ghostTarget = { p: msg.p, ry: msg.ry };
+            this.ghostTargets[msg.who || 'peer'] = { p: msg.p, ry: msg.ry };
         } else if (msg.t === 'bye') {
             this.log.push({ t: 'bye' });
             this._disposeGhost();
@@ -156,22 +169,34 @@ class NetLink {
         }
     }
 
-    _ensureGhost(mode) {
-        if (this.ghost || !mode || !mode.enemyManager) return;
-        const root = BABYLON.MeshBuilder.CreateBox('netGhost',
+    _ghostTint(who) {
+        const palette = { host: [0.4, 0.9, 1.0], g1: [0.4, 1.0, 0.55], g2: [1.0, 0.65, 0.3], g3: [0.8, 0.5, 1.0] };
+        const c = palette[who] || [0.9, 0.9, 0.5];
+        return new BABYLON.Color3(c[0], c[1], c[2]);
+    }
+
+    _ensureGhost(mode, who) {
+        if (this.ghosts[who] || !mode || !mode.enemyManager) return;
+        const root = BABYLON.MeshBuilder.CreateBox('netGhost_' + who,
             { width: 0.5, height: 0.2, depth: 0.5 }, this.app.scene);
         root.isVisible = false;
         root.checkCollisions = false;
-        const parts = mode.enemyManager.buildBipedal(root, new BABYLON.Color3(0.4, 0.9, 1.0));
+        const parts = mode.enemyManager.buildBipedal(root, this._ghostTint(who));
         (root.getChildMeshes ? root.getChildMeshes() : []).forEach((m) => {
             m.checkCollisions = false;
             m.isPickable = false;
         });
-        this.ghost = { root, parts, walkPhase: 0 };
+        this.ghosts[who] = { root, parts, walkPhase: 0 };
     }
 
     _disposeGhost() {
-        if (this.ghost) { this.ghost.root.dispose(false, false); this.ghost = null; }
+        Object.keys(this.ghosts).forEach((k) => this.ghosts[k].root.dispose(false, false));
+        this.ghosts = {};
+    }
+
+    get ghost() {   // legacy single-ghost accessor (PlayMode teardown checks it)
+        const k = Object.keys(this.ghosts)[0];
+        return k ? this.ghosts[k] : null;
     }
 
     // Called from PlayMode.update each frame: stream our transform out on a
@@ -186,16 +211,18 @@ class NetLink {
                 : (mode.player.rotation ? mode.player.rotation.y : 0);
             try {
                 this.transport.send(JSON.stringify({
-                    t: 'tf', p: [Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100,
-                                 Math.round(p.z * 100) / 100], ry: Math.round(ry * 100) / 100 }));
+                    t: 'tf', who: this.selfId || 'peer',
+                    p: [Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100,
+                        Math.round(p.z * 100) / 100], ry: Math.round(ry * 100) / 100 }));
                 this.sent++;
             } catch (e) { /* channel closing */ }
         }
-        if (this.ghostTarget) {
-            this._ensureGhost(mode);
-            if (this.ghost) {
-                const g = this.ghost.root;
-                const t = this.ghostTarget;
+        Object.keys(this.ghostTargets).forEach((who) => {
+            this._ensureGhost(mode, who);
+            const rig = this.ghosts[who];
+            if (rig) {
+                const g = rig.root;
+                const t = this.ghostTargets[who];
                 const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);
                 const target = new BABYLON.Vector3(t.p[0], t.p[1], t.p[2]);
                 const before = g.position.clone();
@@ -204,15 +231,43 @@ class NetLink {
                 // Leg swing scaled by actual glide speed, so the ghost walks
                 // when its player walks and stands when they stand.
                 const speed = BABYLON.Vector3.Distance(before, g.position) / Math.max(dt, 0.001);
-                if (speed > 0.5) this.ghost.walkPhase += 0.24; else this.ghost.walkPhase *= 0.8;
-                const sw = Math.sin(this.ghost.walkPhase) * 0.5;
-                this.ghost.parts.leftHip.rotation.x = sw;
-                this.ghost.parts.rightHip.rotation.x = -sw;
-                this.ghost.parts.leftSh.rotation.x = -sw * 0.8;
-                this.ghost.parts.rightSh.rotation.x = sw * 0.8;
+                if (speed > 0.5) rig.walkPhase += 0.24; else rig.walkPhase *= 0.8;
+                const sw = Math.sin(rig.walkPhase) * 0.5;
+                rig.parts.leftHip.rotation.x = sw;
+                rig.parts.rightHip.rotation.x = -sw;
+                rig.parts.leftSh.rotation.x = -sw * 0.8;
+                rig.parts.rightSh.rotation.x = sw * 0.8;
             }
-        }
+        });
     }
+}
+
+// The host's hub: one NetLink per guest, relaying guest traffic to every
+// other guest (star topology -- serverless WebRTC can't mesh without a
+// signaling server, but a star needs only the codes the host already trades).
+class NetHub {
+    constructor(app) {
+        this.app = app;
+        this.links = [];
+        this.isHost = true;
+        this.dropped = false;
+    }
+    get closed() { return this.links.length > 0 && this.links.every((l) => l.closed); }
+    addLink(link) {
+        link.peerId = 'g' + (this.links.length + 1);
+        link.onRelay = (from, raw) => {
+            this.links.forEach((l) => {
+                if (l !== from && !l.closed) {
+                    try { l.transport.send(raw); } catch (e) { /* closing */ }
+                }
+            });
+        };
+        this.links.push(link);
+    }
+    tick(mode) { this.links.forEach((l) => l.tick(mode)); }
+    close() { this.links.forEach((l) => l.close()); }
+    get ghost() { const l = this.links.find((x) => x.ghost); return l ? l.ghost : null; }
+    _disposeGhost() { this.links.forEach((l) => l._disposeGhost()); }
 }
 
 // ---- WebRTC glue (manual signaling; spike-level API) -----------------------
@@ -225,13 +280,23 @@ const NetRtc = {
         const transport = { send: (s) => channel.send(s), onMessage: null };
         channel.onmessage = (ev) => { if (transport.onMessage) transport.onMessage(ev.data); };
         const link = new NetLink(app, transport, isHost);
+        if (isHost) {
+            // Hosts collect links in a hub (star topology, N guests).
+            if (!(app.net instanceof NetHub)) {
+                const hub = new NetHub(app);
+                if (app.net && !app.net.closed && app.net instanceof NetLink) hub.addLink(app.net);
+                app.net = hub;
+            }
+            app.net.addLink(link);
+        } else {
+            app.net = link;
+        }
         channel.onopen = () => { link.start(); app.toasty(isHost ? 'Friend connected!' : 'Connected to host!'); };
         channel.onclose = () => link._dropped();
         channel.onerror = () => link._dropped();
         pc.onconnectionstatechange = () => {
             if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') link._dropped();
         };
-        app.net = link;
         app._netPc = pc;
         return link;
     },

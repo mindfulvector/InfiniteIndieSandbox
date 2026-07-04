@@ -340,6 +340,9 @@ and **you build together**: anything either of you places or removes
 appears and vanishes on the other side, live — wiring included, so you
 can build a contraption together. If the link drops, the Online screen
 says so: trade fresh codes and the host's world comes right back across.
+The host can invite **several friends** (create one invite code per
+person) — everyone sees everyone as differently-tinted ghosts, and
+everyone's edits reach everyone.
 
 **Couch co-op — up to four players:** press `B` — or press any button on a
 **second, third, or fourth gamepad** — and a friendly figure (green, orange,
