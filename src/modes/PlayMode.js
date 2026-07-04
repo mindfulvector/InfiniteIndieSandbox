@@ -39,6 +39,9 @@ class PlayMode {
         // gamepad. See updateBuddy for the honest scope notes.
         this.buddy = null;
 
+        // The kart instance being driven, or null on foot (see mountKart).
+        this.driving = null;
+
         // Lock-on targeting (toggled with T): ranged shots and the aim pose
         // track the locked enemy; a marker floats above it.
         this.lockTarget = null;     // {type:'em', rec} | {type:'inst', inst, wo}
@@ -93,6 +96,7 @@ class PlayMode {
         if (this.blockMesh) { this.blockMesh.dispose(false, true); this.blockMesh = null; }
         if (this.sidekickMesh) { this.sidekickMesh.dispose(false, true); this.sidekickMesh = null; }
         if (this.buddy) { this.buddy.root.dispose(false, false); this.buddy = null; }
+        this.driving = null;   // the kart instance belongs to the world, not us
         this.disposePlayer();
         this.enemyManager.dispose();
         this.pixelBursts.forEach((pb) => pb.mesh && pb.mesh.dispose());
@@ -264,8 +268,13 @@ class PlayMode {
             wo.updateAllInstances(true, this);
         });
 
-        this.updatePadMovement();
-        this.handleCombat();
+        if (this.driving) {
+            // Behind the wheel: driving replaces locomotion and combat.
+            this.updateDriving();
+        } else {
+            this.updatePadMovement();
+            this.handleCombat();
+        }
         this.updateBuddy();
         this.updateSidekick();
         this.updatePixelBursts();
@@ -601,6 +610,85 @@ class PlayMode {
                 this.playerProjectiles.splice(i, 1);
             }
         }
+    }
+
+    // ---- driving (hover-kart) --------------------------------------------------
+    // Mounting stops the CharacterController entirely (no double-driving, no
+    // camera fight -- the ArcRotate camera keeps following the seated player
+    // mesh, which rides the kart). Driving is momentum-based on the shared
+    // GravityBody: throttle accelerates toward a max, drag bleeds it off,
+    // steering scales with speed so a parked kart doesn't spin in place.
+
+    mountKart(inst) {
+        if (this.driving || !this.player || !this.cc) return;
+        this.driving = inst;
+        this.cc.stop();
+        this.clearLockOn();
+        if (!inst._kartBody) {
+            inst._kartBody = new GravityBody(this.app.scene, inst, {
+                ellipsoid: new BABYLON.Vector3(0.9, 0.5, 1.3),
+                ellipsoidOffset: new BABYLON.Vector3(0, 0.5, 0),
+            });
+        }
+        inst._kartSpeed = 0;
+        if (inst.rotationQuaternion) {
+            // Driving steers via euler yaw; bake any placed quaternion first.
+            inst.rotation.y = inst.rotationQuaternion.toEulerAngles().y;
+            inst.rotationQuaternion = null;
+        }
+        this.app.toasty('Hop in!  WASD drives · Space hops out');
+    }
+
+    dismountKart() {
+        const inst = this.driving;
+        if (!inst) return;
+        this.driving = null;
+        inst._mountCooldown = 45;   // no instant re-mount while stepping off
+        if (this.player) {
+            this.player.position = inst.position.add(new BABYLON.Vector3(1.6, 1.2, 0));
+        }
+        if (this.cc) this.cc.start();
+    }
+
+    updateDriving() {
+        const inst = this.driving;
+        if (!inst || !this.player) return;
+        // Space hops out (the controller is stopped, so Space is free here).
+        if (this.app.keyPressed(' ') || this.app.consumePad('jump')) {
+            this.dismountKart();
+            return;
+        }
+        const a = this.app;
+        const dt = Math.min(0.05, a.scene.getEngine().getDeltaTime() / 1000);
+        const pad = a.testPad || a.gamepad;
+        const ls = pad && pad.leftStick;
+        let throttle = 0, steer = 0;
+        if (a.keyDown('W')) throttle += 1;
+        if (a.keyDown('S')) throttle -= 0.6;
+        if (a.keyDown('D')) steer += 1;
+        if (a.keyDown('A')) steer -= 1;
+        if (ls) {
+            if (Math.abs(ls.y) > 0.2) throttle += -ls.y;
+            if (Math.abs(ls.x) > 0.2) steer += ls.x;
+        }
+        throttle = Math.max(-1, Math.min(1, throttle));
+        steer = Math.max(-1, Math.min(1, steer));
+
+        const MAX = 10, ACCEL = 12, DRAG = 2.2, TURN = 2.4;
+        let speed = inst._kartSpeed || 0;
+        speed += (throttle * ACCEL - speed * DRAG * (throttle === 0 ? 1.6 : 1)) * dt;
+        speed = Math.max(-MAX * 0.5, Math.min(MAX, speed));
+        inst._kartSpeed = speed;
+        // Steering authority grows with speed (no spinning in place).
+        inst.rotation.y += steer * TURN * dt * Math.max(0.25, Math.min(1, Math.abs(speed) / 4)) * Math.sign(speed || 1);
+
+        const vx = Math.sin(inst.rotation.y) * speed;
+        const vz = Math.cos(inst.rotation.y) * speed;
+        inst._kartBody.step(vx, vz);
+
+        // Seat the player on the kart; the camera follows them for free.
+        this.player.position.copyFrom(inst.position.add(new BABYLON.Vector3(0, 1.0, 0)));
+        this.player.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(inst.rotation.y, 0, 0);
     }
 
     // ---- drop-in buddy (local 2P v1) ------------------------------------------
@@ -1205,6 +1293,7 @@ class PlayMode {
     }
 
     respawn() {
+        if (this.driving) this.dismountKart();   // death mid-drive: on foot first
         this.playerHp = this.playerMaxHp;
         this.hurtCooldown = 60;
         if (this.player) this.player.position = this.spawnPoint.clone();

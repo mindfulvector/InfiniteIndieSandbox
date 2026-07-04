@@ -165,6 +165,17 @@ class Manifest {
                   ]
         }, 'CameraScript');
 
+        // A drivable hover-kart: walk into it in play mode to mount, WASD or
+        // the left stick drives with momentum, Space hops out. Premium.
+        app.createWorldObject('pr_kart', {
+            prims: [
+                     {ty: 'box', s: [1.6, 0.45, 2.4],  p: [0, 0, 0],      tex: {id: 'road'}},
+                     {ty: 'box', s: [1.0, 0.4, 1.0],   p: [0, 0.42, -0.3], col: [0.35, 0.9, 1.0], tex: {id: 'cloud'}},
+                     {ty: 'box', s: [0.25, 0.3, 2.4],  p: [-0.9, -0.1, 0], col: [0.2, 0.7, 1.0], tex: {id: 'cloud'}},
+                     {ty: 'box', s: [0.25, 0.3, 2.4],  p: [0.9, -0.1, 0],  col: [0.2, 0.7, 1.0], tex: {id: 'cloud'}},
+                  ]
+        }, 'KartScript');
+
         // A quest: wire distinct event sources into its `step` input; when
         // enough different ones have fired it completes and pays pixels.
         app.createWorldObject('l_quest', {
@@ -222,5 +233,6 @@ class Manifest {
         // free. (Kept to reliably-local assets so the shop always has stock.)
         app.objectPrices['cp_platform_2x2'] = 40;
         app.objectPrices['d_christmas_tree'] = 25;
+        app.objectPrices['pr_kart'] = 60;
     }
 }

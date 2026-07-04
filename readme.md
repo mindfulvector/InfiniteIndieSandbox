@@ -222,6 +222,11 @@ until they land.
 
 Aim the ranged shot with the mouse; a gamepad auto-aims at the locked/nearest enemy.
 
+**Driving:** buy the **Hover-Kart** in the shop (Props category), place it,
+and walk into it in play mode to hop in. `W`/`S` (or the left stick) throttle
+with real momentum, `A`/`D` steer — sharper the faster you go — and `Space`
+hops out. Dying parks the kart back where you left it.
+
 **Couch co-op (v1):** press `B` — or press any button on a **second
 gamepad** — and a friendly green figure drops in beside you. Player 2 moves
 with their left stick, jumps with `A` (hold), and swings melee with `X`.

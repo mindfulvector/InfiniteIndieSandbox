@@ -30,7 +30,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 ### Vehicles and traversal
 | Feature | Status | Notes |
 |---|---|---|
-| Drivable ground vehicles (cars, bikes, tanks) | ⬜ | |
+| Drivable ground vehicles (cars, bikes, tanks) | 🟡 | `pr_kart` hover-kart (premium, 60 px): walk-up mount stops the CharacterController, momentum driving on the shared GravityBody (throttle/drag/speed-scaled steering, WASD or left stick), Space dismounts, respawn parks it home, mid-drive saves store the parked spot (`test-vehicles.js`); more vehicle types planned |
 | Flyable aircraft / dogfighting | ⬜ | |
 | Ridable mounts | ⬜ | |
 | Climbing / jumping / double-jump / gliding / character traversal | 🟡 | Jump, double jump, and hold-to-glide (`test-traversal.js`); slope/step handling via CharacterController; climbing/swinging planned |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Vehicle hex discs (drivable ground vehicle v1)
-2. Crop farming for sidekick food
-3. Community browsing (import from a shared gallery URL)
-4. Buddy upgrade: enemies target both players, buddy HP + shared camera
+1. Crop farming for sidekick food
+2. Community browsing (import from a shared gallery URL)
+3. Buddy upgrade: enemies target both players, buddy HP + shared camera
+4. Kart racing packaging (kart + l_race + checkpoints as a course kit)
