@@ -77,7 +77,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 ### The Sandbox Hub
 | Feature | Status | Notes |
 |---|---|---|
-| Central hub world with zones/quests/challenges | 🟡 | New Game template 5 "Sandbox Hub": central plaza + 4 pre-wired zones — Combat Yard (trigger→spawner+camera cut), Star Climb (4 stars→counter→scoreboard), The Crossing (ping-pong ferry over a gap + patrolling guard), Homestead (room-kit house + sliding door + cell door) (`test-hub.js`); quest chains/rewards planned |
+| Central hub world with zones/quests/challenges | ✅ | New Game template 5 "Sandbox Hub": central plaza + 4 pre-wired zones — Combat Yard (trigger→spawner+camera cut), Star Climb (4 stars→counter→scoreboard), The Crossing (ping-pong ferry + patrolling guard), Homestead (room kit + sliding door + cell door) (`test-hub.js`); `l_quest` quest toy — distinct wired steps, once-per-run completion with a pixel reward, hub ships a 3-step "Tour the Park" quest (`test-quests.js`) |
 
 ### Sidekicks
 | Feature | Status | Notes |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Hub quest chains (multi-step goals with rewards)
-2. Best-time persistence for races (per save slot)
-3. Gamepad movement + full input abstraction
-4. Hex discs (skies/terrain themes)
+1. Best-time persistence for races (per save slot)
+2. Gamepad movement + full input abstraction
+3. Hex discs (skies/terrain themes)
+4. Sidekicks (collectible follower that levels)

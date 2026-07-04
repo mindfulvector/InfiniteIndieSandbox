@@ -99,6 +99,14 @@ For example, wire a trigger's *Player Enters* to a spawner's *Spawn One* and set
 the spawner to *Start on: no* — enemies then appear only when the player walks
 into the trigger. Wires are saved with the world.
 
+There's also a **Quest** toy: wire several different event sources into its
+*Quest Step Done* input (a trigger, a counter's target, a race finish, a cell
+door…) and it completes once all of them have fired — each source counts only
+once, so it's "do these N different things". Completion pays a pixel reward
+(set in its settings) and fires *Quest Complete* for further wiring. Dying
+re-arms every quest for the next run. The Sandbox Hub starter world ships
+with a 3-step "Tour the Park" quest to show the pattern.
+
 The logic family also includes a **Counter** (fires *Target Reached* after a set
 number of wired events — e.g. "after collecting 3 stars, spawn a boss"), a
 **Timer** (fires *Tick* on a schedule, startable/stoppable by wires — e.g. timed

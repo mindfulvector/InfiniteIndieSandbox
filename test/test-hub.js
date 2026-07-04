@@ -72,8 +72,8 @@ async function main() {
             world.cameras >= 1 && world.stars === 4 && world.counters >= 1 && world.boards >= 1 &&
             world.nodes === 5 && world.ferries === 1 && world.blobs === 1 &&
             world.cellDoors === 1 && world.walls >= 4, world);
-        check('the Combat Yard trigger wires to the spawner AND the camera',
-            JSON.stringify(world.trigWires) === JSON.stringify(['l_camera:activate', 'l_spawner:spawn']), world);
+        check('the Combat Yard trigger wires to the spawner AND the camera (and the tour quest)',
+            JSON.stringify(world.trigWires) === JSON.stringify(['l_camera:activate', 'l_quest:step', 'l_spawner:spawn']), world);
         check('all four stars wire into the climb counter', world.starWires === 4, world);
         check('the counter pays out to the scoreboard', world.counterWires.includes('l_scoreboard:add5'), world);
         check('the ferry follows a path and the blob patrols one',

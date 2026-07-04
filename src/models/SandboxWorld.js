@@ -320,7 +320,16 @@ class SandboxWorld {
         this._place('d_chair', -20.6, 0.85, -1.4);
         this._place('d_lamp', -21.2, 1.1, 0.4);
         this._place('d_rug', -19.6, 0.62, -1.2);
-        this._place('pr_door_cell', -21.3, 2.0, -0.2, null, Math.PI / 2);
+        const cellDoor = this._place('pr_door_cell', -21.3, 2.0, -0.2, null, Math.PI / 2);
+
+        // --- "Tour the Park" quest: visit the yard, finish the climb, step
+        // inside the homestead's pocket room. Three distinct sources -> 25 px.
+        const tour = this._place('l_quest', 2, 1.4, 2, { steps: 3, reward: 25 });
+        if(tour) {
+            if(yardTrig) yardTrig.wires.push({ event: 'entered', toWo: 'l_quest', toId: tour.worldId, action: 'step' });
+            if(climbCounter) climbCounter.wires.push({ event: 'reached', toWo: 'l_quest', toId: tour.worldId, action: 'step' });
+            if(cellDoor) cellDoor.wires.push({ event: 'entered', toWo: 'l_quest', toId: tour.worldId, action: 'step' });
+        }
 
         this.spawnPoint = new BABYLON.Vector3(0, 3, 0);
         return count;

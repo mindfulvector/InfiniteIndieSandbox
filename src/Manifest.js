@@ -165,6 +165,14 @@ class Manifest {
                   ]
         }, 'CameraScript');
 
+        // A quest: wire distinct event sources into its `step` input; when
+        // enough different ones have fired it completes and pays pixels.
+        app.createWorldObject('l_quest', {
+            prims: [
+                     {ty: 'box',       s: [0.9, 1.3, 0.3], p: [0,0,0]},
+                  ]
+        }, 'QuestScript');
+
         // A race controller: wire a start gate, checkpoint triggers, and a
         // finish line into it; it runs the stopwatch, tracks distinct
         // checkpoints, and fires finished/record events.
