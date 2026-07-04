@@ -192,7 +192,12 @@ made worlds that ship with the game: a parkour star-run, a tiny arena, and
 you're driving, the kart itself trips triggers — build your own courses the
 same way) — complete with a translucent **ghost kart** rival lapping the
 circuit to race against; place your own (Props → Ghost Kart) and wire it to
-any path chain. A **★ FEATURED** pick rotates daily at the top of the list.
+any path chain. There's also **The Glowlands**, a three-mission Play Set:
+light the path, open the vault, win the trial — finishing each mission
+unlocks the next (the vault door literally stays shut until you do), and the
+finale pays out with a camera flourish. Every mission is ordinary wiring, so
+open it in the Wiring view to learn how to build campaigns of your own. A
+**★ FEATURED** pick rotates daily at the top of the list.
 
 ### Play Mode
 In play mode, a default avatar will be dropped into the world at the origin `(0,0,0)`.

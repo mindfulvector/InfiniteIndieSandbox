@@ -9,10 +9,10 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 ### Story Campaigns (Play Sets)
 | Feature | Status | Notes |
 |---|---|---|
-| Standalone purchasable campaign modules (themed universes) | ⬜ | Economy + purchase gating exists (pixels/shop) to build on |
+| Standalone purchasable campaign modules (themed universes) | 🟡 | "The Glowlands" gallery Play Set: a 3-mission chain built purely from shipped toys (`test-campaign.js`); purchase gating for campaigns planned |
 | Action-adventure / puzzle-platformer / arena-brawler campaign types | ⬜ | |
 | Characters locked to campaign, usable in Sandbox | ⬜ | |
-| Mission-based progression (story/side missions, collectibles) | 🟡 | Collectible stars exist in the Sandbox; no mission structure yet |
+| Mission-based progression (story/side missions, collectibles) | ✅ | Quest toys chain into missions: Glowlands M1 (collect stars) physically opens the vault door, M2 (enter the pocket room) unlocks M3 (win a lap), with escalating pixel rewards and a camera-cut finale (`test-campaign.js`) |
 
 ### Combat and character systems
 | Feature | Status | Notes |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Play Set campaign packaging (mission chains in a gallery world)
-2. Mission structure for collectibles (story/side missions)
-3. 4P support (more buddies, more panes)
-4. Ridable mounts (saddle a patrol blob)
+1. 4P support (more buddies, more panes)
+2. Ridable mounts (saddle a patrol blob)
+3. Campaign purchase gating (locked Play Sets in the shop)
+4. Flyable aircraft (glide-kart hybrid)

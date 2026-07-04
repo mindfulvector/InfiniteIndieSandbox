@@ -15,6 +15,11 @@
       "file": "glow-circuit.json",
       "name": "Glow Circuit",
       "desc": "A kart lap-race: the gate times every lap, two checkpoints keep you honest"
+    },
+    {
+      "file": "glowlands.json",
+      "name": "The Glowlands",
+      "desc": "A three-mission Play Set: light the path, open the vault, win the trial"
     }
   ]
 }
