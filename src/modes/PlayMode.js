@@ -31,6 +31,10 @@ class PlayMode {
         // long shared cooldown (see specialAttack).
         this.specialCooldown = 0;
 
+        // The active sidekick's follower mesh (see updateSidekick).
+        this.sidekickMesh = null;
+        this._sidekickPhase = 0;
+
         // Lock-on targeting (toggled with T): ranged shots and the aim pose
         // track the locked enemy; a marker floats above it.
         this.lockTarget = null;     // {type:'em', rec} | {type:'inst', inst, wo}
@@ -83,6 +87,7 @@ class PlayMode {
         this.unbindMouseCombat();
         this.clearLockOn();
         if (this.blockMesh) { this.blockMesh.dispose(false, true); this.blockMesh = null; }
+        if (this.sidekickMesh) { this.sidekickMesh.dispose(false, true); this.sidekickMesh = null; }
         this.disposePlayer();
         this.enemyManager.dispose();
         this.pixelBursts.forEach((pb) => pb.mesh && pb.mesh.dispose());
@@ -256,6 +261,7 @@ class PlayMode {
 
         this.updatePadMovement();
         this.handleCombat();
+        this.updateSidekick();
         this.updatePixelBursts();
         this.updateAttackFx();
         this.updatePlayerProjectiles();
@@ -585,6 +591,46 @@ class PlayMode {
                 this.playerProjectiles.splice(i, 1);
             }
         }
+    }
+
+    // ---- sidekick follower ---------------------------------------------------
+
+    // (Re)build the follower mesh to match the active sidekick. Called on
+    // play updates and by App.selectSidekick when the choice changes.
+    refreshSidekick() {
+        const id = this.app.activeSidekick;
+        const wanted = id ? 'sidekick_' + id : null;
+        if (this.sidekickMesh && this.sidekickMesh.name === wanted) return;
+        if (this.sidekickMesh) { this.sidekickMesh.dispose(false, true); this.sidekickMesh = null; }
+        if (!id || !this.player) return;
+        const sk = this.app.sidekickById(id);
+        const mesh = BABYLON.MeshBuilder.CreateSphere(wanted, { diameter: 0.5, segments: 10 }, this.app.scene);
+        const mat = new BABYLON.StandardMaterial(wanted + 'Mat', this.app.scene);
+        const c = new BABYLON.Color3(sk.tint[0], sk.tint[1], sk.tint[2]);
+        mat.emissiveColor = c;
+        mat.diffuseColor = c.scale(0.4);
+        mat.disableLighting = true;
+        mesh.material = mat;
+        mesh.isPickable = false;
+        mesh.checkCollisions = false;
+        mesh.position = this.player.position.add(new BABYLON.Vector3(-0.8, 1.8, -0.8));
+        this.sidekickMesh = mesh;
+    }
+
+    // Hover-follow: ease toward a point behind the player's shoulder with a
+    // gentle bob. dt-based, so the lag feels identical at any frame rate.
+    updateSidekick() {
+        if (!this.player) return;
+        this.refreshSidekick();
+        const mesh = this.sidekickMesh;
+        if (!mesh) return;
+        const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);
+        this._sidekickPhase += dt * 3;
+        const back = this.playerForward().scale(-0.9);
+        const target = this.player.position.add(back)
+            .add(new BABYLON.Vector3(-back.z * 0.6, 1.8 + Math.sin(this._sidekickPhase) * 0.12, back.x * 0.6));
+        mesh.position.addInPlace(target.subtract(mesh.position).scale(Math.min(1, 4 * dt)));
+        mesh.rotation.y += dt * 2;
     }
 
     // ---- gamepad locomotion --------------------------------------------------

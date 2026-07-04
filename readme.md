@@ -258,6 +258,16 @@ place, and Volt's **Chain Bolt** fires a fan of five shots. Each figure **levels
 independently**: switch figures and you switch to that figure's saved
 level and XP. The HUD badge shows who you're playing and their level.
 
+### Sidekicks
+
+The Collection screen also lists **sidekicks** — small companions you adopt
+with pixels (Wisp, Pebble, or Spark). One follows you at a time, hovering at
+your shoulder. Your sidekick earns **half of every XP drop** you collect and
+levels up on its own curve (to level 10); each of its levels adds **+2 max
+HP** to you while it follows. Impatient? **Feed it** (10 pixels for 10 XP)
+from the Collection screen. Each sidekick keeps its own progress, and
+re-selecting the active one sends it home for a while.
+
 ### Power Discs
 
 The Collection screen also opens your **Power Discs** (`9` from the roster) —

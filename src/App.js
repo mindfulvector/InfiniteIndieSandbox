@@ -42,6 +42,17 @@ const DISCS = [
 ];
 const DISC_SLOTS = 2;
 
+// Sidekicks: adoptable companions that hover-follow the player in play mode
+// and level up from a share of earned XP (or by being fed pixels). Exactly
+// one is active; each level of the active sidekick adds +2 max HP through
+// the same derived-stat hook figures/skills/discs use.
+const SIDEKICKS = [
+    { id: 'wisp',   name: 'Wisp',   price: 50, tint: [0.55, 0.9, 1.0],  desc: 'A curious mote of light' },
+    { id: 'pebble', name: 'Pebble', price: 50, tint: [0.8, 0.7, 0.55],  desc: 'A loyal floating stone' },
+    { id: 'spark',  name: 'Spark',  price: 80, tint: [1.0, 0.8, 0.3],   desc: 'An excitable ember' },
+];
+const SIDEKICK_MAX_LEVEL = 10;
+
 // Hex discs: world-theme tokens. Each swaps the sky colour and tints the
 // shared terrain atlas; exactly one is active at a time ('classic' is the
 // free default look). Ownership + the active choice persist with the economy.
@@ -1249,6 +1260,15 @@ class App {
             } else if(menuItem === 9) {
                 app.menu.discsPrevState = app.menu.prevState || MENU_MAIN;
                 app.menu.state = MENU_DISCS;
+            } else if(menuItem === 8) {
+                app.feedSidekick();
+                app.menu.renderedState = -1;
+            } else if(menuItem >= 5 && menuItem <= 4 + SIDEKICKS.length) {
+                const sk = SIDEKICKS[menuItem - 5];
+                if(sk) {
+                    app.adoptSidekick(sk.id);   // adopts, or toggles follow if owned
+                    app.menu.renderedState = -1;
+                }
             } else {
                 const fig = FIGURES[menuItem - 1];
                 if(fig) {
@@ -1754,6 +1774,32 @@ class App {
                               '  ·  ' + fig.desc + '   [' + status + ']',
                         handler: () => { app.triggerMenuItem(MENU_COLLECTION, i + 1); }
                     });
+                });
+                this.MenuItem({
+                    type: 'text',
+                    name: 'skHdr',
+                    text: '— SIDEKICKS —',
+                    fontSize: 14,
+                    color: '#9fb3c8',
+                });
+                SIDEKICKS.forEach((sk, i) => {
+                    const n = 5 + i;
+                    const owned = this.ownsSidekick(sk.id);
+                    const active = this.activeSidekick === sk.id;
+                    const status = active ? '★ FOLLOWING · LV ' + this.sidekickLevelOf(sk.id)
+                                          : (owned ? 'Owned · LV ' + this.sidekickLevelOf(sk.id) : sk.price + ' px');
+                    this.MenuItem({
+                        type: 'button',
+                        name: 'btnSk_' + sk.id,
+                        text: n + '. ' + sk.name + ' — ' + sk.desc + '   [' + status + ']',
+                        handler: () => { app.triggerMenuItem(MENU_COLLECTION, n); }
+                    });
+                });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnSkFeed',
+                    text: '8. Feed sidekick  (10 px → 10 XP)',
+                    handler: () => { app.triggerMenuItem(MENU_COLLECTION, 8); }
                 });
                 this.MenuItem({
                     type: 'button',
@@ -2358,6 +2404,13 @@ class App {
             this.activeHexDisc = (hexActive && this.hexById(hexActive) && this.ownedHex.has(hexActive))
                 ? hexActive : 'classic';
             if (this.scene) this.applyHexTheme();
+
+            // Sidekicks: owned set, active id (may be null), per-sidekick level/XP.
+            const skOwned = JSON.parse(window.localStorage.getItem('iis_sidekicks_owned') || '[]');
+            this.ownedSidekicks = new Set(Array.isArray(skOwned) ? skOwned : []);
+            const skActive = window.localStorage.getItem('iis_sidekick_active');
+            this.activeSidekick = (skActive && this.sidekickById(skActive) && this.ownedSidekicks.has(skActive))
+                ? skActive : null;
         } catch (e) {
             this.pixels = 0;
             this.purchasedSet = new Set();
@@ -2370,6 +2423,8 @@ class App {
             this.equippedDiscs = [];
             this.ownedHex = new Set(['classic']);
             this.activeHexDisc = 'classic';
+            this.ownedSidekicks = new Set();
+            this.activeSidekick = null;
         }
     }
 
@@ -2401,6 +2456,9 @@ class App {
             window.localStorage.setItem('iis_discs_equipped', JSON.stringify(this.equippedDiscs || []));
             window.localStorage.setItem('iis_hex_owned', JSON.stringify([...(this.ownedHex || [])]));
             window.localStorage.setItem('iis_hex_active', this.activeHexDisc || 'classic');
+            window.localStorage.setItem('iis_sidekicks_owned', JSON.stringify([...(this.ownedSidekicks || [])]));
+            if (this.activeSidekick) window.localStorage.setItem('iis_sidekick_active', this.activeSidekick);
+            else window.localStorage.removeItem('iis_sidekick_active');
         } catch (e) { /* storage may be unavailable */ }
     }
 
@@ -2430,6 +2488,8 @@ class App {
         if (this.playerLevel >= MAX_LEVEL) { this.saveEconomy(); return; }
         // Sage Lens: +25% XP earned.
         if (this.discEquipped('sage')) n = Math.round(n * 1.25);
+        // The active sidekick learns alongside the player (half share).
+        this.addSidekickXp(Math.floor(n / 2));
         this.playerXp += n;
         let leveled = false;
         while (this.playerLevel < MAX_LEVEL && this.playerXp >= this.xpToNext(this.playerLevel)) {
@@ -2453,7 +2513,7 @@ class App {
 
     // Stat growth: +5 max HP per level, +1 melee damage every 5 levels, plus
     // the active figure's own stat lean, plus spent skill ranks, plus discs.
-    maxHpForLevel() { return 100 + (this.playerLevel - 1) * 5 + this.activeFigureDef().hpBonus + this.skillRank('vitality') * 10 + (this.discEquipped('aegis') ? 20 : 0); }
+    maxHpForLevel() { return 100 + (this.playerLevel - 1) * 5 + this.activeFigureDef().hpBonus + this.skillRank('vitality') * 10 + (this.discEquipped('aegis') ? 20 : 0) + this.sidekickBonus(); }
     meleeBonus()    { return Math.floor(this.playerLevel / 5) + this.activeFigureDef().meleeBonus + this.skillRank('power') + (this.discEquipped('ember') ? 1 : 0); }
     // Frames between ranged shots (some figures fire faster; Trigger ranks
     // shave 2 frames each). The old floor of 8 never bound (no figure has
@@ -2505,6 +2565,92 @@ class App {
             this.toasty(this.discById(id).name + ' equipped.');
         }
         this.applySkillsToSession();
+        this.saveEconomy();
+        return true;
+    }
+
+    // ---- sidekicks ----------------------------------------------------------
+
+    sidekicks() { return SIDEKICKS; }
+    sidekickById(id) { return SIDEKICKS.find((s) => s.id === id) || null; }
+    ownsSidekick(id) { return !!(this.ownedSidekicks && this.ownedSidekicks.has(id)); }
+
+    sidekickLevelOf(id) {
+        try { return Math.min(SIDEKICK_MAX_LEVEL, Math.max(1,
+            parseInt(window.localStorage.getItem('iis_sk_' + id + '_level'), 10) || 1)); }
+        catch (e) { return 1; }
+    }
+    sidekickXpOf(id) {
+        try { return Math.max(0, parseInt(window.localStorage.getItem('iis_sk_' + id + '_xp'), 10) || 0); }
+        catch (e) { return 0; }
+    }
+    _saveSidekickProgress(id, level, xp) {
+        try {
+            window.localStorage.setItem('iis_sk_' + id + '_level', String(level));
+            window.localStorage.setItem('iis_sk_' + id + '_xp', String(xp));
+        } catch (e) { /* storage may be unavailable */ }
+    }
+
+    sidekickXpToNext(level) { return 20 + (level - 1) * 10; }
+
+    // The active sidekick's aura: +2 max HP per sidekick level.
+    sidekickBonus() {
+        return this.activeSidekick ? this.sidekickLevelOf(this.activeSidekick) * 2 : 0;
+    }
+
+    adoptSidekick(id) {
+        const sk = this.sidekickById(id);
+        if (!sk) return false;
+        if (this.ownsSidekick(id)) return this.selectSidekick(id);
+        if (this.pixels < sk.price) {
+            this.toasty('Not enough pixels — ' + sk.name + ' costs ' + sk.price + '.');
+            return false;
+        }
+        this.pixels -= sk.price;
+        this.ownedSidekicks.add(id);
+        this.toasty('Adopted ' + sk.name + '!');
+        return this.selectSidekick(id);
+    }
+
+    selectSidekick(id) {
+        if (!this.ownsSidekick(id)) return false;
+        // Re-selecting the active sidekick dismisses it (walk alone).
+        this.activeSidekick = (this.activeSidekick === id) ? null : id;
+        this.applySkillsToSession();   // aura max-HP applies live
+        const pm = this.activeMode;
+        if (pm && pm.refreshSidekick) pm.refreshSidekick();
+        this.saveEconomy();
+        return true;
+    }
+
+    // Grant XP to the active sidekick (from the player's earnings share or a
+    // feeding). Levels up on its own curve, capped at SIDEKICK_MAX_LEVEL.
+    addSidekickXp(n) {
+        const id = this.activeSidekick;
+        if (!id || n <= 0) return;
+        let level = this.sidekickLevelOf(id);
+        if (level >= SIDEKICK_MAX_LEVEL) return;
+        let xp = this.sidekickXpOf(id) + n;
+        let leveled = false;
+        while (level < SIDEKICK_MAX_LEVEL && xp >= this.sidekickXpToNext(level)) {
+            xp -= this.sidekickXpToNext(level);
+            level += 1;
+            leveled = true;
+        }
+        if (level >= SIDEKICK_MAX_LEVEL) xp = 0;
+        this._saveSidekickProgress(id, level, xp);
+        if (leveled) {
+            this.toasty(this.sidekickById(id).name + ' grew to level ' + level + '!');
+            this.applySkillsToSession();   // bigger aura applies live
+        }
+    }
+
+    // Feed the active sidekick: 10 pixels for 10 sidekick XP.
+    feedSidekick() {
+        if (!this.activeSidekick) { this.toasty('No sidekick to feed.'); return false; }
+        if (this.pixels < 10) { this.toasty('Feeding costs 10 pixels.'); return false; }
+        this.pixels -= 10;
+        this.addSidekickXp(10);
         this.saveEconomy();
         return true;
     }

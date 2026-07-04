@@ -82,7 +82,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 ### Sidekicks
 | Feature | Status | Notes |
 |---|---|---|
-| Collectible sidekicks that follow/level/feed/equip | ⬜ | |
+| Collectible sidekicks that follow/level/feed/equip | 🟡 | 3 adoptable sidekicks (Wisp/Pebble/Spark), one follows at a time (hover-follow, dt-based), levels from a half share of player XP or by feeding pixels (10 px → 10 XP), aura adds +2 max HP per sidekick level, per-sidekick progress persists, Collection rows 5–8 (`test-sidekicks.js`); equipment planned |
 | Crop farming for sidekick food | ⬜ | |
 
 ### Sandbox Expansion Games
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Sidekicks (collectible follower that levels)
-2. Upload + share creations (export/import world files)
-3. 2P local co-op (second pad drives a second figure)
-4. Vehicle hex discs (drivable ground vehicle v1)
+1. Upload + share creations (export/import world files)
+2. 2P local co-op (second pad drives a second figure)
+3. Vehicle hex discs (drivable ground vehicle v1)
+4. Crop farming for sidekick food
