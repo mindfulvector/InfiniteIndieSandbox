@@ -200,6 +200,20 @@ class Manifest {
                   ]
         }, 'MountScript');
 
+        // A grind rail: wire `path` to a node chain; step on to ride it.
+        app.createWorldObject('pr_rail', {
+            prims: [
+                     {ty: 'box', s: [0.35, 0.15, 3.0], p: [0, 0, 0], col: [0.3, 0.9, 0.95], tex: {id: 'marble'}},
+                  ]
+        }, 'RailScript');
+
+        // A trampoline: land on it and get launched at the configured power.
+        app.createWorldObject('t_tramp', {
+            prims: [
+                     {ty: 'box', s: [2.2, 0.5, 2.2], p: [0, 0, 0], col: [1.0, 0.45, 0.75], tex: {id: 'noise'}},
+                  ]
+        }, 'TrampolineScript');
+
         // A flyable glider: build speed, hold Space to climb, release to
         // glide; C bails out. Banks into turns (WingScript).
         app.createWorldObject('pr_wing', {

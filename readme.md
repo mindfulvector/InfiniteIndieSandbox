@@ -245,6 +245,13 @@ way. It's slower than the kart but turns on the spot, its legs trot as you
 ride, and `Space` makes it **jump** — `C` hops off. Perfect for bounding
 around rough terrain the kart hates.
 
+**Traversal toys:** the **Trampoline** (Terrain) launches you sky-high when
+you land on it — set its bounce power in its options. The **Grind Rail**
+(Props) carries you hands-free: wire its *Rail Path* to a chain of path
+nodes in the Wiring view, then just step onto the rail head and enjoy the
+ride. Both fire wiring events (*Bounced*, *Grind Started/Ended*) so courses
+can react to your moves.
+
 **Flying:** the **Sky-Wing** (Props) is a glider you board like any vehicle.
 Build speed with `W`, then **hold `Space`** to climb — release it and you
 glide, sinking gently as long as you keep your airspeed. Bank into turns,

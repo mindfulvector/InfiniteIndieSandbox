@@ -45,6 +45,13 @@ class PlayMode {
         // The kart instance being driven, or null on foot (see mountKart).
         this.driving = null;
 
+        // Rail-grind state {rail, points, idx}, or null (see startGrind).
+        this.grinding = null;
+
+        // Trampoline bounce bookkeeping (see bouncePlayer).
+        this._bounceRestore = 0;
+        this._normalJumpSpeed = 6;   // the CC's stock idleJump speed
+
         // Split-screen state (see updateSplitScreen). _buddyCam aliases the
         // slot-0 camera for older call sites.
         this._split = false;
@@ -284,9 +291,18 @@ class PlayMode {
         if (this.driving) {
             // Behind the wheel: driving replaces locomotion and combat.
             this.updateDriving();
+        } else if (this.grinding) {
+            // On a rail: carried hands-free; locomotion and combat wait.
+            this.updateGrinding();
         } else {
             this.updatePadMovement();
             this.handleCombat();
+        }
+
+        // A trampoline bounce borrows the CC's jump speed; give it back
+        // once the launch is in the air.
+        if (this._bounceRestore > 0 && --this._bounceRestore === 0 && this.cc) {
+            this.cc.setJumpSpeed(this._normalJumpSpeed || 6);
         }
         this.updateBuddies();
         this.updateSidekick();
@@ -757,6 +773,57 @@ class PlayMode {
         // Seat the player; the camera follows them for free.
         this.player.position.copyFrom(inst.position.add(new BABYLON.Vector3(0, prof.seatY, 0)));
         this.player.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(inst.rotation.y, 0, 0);
+    }
+
+    // ---- traversal toys: grind rails + trampolines ----------------------------
+
+    // Step onto a rail head and get carried hands-free along its wired path
+    // chain. The CC stops for the ride (same suspension as driving) and
+    // restarts at the end of the line.
+    startGrind(rail, points) {
+        if (this.grinding || this.driving || !this.player || !this.cc) return;
+        if (!points || !points.length) return;
+        this.grinding = { rail, points, idx: 0 };
+        this.cc.stop();
+        this.clearLockOn();
+        this.app.toasty('Grinding!');
+    }
+
+    updateGrinding() {
+        const g = this.grinding;
+        if (!g || !this.player) { this.endGrind(); return; }
+        const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);
+        const SPEED = 9;   // units/second along the rail
+        const target = g.points[g.idx].add(new BABYLON.Vector3(0, 1.1, 0));
+        const to = target.subtract(this.player.position);
+        const d = to.length();
+        const step = SPEED * dt;
+        if (d <= step) {
+            this.player.position.copyFrom(target);
+            g.idx++;
+            if (g.idx >= g.points.length) { this.endGrind(); return; }
+        } else {
+            this.player.position.addInPlace(to.scale(step / d));
+            if (Math.abs(to.x) > 0.001 || Math.abs(to.z) > 0.001) {
+                this.player.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(
+                    Math.atan2(to.x, to.z), 0, 0);
+            }
+        }
+    }
+
+    endGrind() {
+        if (!this.grinding) return;
+        this.grinding = null;
+        if (this.cc) this.cc.start();
+    }
+
+    // A trampoline launch: borrow the CC's jump at a boosted speed; the
+    // update loop hands the stock speed back a few frames after liftoff.
+    bouncePlayer(power) {
+        if (!this.cc || this.driving || this.grinding) return;
+        this.cc.setJumpSpeed(power);
+        this.cc.jump();
+        this._bounceRestore = 30;
     }
 
     // ---- drop-in buddy (local 2P v1) ------------------------------------------
@@ -1581,6 +1648,7 @@ class PlayMode {
 
     respawn() {
         if (this.driving) this.dismountKart();   // death mid-drive: on foot first
+        this.endGrind();                          // death mid-grind: off the rail
         // The whole party comes back with P1, healthy and at their side.
         this.buddies.forEach((b, i) => {
             if (!b) return;
