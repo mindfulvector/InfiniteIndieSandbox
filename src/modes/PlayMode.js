@@ -341,6 +341,7 @@ class PlayMode {
             this.updatePadMovement();
             this.handleCombat();
             this.updateSwimming();
+            this.updateClimbing();
             // Footstep/jump/land sounds only apply on foot (driving and
             // grinding suspend the CharacterController).
             this.updateMovementSounds();
@@ -1084,6 +1085,59 @@ class PlayMode {
             if (this.app.keyDown(' ') && this.player.position.y + 1.2 < vol.top) {
                 this.player.moveWithCollisions(new BABYLON.Vector3(0, 5 * dt, 0));
             }
+        }
+    }
+
+    // ---- climbing ------------------------------------------------------------
+    // Near a pr_ladder (horizontally close, within its vertical span) and
+    // holding W/S: gravity suspends and you ascend/descend at a steady rate,
+    // hugged to the ladder line so you can't drift off. Step off the top by
+    // walking forward once you clear it. Same volume-override shape as
+    // swimming, so it restores cleanly on exit and after respawn.
+    updateClimbing() {
+        const cc = this.cc;
+        if (!cc || !this.player || this.driving || this.grinding) return;
+        const wo = this.app.findWorldObject('pr_ladder');
+        let ladder = null;
+        if (wo) {
+            const p = this.player.position;
+            wo.instances.forEach((L) => {
+                if (!L || ladder) return;
+                L.computeWorldMatrix(true);
+                const bb = L.getBoundingInfo().boundingBox;
+                const mn = bb.minimumWorld, mx = bb.maximumWorld;
+                const cx = (mn.x + mx.x) / 2, cz = (mn.z + mx.z) / 2;
+                const near = Math.hypot(p.x - cx, p.z - cz) < 1.3;
+                const spanned = p.y + 1.6 > mn.y && p.y < mx.y + 0.3;
+                if (near && spanned) ladder = { cx, cz, top: mx.y, bottom: mn.y };
+            });
+        }
+        // You only "grab" the ladder while actively climbing (W or S); this
+        // lets you walk past one without being trapped, and drop off freely.
+        const wantClimb = ladder && (this.app.keyDown('W') || this.app.keyDown('S'));
+        if (wantClimb && !this.climbing) {
+            this.climbing = true;
+            this._preClimbGravity = cc._gravity;
+            cc.setGravity(0);
+            if (cc._kartBody) cc._kartBody.vy = 0;
+        } else if (!wantClimb && this.climbing) {
+            this.climbing = false;
+            cc.setGravity(this._preClimbGravity != null ? this._preClimbGravity : 9.8);
+        }
+        if (this.climbing && ladder) {
+            const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);
+            const CLIMB = 3.5;   // units/second
+            let dy = 0;
+            if (this.app.keyDown('W')) dy += CLIMB * dt;
+            if (this.app.keyDown('S')) dy -= CLIMB * dt;
+            // Cap just above the top so you settle onto the ledge, not launch.
+            if (this.player.position.y >= ladder.top + 0.2 && dy > 0) dy = 0;
+            // Hug the ladder line: pull horizontally toward it so W (which the
+            // CC also reads as walk) can't peel you off the rungs.
+            const pull = (t, c) => t + (c - t) * Math.min(1, 8 * dt);
+            this.player.position.x = pull(this.player.position.x, ladder.cx);
+            this.player.position.z = pull(this.player.position.z, ladder.cz);
+            if (dy !== 0) this.player.position.y += dy;   // on the rails, not the rungs
         }
     }
 

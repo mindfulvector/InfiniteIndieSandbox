@@ -316,6 +316,11 @@ slips away, the camera comes off its leash (`WASD` to move, `R`/`F` for
 height, `Shift` to hurry, mouse to orbit), and `Enter` saves a PNG of your
 shot. Press `P` again to jump back into the fray exactly where it left off.
 
+**Climbing:** place a **Ladder** (Props) against a ledge and hold `W` at
+its base to climb — you'll rise steadily up the rungs and step off at the
+top; `S` climbs back down. Perfect for reaching platforms without a jump
+puzzle.
+
 **Water:** place **Water** blocks (Terrain) to build pools, moats, and
 lakes — they're translucent volumes you fall into. Underwater you sink
 gently, move slower, and **hold `Space` to swim up**; you'll tread just

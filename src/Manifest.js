@@ -193,6 +193,25 @@ class Manifest {
                   ]
         }, 'KartScript');
 
+        // A climbable ladder: two rails + rungs. Hold W near it to ascend
+        // (see PlayMode.updateClimbing); no script needed.
+        app.createWorldObject('pr_ladder', {
+            anchor: 'below',
+            prims: [
+                     // First prim (root) spans the FULL footprint so the root
+                     // bounding box covers the whole ladder -- climb detection
+                     // reads the root bbox, and a nested instance's root box is
+                     // only its own geometry.
+                     {ty: 'box', s: [0.85, 4.0, 0.1],  p: [0, 0, -0.02], col: [0.42, 0.3, 0.18], tex: {id: 'wood', s: 40}},
+                     {ty: 'box', s: [0.12, 4.0, 0.14], p: [-0.35, 0, 0], col: [0.5, 0.35, 0.2], tex: {id: 'wood', s: 60}},
+                     {ty: 'box', s: [0.12, 4.0, 0.14], p: [0.35, 0, 0],  col: [0.5, 0.35, 0.2], tex: {id: 'wood', s: 60}},
+                     {ty: 'box', s: [0.85, 0.1, 0.15], p: [0, -1.5, 0.05], col: [0.6, 0.42, 0.25], tex: {id: 'wood', s: 40}},
+                     {ty: 'box', s: [0.85, 0.1, 0.15], p: [0, -0.5, 0.05], col: [0.6, 0.42, 0.25], tex: {id: 'wood', s: 40}},
+                     {ty: 'box', s: [0.85, 0.1, 0.15], p: [0, 0.5, 0.05],  col: [0.6, 0.42, 0.25], tex: {id: 'wood', s: 40}},
+                     {ty: 'box', s: [0.85, 0.1, 0.15], p: [0, 1.5, 0.05],  col: [0.6, 0.42, 0.25], tex: {id: 'wood', s: 40}},
+                  ]
+        });
+
         // A water block: a translucent swim volume (see WaterScript).
         app.createWorldObject('t_water', {
             anchor: 'below',
