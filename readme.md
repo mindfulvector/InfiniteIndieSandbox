@@ -290,6 +290,14 @@ the terrain (using the same gravity as the player) and attack with both melee
 and ranged neon shots. Attack them with `F` before they wear down your health
 bar (top-left); if your health hits zero you respawn.
 
+For a real showdown, place a **Boss** (Enemies category): a crowned titan
+with three phases — it stomps, then adds ranged volleys, then flies into a
+shockwave-slamming rage as its health falls. Its aura shifts violet → orange
+→ red so you always know how angry it is, and beating it pays a hefty pixel
+and XP bounty. Builders: the boss fires *Phase 2 / Phase 3 / Defeated*
+wiring events and takes a *Reset Fight* input, so you can choreograph whole
+arenas around it — spawn adds mid-fight, open the loot room on victory.
+
 ### Levelling up
 
 Defeating enemies also grants **XP**. Your character levels up (to level 20,

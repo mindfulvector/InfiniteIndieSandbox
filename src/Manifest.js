@@ -200,6 +200,17 @@ class Manifest {
                   ]
         }, 'MountScript');
 
+        // A multi-phase arena boss: stomps, volleys (phase 2), shockwaves
+        // (phase 3); wire phase2/phase3/defeated to choreograph the arena.
+        app.createWorldObject('en_boss', {
+            prims: [
+                     {ty: 'box', s: [1.7, 1.7, 1.7],   p: [0, 0.2, 0],    col: [0.55, 0.2, 0.7], tex: {id: 'marble'}},
+                     {ty: 'box', s: [0.7, 0.55, 0.7],  p: [-1.15, 0.75, 0], col: [0.45, 0.15, 0.6], tex: {id: 'marble'}},
+                     {ty: 'box', s: [0.7, 0.55, 0.7],  p: [1.15, 0.75, 0],  col: [0.45, 0.15, 0.6], tex: {id: 'marble'}},
+                     {ty: 'box', s: [0.9, 0.45, 0.9],  p: [0, 1.35, 0],   col: [0.85, 0.7, 0.2], tex: {id: 'marble'}, nm: 'crown'},
+                  ]
+        }, 'BossScript');
+
         // A grind rail: wire `path` to a node chain; step on to ride it.
         app.createWorldObject('pr_rail', {
             prims: [

@@ -1788,6 +1788,12 @@ class PlayMode {
 
     defeatEnemy(inst, wo) {
         inst.defeated = true;
+        // Scripted enemies (the boss) own their defeat: rewards, wiring
+        // events, and a RESETTABLE hide instead of disposal.
+        if (inst.script && inst.script.onDefeated) {
+            inst.script.onDefeated(this);
+            return;
+        }
         const pos = (inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position).clone();
         this.spawnPixelBurst(pos, 14);
         this.app.addXp(5);   // character progression

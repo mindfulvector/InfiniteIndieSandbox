@@ -15,6 +15,7 @@ with no GPU.
 | File | Purpose |
 |------|---------|
 | `harness.js` | Reusable `GameHarness` class: starts the PHP server, launches Chromium, waits for the game to be ready, and provides input / state / screenshot helpers. |
+| `test-boss.js` | The multi-phase boss: rigs itself (GravityBody, collision-free children, phase aura) and stomps at the player, real melee arcs damage it through the shared isEnemy plumbing, phase 2 fires its wired edge + volleys (sighted in-page — they cross and despawn in milliseconds), phase 3 fires + shockwaves land, defeat pays out and hides WITHOUT disposal, and a play reset re-arms the fight with the edges firing again. |
 | `test-building.js` | The building-feature test: create a new sandbox and place objects in it. |
 | `test-object-browser.js` | The object-browser test: bottom bar shows a runtime thumbnail per object and click-to-select works. |
 | `test-placement-consistency.js` | Verifies every object base-aligns, centres on the anchor, and stays framed by the camera. |

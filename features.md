@@ -26,6 +26,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Character leveling (to 20) with skill trees | ✅ | XP from defeating enemies, level 1–20 persisted, +5 max HP/level, +1 melee dmg per 5 levels, HUD badge + XP bar (`test-progression.js`); skill tree: 1 point per level-up (derived from level), 4 skills (Vitality/Power/Trigger/Agility) with flat ranks, per-figure persistence, free respec, Esc→Skills menu (`test-skill-tree.js`) |
 | Health + respawn | ✅ | HP bar, hurt cooldown, respawn at spawn point; respawn is deferred to the next frame so dying mid-combat can't crash the enemy loops (`test-death.js`) |
 | Pickups: health, currency, collectibles | ✅ | `pk_health`, `pk_pixels`, `pk_star` placeable objects (`test-pickups.js`) |
+| Boss fights (multi-phase, arena choreography) | ✅ | `en_boss`: 30 HP in three phases — stomps, then ranged volleys (≤20), then enraged shockwave slams (≤10) — hunting the nearest party member on a GravityBody; shares the `isEnemy` damage plumbing (melee/specials/bolts all land); edge-fired `phase2`/`phase3`/`defeated` wiring + `reset` input; defeat pays +25 px/+20 XP and hides resettably via the script-owned defeat hook (`test-boss.js`) |
 
 ### Vehicles and traversal
 | Feature | Status | Notes |
@@ -108,7 +109,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Boss enemy (multi-phase, wired arena fight)
-2. Aerial rings course (fly-through checkpoint races)
+1. Aerial rings course (fly-through checkpoint races)
+2. Day/night cycle toy (wired sun, mood lighting)
 3. Online co-op exploration (WebRTC world sync spike)
-4. Day/night cycle toy (wired sun, mood lighting)
+4. Boss arena gallery world (the Glowlands sequel)
