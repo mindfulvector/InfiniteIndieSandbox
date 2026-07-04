@@ -204,6 +204,7 @@ class EnemyManager {
         dir.scaleInPlace(1 / len);
         const proj = this.neonBox('tronProj', 0.28, 0.28, 0.28, e.color, null, from.clone());
         this.projectiles.push({ mesh: proj, vel: dir.scale(0.4), life: 130 });
+        this.app.sound.play('enemy-shot');
         this.spawnFlash(from, e.color, 6);
     }
 
@@ -394,6 +395,7 @@ class EnemyManager {
     defeat(index) {
         const e = this.enemies[index];
         if (!e) return;
+        this.app.sound.play('enemy-defeat');
         const pos = e.mesh.position.add(new BABYLON.Vector3(0, e.kind === 'walker' ? 1 : 0, 0));
         this.spawnFlash(pos, e.color, 14);
         this.pm.spawnPixelBurst(pos, 12);          // reuse PlayMode's collectable pixels

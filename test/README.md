@@ -42,6 +42,7 @@ with no GPU.
 | `test-camera-toy.js` | The camera logic toy: a wired `activate` cuts the view to it (input paused), the cut ends after its duration and fires `finished` (wired into a counter), `release` ends early, and a trigger can drive it end-to-end. |
 | `test-traversal.js` | Double jump + glide: a mid-air second press reaches clearly higher than a single jump, holding Space falls at a slow constant glide (vs. a clearly faster released fall), and landing restores the air jumps. Drives the CharacterController through its real key handlers. |
 | `test-death.js` | Death penalty: dying costs exactly 10% of current pixels (floored) and fully resets the run — counters/scoreboards zero, timers/spawners re-arm, collected pickups return, triggers forget the player, HP and position restore. Death happens mid-combat (live walkers + in-flight projectiles) to guard against the enemy-loop crash regression (`e.kind` / `pr.mesh` TypeErrors). |
+| `test-sound.js` | The synthesised sound system: every play() request lands in `app.sound.recent` even headless, so the test asserts footsteps fire on a walking cadence tagged with the real surface underfoot (grass tiles, a wood door slab, a rolled grass block's dirt face), jump/double-jump/land follow the controller, combat/survival/economy/wiring events all ring their sounds, and `M` toggles a persistent mute that silences but keeps logging. |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
 

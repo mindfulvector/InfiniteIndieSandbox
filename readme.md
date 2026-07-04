@@ -140,6 +140,7 @@ Keys:
   fires a neon shot toward the cursor
 * Press `T` to **lock on** to the nearest enemy (a marker floats above it);
   ranged shots then track that target until it's defeated or you press `T` again
+* Press `M` to **mute/unmute** all sound (remembered across sessions)
 
 **Combos:** land melee swings back-to-back to chain a 3-hit combo — the third
 hit is a finisher that deals triple damage.
@@ -181,6 +182,16 @@ you and are added to your pixel count (shown top-right). Spend pixels in the
 **Shop** (`Esc` → Shop) to unlock premium objects. Objects you don't own can
 still appear and work in a world in play mode, but they're locked in build mode
 (shown with a price in the object bar) until you buy them.
+
+### Sound
+
+Every sound in the game is **synthesised at runtime** with the Web Audio API —
+there are no audio files to download. Footsteps change with the surface
+underfoot: grass and dirt (terrain blocks even sound different per face — walk
+on a block's grassy top vs. a dirt side turned upward), wooden props, stone,
+and metal platforms. Jumping, double-jumping, landing, gliding, every attack
+and hit, pickups, level-ups, purchases, and the build/wiring tools all have
+their own effects. Press `M` to mute or unmute (the setting is remembered).
 
 ## Contributing
 

@@ -64,12 +64,15 @@ class PickupScript {
         const amount = this.getParam('amount');
         if (effect === 'health') {
             mode.playerHp = Math.min(mode.playerMaxHp, mode.playerHp + amount);
+            this.app.sound.play('pickup-health');
             this.app.toasty('+' + amount + ' HP');
         } else if (effect === 'pixels') {
             this.app.addPixels(amount);
+            this.app.sound.play('pickup-pixels');
             this.app.toasty('+' + amount + ' pixels');
         } else if (effect === 'star') {
             mode.starsCollected = (mode.starsCollected || 0) + 1;
+            this.app.sound.play('pickup-star');
             this.app.toasty('Star collected!  (' + mode.starsCollected + ')');
         }
     }
