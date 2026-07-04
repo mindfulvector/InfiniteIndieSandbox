@@ -1,14 +1,18 @@
 // WiringView
 // ----------
-// An in-world "wiring" editor. Instead of a flat 2D overlay, it smoothly lifts
-// the camera to an overhead view of the play area, shows only the interactive
-// objects (triggers, spawners, ...), and draws the event wiring between them as
-// slim 3D lines on the ground with arrowheads pointing from source to target.
+// An in-world "wiring" editor. It smoothly lifts the camera to an overhead
+// view of the play area, shows only the interactive objects (triggers,
+// spawners, counters, ...), and draws the event wiring between them as slim
+// 3D lines with arrowheads and a label naming what each wire carries
+// ("Player Enters → Spawn One").
 //
-// A player clicks a source object (e.g. a trigger) to start a wire, then clicks
-// a target object (e.g. a spawner) to connect the trigger's output event to the
-// target's input action. Clicking a source repeatedly cycles its output event;
-// clicking an existing target cycles the action and finally removes the wire.
+// Interaction:
+//   - DRAG from a source object (one with outputs) to a target object (one
+//     with inputs) to create a wire. If several event/action combinations are
+//     possible, a chooser pops up to pick exactly what connects to what.
+//   - CLICK a wire to delete it.
+//   - A guide panel on the right explains the model and lists every object
+//     type's outputs (events it fires) and inputs (actions it accepts).
 class WiringView {
     constructor(app) {
         this.app = app;
@@ -17,13 +21,16 @@ class WiringView {
 
         this.nodes = [];         // interactive instances currently shown
         this.labels = [];        // GUI controls linked to nodes
-        this.chrome = [];        // GUI controls for title / hint / back
+        this.chrome = [];        // GUI controls for title / hint / back / guide
         this.wireMeshes = [];    // 3D line + arrowhead meshes
+        this.wireLabels = [];    // GUI labels naming each wire
         this.hiddenMeshes = [];  // {mesh, wasVisible, wasPickable} restored on exit
         this.emphasized = [];    // instances with edge rendering toggled on
 
-        this.pendingSource = null;   // instance a wire is being drawn from
-        this.pendingEventIdx = 0;    // which output event of the source is active
+        this.drag = null;        // {src} while rubber-banding a new wire
+        this.dragMesh = null;    // the rubber-band line
+        this.pendingWire = null; // {src, dst, event} while the chooser is open
+        this.chooserControls = [];
 
         this.pose = null;        // target overhead camera pose (lerped toward)
         this.savedCam = null;    // camera pose to restore on exit
@@ -34,8 +41,11 @@ class WiringView {
     enter() {
         if(this.active) return;
         this.active = true;
-        this.pendingSource = null;
-        this.pendingEventIdx = 0;
+        this.drag = null;
+        this.pendingWire = null;
+
+        // A lingering toast sits exactly where the title goes -- clear it.
+        if(this.app.hud && this.app.hud.toast) this.app.hud.toast.isVisible = false;
 
         this.nodes = this.app.interactiveInstances();
 
@@ -63,13 +73,11 @@ class WiringView {
         this._buildLabels();
         this.rebuild();
 
-        // Click-to-wire.
+        // Drag-to-wire + click-to-delete.
         this.pointerObserver = this.scene.onPointerObservable.add((pi) => {
-            if(pi.type !== BABYLON.PointerEventTypes.POINTERPICK) return;
-            const pick = pi.pickInfo;
-            if(!pick || !pick.hit) return;
-            const inst = this._instanceFromMesh(pick.pickedMesh);
-            if(inst) this.handlePick(inst);
+            if(pi.type === BABYLON.PointerEventTypes.POINTERDOWN) this._onPointerDown(pi);
+            else if(pi.type === BABYLON.PointerEventTypes.POINTERMOVE) this._onPointerMove();
+            else if(pi.type === BABYLON.PointerEventTypes.POINTERUP) this._onPointerUp();
         });
     }
 
@@ -82,6 +90,8 @@ class WiringView {
             this.pointerObserver = null;
         }
 
+        this._cancelDrag();
+        this._closeChooser();
         this._disposeWireMeshes();
         this.labels.forEach((c) => c.dispose());
         this.labels = [];
@@ -110,7 +120,6 @@ class WiringView {
         }
         cam.attachControl(canvas, true);
 
-        this.pendingSource = null;
         this.nodes = [];
     }
 
@@ -133,67 +142,212 @@ class WiringView {
         cam.radius = lerp(cam.radius, this.pose.radius);
     }
 
-    // ---- interaction -----------------------------------------------------
-    // Handle a pick on an interactive instance (also callable directly by tests).
-    handlePick(inst) {
+    // ---- pointer handling --------------------------------------------------
+    _onPointerDown(pi) {
+        const mesh = pi.pickInfo && pi.pickInfo.pickedMesh;
+        // Clicking a wire deletes it.
+        if(mesh && mesh._wire) {
+            this.deleteWire(mesh._wire.src, mesh._wire.wire);
+            return;
+        }
+        const inst = this._instanceFromMesh(mesh);
+        if(inst) this.startWireDrag(inst);
+    }
+
+    _onPointerMove() {
+        if(!this.drag) return;
+        const pt = this._groundPoint();
+        if(pt) this._updateDragMesh(pt);
+    }
+
+    _onPointerUp() {
+        if(!this.drag) return;
+        const pick = this.scene.pick(this.scene.pointerX, this.scene.pointerY,
+            (m) => !m._wire && m.isPickable && m.isVisible);
+        const inst = this._instanceFromMesh(pick && pick.pickedMesh);
+        this.endWireDrag(inst);
+    }
+
+    // World point under the pointer on the source's height plane.
+    _groundPoint() {
+        const src = this.drag && this.drag.src;
+        const y = src ? src.getAbsolutePosition().y : 0;
+        const ray = this.scene.createPickingRay(this.scene.pointerX, this.scene.pointerY,
+            BABYLON.Matrix.Identity(), this.app.camera);
+        if(Math.abs(ray.direction.y) < 1e-4) return null;
+        const t = (y - ray.origin.y) / ray.direction.y;
+        if(t <= 0) return null;
+        return ray.origin.add(ray.direction.scale(t));
+    }
+
+    // ---- drag-to-wire -------------------------------------------------------
+    startWireDrag(inst) {
         if(!inst || !inst.script) return;
         const outs = inst.script.outputs || [];
-        const ins = inst.script.inputs || [];
-
-        // First click: choose a source (needs outputs).
-        if(!this.pendingSource) {
-            if(outs.length === 0) {
-                this.app.toasty('That object has no outputs — start from a trigger.');
-                return;
-            }
-            this.pendingSource = inst;
-            this.pendingEventIdx = 0;
-            this._refreshEmphasis();
-            this._updateHint();
+        if(outs.length === 0) {
+            this.app.toasty(this.app.prettyName(inst.worldObject.name) +
+                ' has no outputs — drag FROM a trigger/counter/timer/pickup.');
             return;
         }
+        this._closeChooser();
+        this.drag = { src: inst };
+        this._refreshEmphasis();
+        this._updateHint();
+    }
 
-        // Click the same source again: cycle its output event, then deselect.
-        if(inst === this.pendingSource) {
-            const srcOuts = inst.script.outputs || [];
-            this.pendingEventIdx += 1;
-            if(this.pendingEventIdx >= srcOuts.length) {
-                this.pendingSource = null;
-                this.pendingEventIdx = 0;
-            }
-            this._refreshEmphasis();
-            this._updateHint();
-            return;
-        }
-
-        // Second click: the target (needs inputs).
+    endWireDrag(targetInst) {
+        const src = this.drag && this.drag.src;
+        this._cancelDrag();
+        if(!src || !targetInst || targetInst === src) { this._refreshEmphasis(); this._updateHint(); return; }
+        const ins = targetInst.script ? (targetInst.script.inputs || []) : [];
         if(ins.length === 0) {
-            this.app.toasty('That object has no inputs to wire into.');
+            this.app.toasty(this.app.prettyName(targetInst.worldObject.name) +
+                ' has no inputs — drop the wire on a spawner/counter/timer/camera.');
+            this._refreshEmphasis(); this._updateHint();
             return;
         }
-        const src = this.pendingSource;
-        const event = src.script.outputs[this.pendingEventIdx].id;
-        const toWo = inst.worldObject.name;
-        const toId = inst.worldId;
-        const existing = (src.wires || []).find((w) =>
-            w.event === event && w.toWo === toWo && w.toId == toId);
-
-        if(!existing) {
-            this.app.addWire(src, event, toWo, toId, ins[0].id);
-            this.app.toasty(this._prettyOut(src, event) + '  ➜  ' + this._prettyIn(inst, ins[0].id));
+        const outs = src.script.outputs || [];
+        if(outs.length === 1 && ins.length === 1) {
+            this.connectWire(src, outs[0].id, targetInst, ins[0].id);
         } else {
-            // Cycle the action; past the last input, remove the wire.
-            const ids = ins.map((i) => i.id);
-            let ai = ids.indexOf(existing.action) + 1;
-            if(ai >= ids.length) {
-                this.app.removeWire(src, event, toWo, toId, existing.action);
-                this.app.toasty('Removed wire');
-            } else {
-                existing.action = ids[ai];
-                this.app.toasty('Action: ' + this._prettyIn(inst, ids[ai]));
-            }
+            // Several combinations are possible: let the player pick exactly
+            // which event drives which action.
+            this.pendingWire = { src: src, dst: targetInst, event: (outs.length === 1 ? outs[0].id : null) };
+            this._openChooser();
         }
+        this._refreshEmphasis();
+        this._updateHint();
+    }
+
+    _cancelDrag() {
+        this.drag = null;
+        if(this.dragMesh) { this.dragMesh.dispose(false, true); this.dragMesh = null; }
+    }
+
+    _updateDragMesh(pt) {
+        const src = this.drag.src.getAbsolutePosition();
+        const y = Math.max(src.y, pt.y) + 0.3;
+        const dx = pt.x - src.x, dz = pt.z - src.z;
+        const len = Math.max(0.15, Math.hypot(dx, dz));
+        if(!this.dragMesh) {
+            this.dragMesh = BABYLON.MeshBuilder.CreateBox('wireDrag', { width: 1, height: 0.05, depth: 0.14 }, this.scene);
+            const m = new BABYLON.StandardMaterial('wireDragMat', this.scene);
+            m.emissiveColor = new BABYLON.Color3(1, 1, 1);
+            m.disableLighting = true;
+            m.alpha = 0.8;
+            this.dragMesh.material = m;
+            this.dragMesh.isPickable = false;
+        }
+        this.dragMesh.scaling.x = len;
+        this.dragMesh.position.set((src.x + pt.x) / 2, y, (src.z + pt.z) / 2);
+        this.dragMesh.rotation.y = -Math.atan2(dz, dx);
+    }
+
+    // Create the wire (used by drag completion and the chooser).
+    connectWire(src, event, dst, action) {
+        if(this.app.hasWire(src, event, dst.worldObject.name, dst.worldId, action)) {
+            this.app.toasty('Already wired.');
+            return;
+        }
+        this.app.addWire(src, event, dst.worldObject.name, dst.worldId, action);
+        this.app.toasty(this._outLabel(src, event) + '  ➜  ' + this._inLabel(dst, action));
         this.rebuild();
+    }
+
+    deleteWire(src, wire) {
+        this.app.removeWire(src, wire.event, wire.toWo, wire.toId, wire.action);
+        this.app.toasty('Wire removed.');
+        this.rebuild();
+    }
+
+    // ---- chooser popup ------------------------------------------------------
+    // Open when a drag could mean several things; the player picks the output
+    // event (if the source has several) then the input action (if the target
+    // has several).
+    _openChooser() {
+        this._closeChooser(true);
+        const pw = this.pendingWire;
+        if(!pw) return;
+        const A = BABYLON.GUI.Control;
+        const gui = this.app.gui;
+
+        const panel = new BABYLON.GUI.Rectangle('wireChooser');
+        panel.width = '340px';
+        panel.adaptHeightToChildren = true;
+        panel.cornerRadius = 10;
+        panel.thickness = 2;
+        panel.color = '#8fe9ff';
+        panel.background = 'rgba(10,16,28,0.96)';
+        panel.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+        panel.verticalAlignment = A.VERTICAL_ALIGNMENT_CENTER;
+        gui.addControl(panel);
+        this.chooserControls.push(panel);
+
+        const stack = new BABYLON.GUI.StackPanel();
+        stack.paddingTop = '10px';
+        stack.paddingBottom = '10px';
+        panel.addControl(stack);
+
+        const addText = (txt, color, size) => {
+            const t = new BABYLON.GUI.TextBlock();
+            t.text = txt;
+            t.color = color || '#eaf3ff';
+            t.fontSize = size || 15;
+            t.height = '26px';
+            t.textWrapping = true;
+            stack.addControl(t);
+            return t;
+        };
+        const addBtn = (txt, cb) => {
+            const b = BABYLON.GUI.Button.CreateSimpleButton('wcBtn', txt);
+            b.height = '32px';
+            b.width = '300px';
+            b.color = '#ffffff';
+            b.background = 'rgba(36,58,92,0.8)';
+            b.cornerRadius = 6;
+            b.thickness = 1;
+            b.paddingTop = '3px';
+            b.onPointerUpObservable.add(cb);
+            stack.addControl(b);
+            return b;
+        };
+
+        addText('WIRE:  ' + this.app.prettyName(pw.src.worldObject.name) + '  ➜  ' +
+            this.app.prettyName(pw.dst.worldObject.name), '#8fe9ff', 16);
+
+        if(pw.event === null) {
+            addText('When this happens...', '#9fb3c8', 13);
+            (pw.src.script.outputs || []).forEach((o) => {
+                addBtn(o.label || o.id, () => this.chooseOutput(o.id));
+            });
+        } else {
+            addText('...do what?', '#9fb3c8', 13);
+            (pw.dst.script.inputs || []).forEach((i) => {
+                addBtn(i.label || i.id, () => this.chooseAction(i.id));
+            });
+        }
+        addBtn('Cancel', () => this._closeChooser());
+    }
+
+    chooseOutput(eventId) {
+        if(!this.pendingWire) return;
+        this.pendingWire.event = eventId;
+        const ins = this.pendingWire.dst.script.inputs || [];
+        if(ins.length === 1) this.chooseAction(ins[0].id);
+        else this._openChooser();   // re-render for the action step
+    }
+
+    chooseAction(actionId) {
+        const pw = this.pendingWire;
+        if(!pw || pw.event === null) return;
+        this.connectWire(pw.src, pw.event, pw.dst, actionId);
+        this._closeChooser();
+    }
+
+    _closeChooser(keepPending) {
+        this.chooserControls.forEach((c) => c.dispose());
+        this.chooserControls = [];
+        if(!keepPending) this.pendingWire = null;
     }
 
     // ---- rebuild ---------------------------------------------------------
@@ -263,9 +417,9 @@ class WiringView {
             inst.enableEdgesRendering();
             inst.edgesWidth = 6.0;
             let c;
-            if(inst === this.pendingSource) c = new BABYLON.Color4(1, 1, 1, 1);            // active source
-            else if(inst.script.outputs && inst.script.outputs.length) c = new BABYLON.Color4(0.3, 0.9, 1, 1); // trigger
-            else c = new BABYLON.Color4(0.75, 0.4, 1, 1);                                  // spawner / input
+            if(this.drag && inst === this.drag.src) c = new BABYLON.Color4(1, 1, 1, 1);       // drag source
+            else if(inst.script.outputs && inst.script.outputs.length) c = new BABYLON.Color4(0.3, 0.9, 1, 1); // source-capable
+            else c = new BABYLON.Color4(0.75, 0.4, 1, 1);                                     // input-only
             inst.edgesColor = c;
             this.emphasized.push(inst);
         });
@@ -278,13 +432,24 @@ class WiringView {
         if(m) return m;
         m = new BABYLON.StandardMaterial(name, this.scene);
         let col;
-        if(event === 'entered') col = new BABYLON.Color3(0.25, 1.0, 0.55);
+        if(event === 'entered' || event === 'collected') col = new BABYLON.Color3(0.25, 1.0, 0.55);
         else if(event === 'exited') col = new BABYLON.Color3(1.0, 0.55, 0.2);
+        else if(event === 'reached' || event === 'finished') col = new BABYLON.Color3(1.0, 0.85, 0.25);
         else col = new BABYLON.Color3(0.35, 0.85, 1.0);
         m.emissiveColor = col;
         m.diffuseColor = col.scale(0.4);
         m.specularColor = new BABYLON.Color3(0, 0, 0);
         return m;
+    }
+
+    _outLabel(inst, eventId) {
+        const def = (inst.script.outputs || []).find((o) => o.id === eventId);
+        return def ? (def.label || def.id) : eventId;
+    }
+
+    _inLabel(inst, actionId) {
+        const def = (inst.script.inputs || []).find((i) => i.id === actionId);
+        return def ? (def.label || def.id) : actionId;
     }
 
     _buildWireMesh(src, dst, wire) {
@@ -295,11 +460,12 @@ class WiringView {
         const len = Math.max(0.1, Math.hypot(dx, dz));
         const mat = this._wireMaterial(wire.event);
 
-        const line = BABYLON.MeshBuilder.CreateBox('wireLine', { width: len, height: 0.06, depth: 0.18 }, this.scene);
+        const line = BABYLON.MeshBuilder.CreateBox('wireLine', { width: len, height: 0.06, depth: 0.22 }, this.scene);
         line.position = new BABYLON.Vector3((a.x + b.x) / 2, y, (a.z + b.z) / 2);
         line.rotation = new BABYLON.Vector3(0, -Math.atan2(dz, dx), 0);
         line.material = mat;
-        line.isPickable = false;
+        line.isPickable = true;             // clickable: click a wire to delete it
+        line._wire = { src: src, wire: wire };
         this.wireMeshes.push(line);
 
         // Arrowhead near the target end, pointing from source to target.
@@ -310,13 +476,39 @@ class WiringView {
         head.lookAt(new BABYLON.Vector3(b.x, y, b.z));                 // +Z toward target
         head.rotate(BABYLON.Axis.X, Math.PI / 2, BABYLON.Space.LOCAL); // cone axis (+Y) -> +Z
         head.material = mat;
-        head.isPickable = false;
+        head.isPickable = true;
+        head._wire = { src: src, wire: wire };
         this.wireMeshes.push(head);
+
+        // Label naming what the wire carries, at its midpoint.
+        const dstInst = this.app.findInstance(wire.toWo, wire.toId);
+        const rect = new BABYLON.GUI.Rectangle('wireTag');
+        rect.adaptWidthToChildren = true;
+        rect.height = '22px';
+        rect.cornerRadius = 5;
+        rect.thickness = 1;
+        rect.color = 'rgba(255,255,255,0.25)';
+        rect.background = 'rgba(8,12,22,0.85)';
+        rect.isPointerBlocker = false;
+        const txt = new BABYLON.GUI.TextBlock();
+        txt.text = this._outLabel(src, wire.event) + ' → ' + (dstInst ? this._inLabel(dstInst, wire.action) : wire.action);
+        txt.color = '#cfe9ff';
+        txt.fontSize = 12;
+        txt.resizeToFit = true;
+        txt.paddingLeft = '8px';
+        txt.paddingRight = '8px';
+        rect.addControl(txt);
+        this.app.gui.addControl(rect);
+        rect.linkWithMesh(line);
+        rect.linkOffsetY = -14;
+        this.wireLabels.push(rect);
     }
 
     _disposeWireMeshes() {
         this.wireMeshes.forEach((m) => m.dispose());
         this.wireMeshes = [];
+        this.wireLabels.forEach((c) => c.dispose());
+        this.wireLabels = [];
     }
 
     // ---- GUI -------------------------------------------------------------
@@ -324,21 +516,31 @@ class WiringView {
         const gui = this.app.gui;
         const A = BABYLON.GUI.Control;
 
-        const title = new BABYLON.GUI.TextBlock('wiringTitle', 'WIRING  ·  connect triggers to spawners');
+        // Title in an opaque pill (nothing shows through behind it).
+        const titleWrap = new BABYLON.GUI.Rectangle('wiringTitleWrap');
+        titleWrap.adaptWidthToChildren = true;
+        titleWrap.height = '38px';
+        titleWrap.cornerRadius = 19;
+        titleWrap.thickness = 1;
+        titleWrap.color = '#8fe9ff';
+        titleWrap.background = 'rgba(10,16,28,0.95)';
+        titleWrap.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+        titleWrap.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        titleWrap.top = '14px';
+        gui.addControl(titleWrap);
+        this.chrome.push(titleWrap);
+        const title = new BABYLON.GUI.TextBlock('wiringTitle', 'WIRING');
         title.color = '#8fe9ff';
-        title.fontSize = 20;
-        title.fontFamily = 'Segoe UI, Arial';
-        title.height = '34px';
-        title.top = '18px';
-        title.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
-        title.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
-        gui.addControl(title);
-        this.chrome.push(title);
+        title.fontSize = 18;
+        title.fontStyle = 'bold';
+        title.resizeToFit = true;
+        title.paddingLeft = '20px';
+        title.paddingRight = '20px';
+        titleWrap.addControl(title);
 
         const hint = new BABYLON.GUI.TextBlock('wiringHint', '');
         hint.color = '#dbe7f3';
-        hint.fontSize = 16;
-        hint.fontFamily = 'Segoe UI, Arial';
+        hint.fontSize = 15;
         hint.height = '28px';
         hint.top = '-24px';
         hint.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
@@ -362,23 +564,89 @@ class WiringView {
         gui.addControl(back);
         this.chrome.push(back);
 
+        this._buildGuidePanel();
         this._updateHint();
+    }
+
+    // Right-side guide: how wiring works + each object type's ports.
+    _buildGuidePanel() {
+        const gui = this.app.gui;
+        const A = BABYLON.GUI.Control;
+
+        const panel = new BABYLON.GUI.Rectangle('wiringGuide');
+        panel.width = '285px';
+        panel.height = '78%';
+        panel.cornerRadius = 10;
+        panel.thickness = 1;
+        panel.color = 'rgba(143,233,255,0.4)';
+        panel.background = 'rgba(8,12,22,0.92)';
+        panel.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_RIGHT;
+        panel.verticalAlignment = A.VERTICAL_ALIGNMENT_CENTER;
+        panel.left = '-14px';
+        gui.addControl(panel);
+        this.chrome.push(panel);
+
+        const scroll = new BABYLON.GUI.ScrollViewer('wiringGuideScroll');
+        scroll.thickness = 0;
+        scroll.barSize = 8;
+        scroll.barColor = '#8fe9ff';
+        panel.addControl(scroll);
+
+        const stack = new BABYLON.GUI.StackPanel();
+        stack.width = '250px';   // wraps inside the panel (leaves room for the bar)
+        stack.paddingLeft = '10px';
+        scroll.addControl(stack);
+
+        const addText = (txt, color, size, bold) => {
+            const t = new BABYLON.GUI.TextBlock();
+            t.text = txt;
+            t.color = color || '#c9d8ea';
+            t.fontSize = size || 12.5;
+            t.fontStyle = bold ? 'bold' : '';
+            t.textWrapping = true;
+            t.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+            t.resizeToFit = true;
+            t.paddingTop = '4px';
+            stack.addControl(t);
+        };
+
+        addText('HOW WIRING WORKS', '#8fe9ff', 15, true);
+        addText('Objects fire EVENTS (outputs ▸) and accept ACTIONS (inputs ◂).');
+        addText('• DRAG from a source object to a target object to add a wire. ' +
+                'If several combinations fit, a chooser asks exactly which event ' +
+                'drives which action.');
+        addText('• CLICK a wire to delete it.');
+        addText('• Each wire\'s label shows what it carries: "Player Enters → Spawn One".');
+        addText('• Cyan outline = fires events. Violet = accepts actions only.');
+        addText(' ');
+        addText('OBJECTS IN THIS WORLD', '#8fe9ff', 14, true);
+
+        // One entry per object TYPE present, listing its ports.
+        const byType = new Map();
+        this.nodes.forEach((inst) => {
+            if(!byType.has(inst.worldObject.name)) byType.set(inst.worldObject.name, inst);
+        });
+        byType.forEach((inst, name) => {
+            addText(this.app.prettyName(name), '#ffd76a', 13.5, true);
+            const outs = (inst.script.outputs || []).map((o) => o.label || o.id);
+            const ins = (inst.script.inputs || []).map((i) => i.label || i.id);
+            if(outs.length) addText('▸ fires: ' + outs.join(',  '), '#7ef0b2');
+            if(ins.length) addText('◂ accepts: ' + ins.join(',  '), '#c9a1ff');
+        });
     }
 
     _updateHint() {
         if(!this.hintText) return;
-        if(this.pendingSource) {
-            const event = this.pendingSource.script.outputs[this.pendingEventIdx].id;
-            this.hintText.text = 'From ' + this._prettyOut(this.pendingSource, event) +
-                ' — click a spawner to connect  ·  click the source again to change event';
+        if(this.drag) {
+            this.hintText.text = 'Release over a target object to connect ' +
+                this.app.prettyName(this.drag.src.worldObject.name) + '\'s wire';
         } else {
-            this.hintText.text = 'Click a trigger to start a wire, then click a spawner to connect it';
+            this.hintText.text = 'Drag between objects to wire them  ·  click a wire to delete it';
         }
     }
 
     _buildLabels() {
         const gui = this.app.gui;
-        const A = BABYLON.GUI.Control;
         this.nodes.forEach((inst) => {
             const rect = new BABYLON.GUI.Rectangle('wireLabel_' + inst.worldId);
             rect.adaptWidthToChildren = true;
@@ -388,6 +656,7 @@ class WiringView {
             rect.paddingLeft = '8px';
             rect.paddingRight = '8px';
             rect.background = 'rgba(10,16,28,0.82)';
+            rect.isPointerBlocker = false;
 
             const txt = new BABYLON.GUI.TextBlock();
             txt.text = this.app.prettyName(inst.worldObject.name);
@@ -423,14 +692,7 @@ class WiringView {
             if(inst.script.inputs && inst.script.inputs.length) bits.push('◂' + inCount);
             rect._wireText.text = this.app.prettyName(inst.worldObject.name) +
                 (bits.length ? '   ' + bits.join(' ') : '');
-
-            if(inst === this.pendingSource) {
-                rect.background = 'rgba(60,90,120,0.95)';
-                rect.color = '#ffffff';
-            } else {
-                rect.background = 'rgba(10,16,28,0.82)';
-                rect.color = (inst.script.outputs && inst.script.outputs.length) ? '#39c6ff' : '#c48bff';
-            }
+            rect.color = (inst.script.outputs && inst.script.outputs.length) ? '#39c6ff' : '#c48bff';
         });
     }
 
@@ -460,15 +722,5 @@ class WiringView {
         const center = new BABYLON.Vector3((minX + maxX) / 2, sumY / n, (minZ + maxZ) / 2);
         const extent = Math.max(maxX - minX, maxZ - minZ, 6);
         return { center: center, extent: extent };
-    }
-
-    _prettyOut(inst, eventId) {
-        const def = (inst.script.outputs || []).find((o) => o.id === eventId);
-        return this.app.prettyName(inst.worldObject.name) + ' · ' + (def ? def.label : eventId);
-    }
-
-    _prettyIn(inst, actionId) {
-        const def = (inst.script.inputs || []).find((i) => i.id === actionId);
-        return this.app.prettyName(inst.worldObject.name) + ' · ' + (def ? def.label : actionId);
     }
 }

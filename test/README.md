@@ -27,7 +27,7 @@ with no GPU.
 | `test-bipedal-enemy.js` | The bipedal TRON walker uses the shared GravityBody (falls/lands on terrain), walks, does melee + ranged attacks, and drops pixels. |
 | `test-spawner.js` | The spawner object auto-opens a parameters popup, edits/persists its params, and spawns the chosen enemy type at its frequency up to the limit. |
 | `test-shop-gating.js` | Premium objects are locked in build mode and unlock via the shop for pixels. |
-| `test-wiring.js` | Trigger volumes fire wired output events into a spawner's inputs (directly and on player entry), wires persist through save/load, and the overhead 3D wiring view lifts the camera, shows the interactive objects, draws 3D wire meshes, and connects objects on click. |
+| `test-wiring.js` | Trigger volumes fire wired output events into a spawner's inputs (directly and on player entry), wires persist through save/load, and the overhead 3D wiring view lifts the camera, shows labelled wires + the guide panel, connects objects by drag (with the event/action chooser), and deletes wires on click. |
 | `test-animation.js` | Samples the game a few frames per second to prove things move over time (not just look right in one frame): a walker closes on the player and swings its legs, pixel cubes fly to the player, and a captured filmstrip's frames actually differ. Also reports whether the player avatar's skeleton is animating. |
 | `test-ranged-attack.js` | Mouse combat: a ranged attack fires a projectile from the player that travels and defeats an enemy (engaging the aim pose), right-click shoots and left-click swings melee, and the melee path still works. |
 | `test-anchor.js` | The per-object snap anchor: terrain snaps its top to the cursor (cube/floor/tile tops align into a seamless surface) while props snap their base to it, all centred on the cursor. |
@@ -41,6 +41,7 @@ with no GPU.
 | `test-texture-category.js` | Every non-logic prim object has a textured surface (grass terrain, marble enemies/health, gold-grain pixels, starfield stars) while logic toys stay flat; the object bar shows only the current category, Down re-filters it, Left/Right cycling never leaves the category, and locked-only categories are still browsable with priced tiles. |
 | `test-camera-toy.js` | The camera logic toy: a wired `activate` cuts the view to it (input paused), the cut ends after its duration and fires `finished` (wired into a counter), `release` ends early, and a trigger can drive it end-to-end. |
 | `test-traversal.js` | Double jump + glide: a mid-air second press reaches clearly higher than a single jump, holding Space falls at a slow constant glide (vs. a clearly faster released fall), and landing restores the air jumps. Drives the CharacterController through its real key handlers. |
+| `test-death.js` | Death penalty: dying costs exactly 10% of current pixels (floored) and fully resets the run — counters/scoreboards zero, timers/spawners re-arm, collected pickups return, triggers forget the player, HP and position restore. |
 | `run.sh` | Convenience runner. |
 | `screenshots/` | Output PNGs from the most recent run (cleared at the start of each run). |
 

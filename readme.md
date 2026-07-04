@@ -81,11 +81,14 @@ You can build simple gameplay by wiring interactive objects together. Place a
 choose **Wiring**. The camera smoothly lifts to an overhead view showing only
 the interactive objects, with 3D arrows drawn between wired objects:
 
-* **Click a trigger** to start a wire (click it again to switch between its
-  *Player Enters* / *Player Exits* events).
-* **Click a spawner** to connect the trigger's event to it. Clicking the same
-  spawner again cycles the action it performs (*Spawn One* → *Turn On* →
-  *Turn Off* → *Toggle* → disconnect).
+* **Drag** from a source object (one that fires events — cyan outline) onto a
+  target object (one that accepts actions) to connect them. If several
+  event/action combinations fit, a chooser asks exactly which event drives
+  which action.
+* **Click a wire** to delete it. Every wire is labelled with what it carries
+  ("Player Enters → Spawn One").
+* A **guide panel** on the right explains the model and lists each object
+  type's events (▸ fires) and actions (◂ accepts).
 
 For example, wire a trigger's *Player Enters* to a spawner's *Spawn One* and set
 the spawner to *Start on: no* — enemies then appear only when the player walks

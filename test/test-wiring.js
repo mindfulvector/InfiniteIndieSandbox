@@ -145,9 +145,14 @@ async function main() {
         await h.waitFrames(45);   // let the camera ease overhead
         const view = await h.evaluate(() => {
             const app = window.app, w = app.wiring, cam = app.camera;
+            const label0 = w.wireLabels[0];
             return {
                 state: app.menu.state, active: w.active,
                 nodes: w.nodes.length, wireMeshes: w.wireMeshes.length,
+                wireLabels: w.wireLabels.length,
+                labelText: label0 && label0.children[0] ? label0.children[0].text : null,
+                guide: !!app.gui.getControlByName('wiringGuide'),
+                titleWrap: !!app.gui.getControlByName('wiringTitleWrap'),
                 beta: Math.round(cam.beta * 1000) / 1000,
                 hidden: w.hiddenMeshes.length,
             };
@@ -156,30 +161,52 @@ async function main() {
         check('openWiring enters the wiring state', view.state === MENU_WIRING && view.active === true, view);
         check('wiring view shows the interactive objects', view.nodes >= 2, view);
         check('wiring view draws 3D wire meshes for existing wires', view.wireMeshes > 0, view);
+        check('every wire carries a name label ("event → action")',
+            view.wireLabels > 0 && /→/.test(view.labelText || ''), view);
+        check('the right-side wiring guide panel is shown', view.guide === true, view);
+        check('the title sits in an opaque pill (no hint bleeding through)', view.titleWrap === true, view);
         check('the camera eased to an overhead view (small beta)', view.beta < 0.4, view);
         await h.screenshot('wiring-view');
 
-        // --- 8. Click-to-wire via handlePick ---
-        const pick = await h.evaluate((s) => {
+        // --- 8. Drag-to-wire with the event/action chooser ---
+        const drag = await h.evaluate((s) => {
             const app = window.app, w = app.wiring;
             const trig = app.findInstance('l_trigger', s.trigId);
             const spawn = app.findInstance('l_spawner', s.spawnId);
-            // Clear existing wires, then click source then target.
+            // Clear existing wires, then simulate the drag gesture.
             trig.wires = [];
-            w.pendingSource = null;
-            w.handlePick(trig);
-            const selected = (w.pendingSource === trig);
-            w.handlePick(spawn);
+            w.rebuild();
+            w.startWireDrag(trig);                     // pointer-down on the trigger
+            const dragging = !!w.drag && w.drag.src === trig;
+            w.endWireDrag(spawn);                      // release over the spawner
+            // Trigger has 2 outputs and the spawner 4 inputs -> chooser opens.
+            const chooserOpen = !!w.pendingWire && w.chooserControls.length > 0;
+            w.chooseOutput('entered');
+            w.chooseAction('spawn');
             return {
-                selected,
+                dragging, chooserOpen,
                 wired: app.hasWire(trig, 'entered', 'l_spawner', spawn.worldId, 'spawn'),
                 wireMeshes: w.wireMeshes.length,
+                chooserClosed: w.chooserControls.length === 0,
             };
         }, { trigId: persist.trigId, spawnId: persist.spawnId }).catch((e) => ({ err: String(e) }));
-        console.log('[8] handlePick', pick);
-        check('clicking a trigger selects it as the wire source', pick.selected === true, pick);
-        check('clicking a spawner connects the wire', pick.wired === true, pick);
+        console.log('[8] drag-to-wire', drag);
+        check('dragging starts from an output-capable object', drag.dragging === true, drag);
+        check('releasing on a multi-port target opens the chooser', drag.chooserOpen === true, drag);
+        check('choosing event + action creates the wire', drag.wired === true && drag.chooserClosed === true, drag);
         await h.screenshot('wiring-connected');
+
+        // --- 8b. Clicking a wire deletes it ---
+        const del = await h.evaluate((s) => {
+            const app = window.app, w = app.wiring;
+            const trig = app.findInstance('l_trigger', s.trigId);
+            const before = trig.wires.length;
+            const lineMesh = w.wireMeshes.find((m) => m._wire && m._wire.src === trig);
+            w.deleteWire(lineMesh._wire.src, lineMesh._wire.wire);   // what a wire click does
+            return { before, after: trig.wires.length, meshes: w.wireMeshes.length };
+        }, { trigId: persist.trigId }).catch((e) => ({ err: String(e) }));
+        console.log('[8b] delete wire', del);
+        check('clicking a wire deletes it', del.before === 1 && del.after === 0 && del.meshes === 0, del);
 
         // --- 9. Exiting restores the scene and returns to the pause menu ---
         const exited = await h.evaluate(() => {
