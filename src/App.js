@@ -19,10 +19,14 @@ const MAX_LEVEL = 20;   // character level cap
 // starter avatar with its own stat lean, bought à la carte with pixels and
 // levelled independently (per-figure XP/level persistence).
 const FIGURES = [
-    { id: 'scout', name: 'Scout', price: 0,   tint: [1.00, 1.00, 1.00], hpBonus: 0,  meleeBonus: 0, rangedHaste: 0, desc: 'Balanced all-rounder' },
-    { id: 'blaze', name: 'Blaze', price: 150, tint: [1.00, 0.45, 0.35], hpBonus: 0,  meleeBonus: 1, rangedHaste: 0, desc: '+1 melee damage' },
-    { id: 'frost', name: 'Frost', price: 150, tint: [0.55, 0.75, 1.00], hpBonus: 25, meleeBonus: 0, rangedHaste: 0, desc: '+25 max HP' },
-    { id: 'volt',  name: 'Volt',  price: 250, tint: [1.00, 0.95, 0.40], hpBonus: 10, meleeBonus: 0, rangedHaste: 6, desc: 'Faster ranged fire, +10 HP' },
+    { id: 'scout', name: 'Scout', price: 0,   tint: [1.00, 1.00, 1.00], hpBonus: 0,  meleeBonus: 0, rangedHaste: 0, desc: 'Balanced all-rounder',
+      special: 'shockwave', specialName: 'Shockwave' },
+    { id: 'blaze', name: 'Blaze', price: 150, tint: [1.00, 0.45, 0.35], hpBonus: 0,  meleeBonus: 1, rangedHaste: 0, desc: '+1 melee damage',
+      special: 'flame', specialName: 'Flame Arc' },
+    { id: 'frost', name: 'Frost', price: 150, tint: [0.55, 0.75, 1.00], hpBonus: 25, meleeBonus: 0, rangedHaste: 0, desc: '+25 max HP',
+      special: 'nova', specialName: 'Frost Nova' },
+    { id: 'volt',  name: 'Volt',  price: 250, tint: [1.00, 0.95, 0.40], hpBonus: 10, meleeBonus: 0, rangedHaste: 6, desc: 'Faster ranged fire, +10 HP',
+      special: 'bolt', specialName: 'Chain Bolt' },
 ];
 
 // Packs: bundles of figures and/or premium objects sold at a discount in the
@@ -951,6 +955,7 @@ class App {
                 {k:'LMB',   label:'Melee'},
                 {k:'RMB',   label:'Shoot'},
                 {k:'R',     label:'Launch'},
+                {k:'V',     label:'Special'},
                 {k:'G',     label:'Block'},
                 {k:'C',     label:'Dodge'},
                 {k:'T',     label:'Lock-on'},

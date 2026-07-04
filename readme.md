@@ -239,7 +239,11 @@ free at any time from the same screen.
 The **Collection** screen (main menu, or `Esc` → Collection in game) is your
 figure roster. Figures are colorways of the avatar with their own stat leans —
 Scout (balanced, free), Blaze (+1 melee), Frost (+25 max HP), and Volt (faster
-ranged fire) — bought à la carte with pixels. Each figure **levels up
+ranged fire) — bought à la carte with pixels. Each figure also has a
+**signature special** on `V` (about a 5-second cooldown): Scout's
+**Shockwave** blasts and launches everything around you, Blaze's **Flame
+Arc** is one heavy frontal strike, Frost's **Nova** freezes nearby enemies in
+place, and Volt's **Chain Bolt** fires a fan of five shots. Each figure **levels up
 independently**: switch figures and you switch to that figure's saved
 level and XP. The HUD badge shows who you're playing and their level.
 

@@ -275,6 +275,13 @@ class EnemyManager {
         const m = e.mesh;
         if (e.fade > 0) { e.fade--; m.visibility = 1 - e.fade / 12; }
 
+        // Chilled (Frost Nova): frozen in place, no homing, no attacks.
+        if (e.chill > 0) {
+            e.chill--;
+            m.rotation.y += e.spin * 0.15;   // barely turning: reads as frozen
+            return;
+        }
+
         // Launched: a ballistic pop (rise, tumble, fall back to hover) during
         // which the flyer neither homes nor attacks.
         if (e.airborne > 0) {
@@ -314,6 +321,17 @@ class EnemyManager {
         const dx = p.x - m.position.x, dz = p.z - m.position.z;
         const dist = Math.hypot(dx, dz);
         m.rotation.y = Math.atan2(dx, dz);   // face the player
+
+        // Chilled (Frost Nova): rooted to the spot -- gravity still applies
+        // (so a chilled walker mid-air falls) but no walking or attacks. Kept
+        // separate from the juggle stun, whose early-landing exit would end a
+        // ground chill instantly.
+        if (e.chill > 0) {
+            e.chill--;
+            e.body.step(0, 0);
+            e.walkPhase *= 0.8;
+            return;
+        }
 
         // Launched/stunned: ragdoll up and back down under gravity alone --
         // no walking, no attacks -- until the stun runs out or it lands.
@@ -431,6 +449,22 @@ class EnemyManager {
                 else this.spawnFlash(e.mesh.position.add(new BABYLON.Vector3(0, 1, 0)), new BABYLON.Color3(1, 1, 1), 6);
             }
         }
+        return hits;
+    }
+
+    // Chill every enemy within `range`: rooted, attack-less, for `frames`.
+    // Returns the number chilled. (Frost's special.)
+    chillNear(pos, range, frames) {
+        let hits = 0;
+        this.enemies.forEach((e) => {
+            if (!e) return;
+            if (BABYLON.Vector3.Distance(e.mesh.position, pos) <= range) {
+                e.chill = Math.max(e.chill || 0, frames);
+                hits++;
+                this.spawnFlash(e.mesh.position.add(new BABYLON.Vector3(0, 1, 0)),
+                    new BABYLON.Color3(0.55, 0.85, 1.0), 10);
+            }
+        });
         return hits;
     }
 

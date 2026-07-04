@@ -27,6 +27,10 @@ class PlayMode {
         // CellDoorScript); the outdoor enemies freeze while it's set.
         this.insideCell = false;
 
+        // Figure special attack (V): each figure has a signature move with a
+        // long shared cooldown (see specialAttack).
+        this.specialCooldown = 0;
+
         // Lock-on targeting (toggled with T): ranged shots and the aim pose
         // track the locked enemy; a marker floats above it.
         this.lockTarget = null;     // {type:'em', rec} | {type:'inst', inst, wo}
@@ -288,6 +292,11 @@ class PlayMode {
         if (this.app.keyPressed('R') || this.app.consumePad('launcher')) {
             this.launcherAttack();
         }
+        // Figure special: V (each figure has its own move).
+        if (this.app.keyPressed('V') || this.app.consumePad('special')) {
+            this.specialAttack();
+        }
+        if (this.specialCooldown > 0) this.specialCooldown--;
         // Ranged: a gamepad ranged button (mouse right-click is handled by the
         // pointer observer). Auto-aims at the lock-on/nearest enemy on a pad.
         if (this.app.consumePad('rangedAttack')) {
@@ -403,6 +412,88 @@ class PlayMode {
                 }
             });
         });
+    }
+
+    // The figure's signature move (V), on a long shared cooldown:
+    //   Scout  Shockwave  -- a 360-degree blast that damages and pops
+    //                        everything close (launchInArc with cosHalf -1)
+    //   Blaze  Flame Arc  -- one heavy wide frontal strike
+    //   Frost  Frost Nova -- chills everything nearby: rooted, attack-less
+    //   Volt   Chain Bolt -- a fan of five ranged bolts
+    specialAttack() {
+        if (!this.player || this.specialCooldown > 0) {
+            if (this.player && this.specialCooldown > 0) {
+                this.app.toasty('Special recharging... ' + Math.ceil(this.specialCooldown / 60) + 's');
+            }
+            return;
+        }
+        this.specialCooldown = 300;
+        const fig = this.app.activeFigureDef();
+        const p = this.player.position;
+        const bonus = this.app.meleeBonus ? this.app.meleeBonus() : 0;
+        const fwd = this.playerForward();
+        this.app.toasty(fig.specialName + '!');
+        this.spawnAttackFx(p, true);
+
+        if (fig.special === 'flame') {
+            // Heavy wide frontal strike (~180 degrees).
+            this.enemyManager.damageInArc(p, fwd, 3.6, 0.0, 4 + bonus);
+            this.damageBlobsInArc(p, fwd, 3.6, 0.0, 4 + bonus);
+        } else if (fig.special === 'nova') {
+            this.enemyManager.chillNear(p, 5, 120);
+            this.enemyManager.damageNear(p, 5, 1);
+        } else if (fig.special === 'bolt') {
+            // Five bolts fanned across the facing direction.
+            for (let i = -2; i <= 2; i++) {
+                const a = i * 0.28;
+                const dir = new BABYLON.Vector3(
+                    fwd.x * Math.cos(a) + fwd.z * Math.sin(a), 0,
+                    -fwd.x * Math.sin(a) + fwd.z * Math.cos(a));
+                this.spawnPlayerBolt(this.handPosition(), dir);
+            }
+        } else {
+            // Shockwave: cosHalf -1 makes the launcher arc all-around.
+            this.enemyManager.launchInArc(p, fwd, 4, -1, 2 + Math.floor(bonus / 2), 5);
+            this.damageBlobsInArc(p, fwd, 4, -1, 2 + Math.floor(bonus / 2));
+        }
+    }
+
+    // Damage player-placed blob enemies in an arc (cosHalf -1 = all around);
+    // shared by melee-flavoured specials.
+    damageBlobsInArc(p, dir, range, cosHalf, dmg) {
+        this.app.BuildableObjectList.forEach((wo) => {
+            wo.instances.forEach((inst) => {
+                if (inst && inst.isEnemy && !inst.defeated) {
+                    const ip = inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position;
+                    const to = ip.subtract(p);
+                    to.y = 0;
+                    const d = to.length();
+                    if (d > range) return;
+                    if (d > 0.3 && cosHalf > -1) {
+                        to.scaleInPlace(1 / d);
+                        if (to.x * dir.x + to.z * dir.z < cosHalf) return;
+                    }
+                    inst.hp -= dmg;
+                    if (inst.hp <= 0) this.defeatEnemy(inst, wo);
+                }
+            });
+        });
+    }
+
+    // Spawn one player projectile travelling along `dir` (shared by the
+    // ranged attack and Volt's bolt fan).
+    spawnPlayerBolt(from, dir) {
+        const proj = BABYLON.MeshBuilder.CreateBox('playerProj', { size: 0.24 }, this.app.scene);
+        proj.position = from.clone();
+        const mat = new BABYLON.StandardMaterial('playerProjMat', this.app.scene);
+        const c = new BABYLON.Color3(0.4, 0.95, 1.0);
+        mat.emissiveColor = c;
+        mat.diffuseColor = c.scale(0.3);
+        mat.disableLighting = true;
+        proj.material = mat;
+        proj.isPickable = false;
+        proj.checkCollisions = false;
+        this.playerProjectiles.push({ mesh: proj, vel: dir.normalize().scale(0.7), life: 120 });
     }
 
     // Called by EnemyManager whenever a hit lands on an airborne enemy.
@@ -923,6 +1014,7 @@ class PlayMode {
         this.dodgeVel = null;
         this.launcherCooldown = 0;
         this.juggleHits = 0;
+        this.specialCooldown = 0;
         this.clearLockOn();
         this.enemyManager.reset();
 

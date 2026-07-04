@@ -21,7 +21,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Aerial juggling, blocking, dodging | ✅ | Hold `G` (pad LB) to block — negates damage from the frontal arc, shield visual; tap `C` (pad Y) to dodge-roll — i-frames + burst move (`test-blocking.js`); `R` launcher knocks enemies airborne (walkers via GravityBody velocity + stun, flyers via ballistic pop), airborne hits deal +1 and re-pop, juggle counter + toast (`test-juggling.js`) |
 | Ranged combat with aimable projectiles | ✅ | Right-click fires at cursor; projectile from hand (`test-ranged-attack.js`) |
 | Lock-on targeting | ✅ | `T` toggles lock-on to nearest enemy; marker + auto-aim (`test-combat-combo.js`) |
-| Character-specific movesets / special attacks / super moves | ⬜ | Single starter avatar today |
+| Character-specific movesets / special attacks / super moves | 🟡 | Every figure has a signature `V` special on a 5s cooldown: Scout Shockwave (360° launch), Blaze Flame Arc (heavy frontal), Frost Nova (chills enemies — rooted + attack-less, new `chill` mechanic), Volt Chain Bolt (5-bolt fan) (`test-specials.js`); full per-figure movesets planned |
 | Avatar animation (locomotion clips + idle) | ✅ | Authored walk/run/jump/strafe clips via the character controller; procedural breathing idle replaces the rig's frozen 2-frame idle range (`test-idle-animation.js`) |
 | Character leveling (to 20) with skill trees | ✅ | XP from defeating enemies, level 1–20 persisted, +5 max HP/level, +1 melee dmg per 5 levels, HUD badge + XP bar (`test-progression.js`); skill tree: 1 point per level-up (derived from level), 4 skills (Vitality/Power/Trigger/Agility) with flat ranks, per-figure persistence, free respec, Esc→Skills menu (`test-skill-tree.js`) |
 | Health + respawn | ✅ | HP bar, hurt cooldown, respawn at spawn point; respawn is deferred to the next frame so dying mid-combat can't crash the enemy loops (`test-death.js`) |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Character-specific movesets / special attacks
-2. Round power discs (abilities/buffs)
-3. Hub quest chains (multi-step goals with rewards)
-4. Best-time persistence for races (per save slot)
+1. Round power discs (abilities/buffs)
+2. Hub quest chains (multi-step goals with rewards)
+3. Best-time persistence for races (per save slot)
+4. Gamepad movement + full input abstraction
