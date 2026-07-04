@@ -38,6 +38,11 @@
       "file": "twin-trials.json",
       "name": "Twin Trials",
       "desc": "A 2-player Play Set: player 2 joins automatically — stand together to open the vault, clear the arena as a team"
+    },
+    {
+      "file": "gatekeeper-vault.json",
+      "name": "The Gatekeeper's Vault",
+      "desc": "A logic-puzzle Play Set: an OR-gate door, an AND-gate that needs the chest AND three stars, then the treasure vault"
     }
   ]
 }
