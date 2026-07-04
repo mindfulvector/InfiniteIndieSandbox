@@ -19,12 +19,13 @@ class WingScript {
         this.outputs = [];
 
         this.vehicleProfile = {
+            armed: true,
             max: 14,
             accel: 10,
             turn: 2.2,
             seatY: 1.1,
             canFly: true,
-            hint: 'Take the Sky-Wing!  W for speed · hold Space to climb · C bails out',
+            hint: 'Take the Sky-Wing!  W speed · Space climb · F/LMB guns · C bails',
         };
 
         this._home = null;

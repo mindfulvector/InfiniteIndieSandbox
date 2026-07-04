@@ -23,9 +23,10 @@ class KartScript {
         // The shared seat's kart tuning (explicit, though it matches the
         // seat defaults): fast, speed-scaled steering, Space dismounts.
         this.vehicleProfile = {
+            armed: true,
             max: 10, accel: 12, turn: 2.4, seatY: 1.0,
             canJump: false, turnInPlace: false,
-            hint: 'Hop in!  WASD drives · Space hops out',
+            hint: 'Hop in!  WASD drives · F/LMB guns · Space hops out',
         };
 
         this._home = null;

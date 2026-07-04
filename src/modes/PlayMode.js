@@ -695,6 +695,22 @@ class PlayMode {
         this.playerProjectiles.push({ mesh: proj, vel: dir.normalize().scale(0.7), life: 120 });
     }
 
+    // A mounted forward gun: twin neon bolts from the vehicle's nose along
+    // its heading. Reuses the player bolt system (which already damages
+    // enemies and blobs and is blocked by walls), so dogfighting and drive-by
+    // combat come for free -- and the bolts inherit the vehicle's own speed
+    // sense from the nose offset. Muzzle flash + sound sell the shot.
+    fireVehicleGun(inst) {
+        const yaw = inst.rotation ? inst.rotation.y : 0;
+        const fwd = new BABYLON.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+        const nose = inst.position.add(fwd.scale(1.6)).add(new BABYLON.Vector3(0, 0.6, 0));
+        const right = new BABYLON.Vector3(fwd.z, 0, -fwd.x).scale(0.35);
+        this.spawnPlayerBolt(nose.add(right), fwd.clone());
+        this.spawnPlayerBolt(nose.subtract(right), fwd.clone());
+        this.enemyManager.spawnFlash(nose, new BABYLON.Color3(0.5, 0.95, 1.0), 6);
+        this.app.sound.play('ranged-shot');
+    }
+
     // Called by EnemyManager whenever a hit lands on an airborne enemy.
     registerJuggleHit() {
         this.juggleHits++;
@@ -808,6 +824,7 @@ class PlayMode {
             canJump: !!p.canJump,
             canFly: !!p.canFly,
             turnInPlace: !!p.turnInPlace,
+            armed: !!p.armed,
             hint: p.hint || 'Hop in!  WASD drives · Space hops out',
         };
     }
@@ -869,6 +886,16 @@ class PlayMode {
         } else if (a.keyPressed(' ') || a.consumePad('jump')) {
             this.dismountKart();
             return;
+        }
+
+        // Armed vehicles fire forward: LMB / F / pad X, on a cooldown.
+        // (|| 0 -- a fresh vehicle's _gunCd is undefined, and undefined<=0
+        // is FALSE in JS, which would silently jam the gun.)
+        if (inst._gunCd > 0) inst._gunCd--;
+        if (prof.armed && (inst._gunCd || 0) <= 0 &&
+            (this._mouseFireHeld || a.keyDown('F') || a.padDown('attack'))) {
+            this.fireVehicleGun(inst);
+            inst._gunCd = 10;
         }
 
         const dt = Math.min(0.05, a.scene.getEngine().getDeltaTime() / 1000);
@@ -1909,7 +1936,9 @@ class PlayMode {
             const ev = pi.event;
             if (pi.type === BABYLON.PointerEventTypes.POINTERDOWN) {
                 this._downInfo = { x: ev.clientX, y: ev.clientY, button: ev.button };
+                if (ev.button === 0) this._mouseFireHeld = true;   // held LMB = vehicle gun
             } else if (pi.type === BABYLON.PointerEventTypes.POINTERUP && this._downInfo) {
+                if (ev.button === 0) this._mouseFireHeld = false;
                 const moved = Math.hypot(ev.clientX - this._downInfo.x, ev.clientY - this._downInfo.y);
                 const button = this._downInfo.button;
                 this._downInfo = null;
@@ -1920,6 +1949,7 @@ class PlayMode {
     }
 
     unbindMouseCombat() {
+        this._mouseFireHeld = false;
         if (this._pointerObs) { this.app.scene.onPointerObservable.remove(this._pointerObs); this._pointerObs = null; }
         const canvas = this.app.engine.getRenderingCanvas();
         if (canvas && this._prevContextMenu !== undefined) { canvas.oncontextmenu = this._prevContextMenu; this._prevContextMenu = undefined; }

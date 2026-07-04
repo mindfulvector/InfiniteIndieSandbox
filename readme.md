@@ -285,7 +285,8 @@ Aim the ranged shot with the mouse; a gamepad auto-aims at the locked/nearest en
 **Driving:** buy the **Hover-Kart** in the shop (Props category), place it,
 and walk into it in play mode to hop in. `W`/`S` (or the left stick) throttle
 with real momentum, `A`/`D` steer — sharper the faster you go — and `Space`
-hops out. Dying parks the kart back where you left it.
+hops out. Dying parks the kart back where you left it. The kart is **armed**:
+hold `F` or left-click to fire its forward guns for drive-by combat.
 
 **Riding:** the **Strider** (Props) is a friendly beast you saddle the same
 way. It's slower than the kart but turns on the spot, its legs trot as you
@@ -325,6 +326,7 @@ can react to your moves.
 Build speed with `W`, then **hold `Space`** to climb — release it and you
 glide, sinking gently as long as you keep your airspeed. Bank into turns,
 mind your speed (slow too much and you stall), and press `C` to bail out.
+The Sky-Wing has **guns** too (`F`/left-click) — go dogfight the flyers.
 For something to fly *through*, place **Rings** (Logic) in the sky — they
 flash as you pass and fire a *Flown Through* event, so wiring four of them
 into a **Race** controller (start, checkpoints, finish) builds a whole
