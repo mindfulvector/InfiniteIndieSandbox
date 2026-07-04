@@ -316,6 +316,10 @@ slips away, the camera comes off its leash (`WASD` to move, `R`/`F` for
 height, `Shift` to hurry, mouse to orbit), and `Enter` saves a PNG of your
 shot. Press `P` again to jump back into the fray exactly where it left off.
 
+**Floating props:** drop a **Barrel** or **Crate** (Props) onto a pool and
+it bobs on the surface instead of sinking — scatter a few for a river
+crossing or a dockside scene. On dry land they just sit there.
+
 **Treasure:** drop a **Chest** (Props) into your world for a pixel payout —
 walk up to it and the lid pops open, spilling coins that fly to you. Set
 its reward (10–100 pixels) in the object parameters, or wire its *Open*

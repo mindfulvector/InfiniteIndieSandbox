@@ -342,6 +342,7 @@ class PlayMode {
             this.handleCombat();
             this.updateSwimming();
             this.updateClimbing();
+            this.updateFloaters();
             // Footstep/jump/land sounds only apply on foot (driving and
             // grinding suspend the CharacterController).
             this.updateMovementSounds();
@@ -1033,36 +1034,11 @@ class PlayMode {
     updateSwimming() {
         const cc = this.cc;
         if (!cc || !this.player) return;
-        const wo = this.app.findWorldObject('t_water');
-        let vol = null;
-        if (wo) {
-            const p = this.player.position;
-            // Collect every block whose footprint contains the player, then
-            // find one containing them vertically -- and climb the STACK to
-            // the column's real surface, so strokes work mid-column in deep
-            // pools instead of capping at each block's own lid.
-            const cols = [];
-            wo.instances.forEach((w) => {
-                if (!w) return;
-                w.computeWorldMatrix(true);
-                const bb = w.getBoundingInfo().boundingBox;
-                const mn = bb.minimumWorld, mx = bb.maximumWorld;
-                if (p.x > mn.x && p.x < mx.x && p.z > mn.z && p.z < mx.z) {
-                    cols.push({ lo: mn.y, hi: mx.y });
-                }
-            });
-            const inside = cols.find((c) => p.y + 0.9 > c.lo && p.y + 0.4 < c.hi);
-            if (inside) {
-                let top = inside.hi, grew = true;
-                while (grew) {
-                    grew = false;
-                    for (const c of cols) {
-                        if (c.lo < top + 0.05 && c.hi > top) { top = c.hi; grew = true; }
-                    }
-                }
-                vol = { top };
-            }
-        }
+        const p = this.player.position;
+        // The player is "in water" when a t_water column contains them
+        // vertically; the surface is that column's stacked top.
+        const surf = this.waterSurfaceAt(p.x, p.z, p.y + 0.9, p.y + 0.4);
+        const vol = surf != null ? { top: surf } : null;
         if (vol && !this.swimming) {
             this.swimming = true;
             this._preSwim = {
@@ -1086,6 +1062,76 @@ class PlayMode {
                 this.player.moveWithCollisions(new BABYLON.Vector3(0, 5 * dt, 0));
             }
         }
+    }
+
+    // The water surface height at world (x, z), or null if no t_water column
+    // spans that spot within [loY, hiY]. Climbs the stack so deep pools of
+    // stacked blocks report their true top. Shared by swimming and floaters.
+    waterSurfaceAt(x, z, loY, hiY) {
+        const wo = this.app.findWorldObject('t_water');
+        if (!wo) return null;
+        const cols = [];
+        wo.instances.forEach((w) => {
+            if (!w) return;
+            w.computeWorldMatrix(true);
+            const bb = w.getBoundingInfo().boundingBox;
+            const mn = bb.minimumWorld, mx = bb.maximumWorld;
+            if (x > mn.x && x < mx.x && z > mn.z && z < mx.z) cols.push({ lo: mn.y, hi: mx.y });
+        });
+        const lo = (loY != null) ? loY : -Infinity;
+        const hi = (hiY != null) ? hiY : Infinity;
+        const inside = cols.find((c) => lo > c.lo && hi < c.hi);
+        if (!inside) return null;
+        let top = inside.hi, grew = true;
+        while (grew) {
+            grew = false;
+            for (const c of cols) if (c.lo < top + 0.05 && c.hi > top) { top = c.hi; grew = true; }
+        }
+        return top;
+    }
+
+    // The highest water-surface height at (x, z) regardless of what's there
+    // vertically -- for floaters, which ease DOWN onto the surface rather
+    // than needing to already be inside the column. null if no water at xz.
+    waterTopAt(x, z) {
+        const wo = this.app.findWorldObject('t_water');
+        if (!wo) return null;
+        let top = null;
+        wo.instances.forEach((w) => {
+            if (!w) return;
+            w.computeWorldMatrix(true);
+            const bb = w.getBoundingInfo().boundingBox;
+            const mn = bb.minimumWorld, mx = bb.maximumWorld;
+            if (x > mn.x && x < mx.x && z > mn.z && z < mx.z) {
+                if (top == null || mx.y > top) top = mx.y;
+            }
+        });
+        return top;
+    }
+
+    // Buoyant props (inst.buoyant, e.g. a barrel or crate) bob on the water
+    // instead of sinking through it: each eases toward the surface with a
+    // gentle sine bob and slow spin. Only props whose CENTRE sits within a
+    // water column float; on dry land they fall/rest normally (untouched).
+    updateFloaters() {
+        const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);
+        this._floatPhase = (this._floatPhase || 0) + dt;
+        this.app.BuildableObjectList.forEach((wo) => {
+            wo.instances.forEach((inst) => {
+                if (!inst || !inst.buoyant) return;
+                const p = inst.position;
+                const surf = this.waterTopAt(p.x, p.z);
+                // No water under it, or it's perched high above (a prop on a
+                // tower shouldn't get yanked into a distant pool): leave it.
+                if (surf == null || p.y > surf + 5) { inst._floating = false; return; }
+                const half = inst._floatHalf != null ? inst._floatHalf : 0.4;
+                const bob = Math.sin((this._floatPhase * 1.6) + (inst.worldId || 0)) * 0.12;
+                const target = surf - half + bob;   // ride mostly submerged
+                inst.position.y += (target - inst.position.y) * Math.min(1, 4 * dt);
+                inst.rotation.y += 0.25 * dt;
+                inst._floating = true;
+            });
+        });
     }
 
     // ---- climbing ------------------------------------------------------------

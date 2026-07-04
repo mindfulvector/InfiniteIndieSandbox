@@ -193,6 +193,21 @@ class Manifest {
                   ]
         }, 'KartScript');
 
+        // Floating props: barrels and crates that bob on water (see
+        // BuoyScript + PlayMode.updateFloaters). On dry land they just rest.
+        app.createWorldObject('pr_barrel', {
+            prims: [
+                     {ty: 'cylinder', s: [0.7, 1.0, 0.7], p: [0, 0, 0], col: [0.45, 0.3, 0.16], tex: {id: 'wood', s: 40}},
+                     {ty: 'cylinder', s: [0.74, 0.12, 0.74], p: [0, 0.3, 0],  col: [0.7, 0.55, 0.25], tex: {id: 'marble'}},
+                     {ty: 'cylinder', s: [0.74, 0.12, 0.74], p: [0, -0.3, 0], col: [0.7, 0.55, 0.25], tex: {id: 'marble'}},
+                  ]
+        }, 'BuoyScript');
+        app.createWorldObject('pr_crate', {
+            prims: [
+                     {ty: 'box', s: [0.9, 0.9, 0.9], p: [0, 0, 0], col: [0.55, 0.4, 0.2], tex: {id: 'wood', s: 50}},
+                  ]
+        }, 'BuoyScript');
+
         // A treasure chest: walk up (or wire `open`) to pop the lid and
         // spill a pixel reward; fires `opened` (see ChestScript). The lid is
         // a named child hinged at the back.
