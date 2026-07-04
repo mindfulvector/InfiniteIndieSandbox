@@ -71,6 +71,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Event wiring between logic toys | ✅ | Overhead 3D wiring view; wires persist in saves (`test-wiring.js`) |
 | Interiors (rooms, doors, decoration) | ✅ | INTERIOR category room kit (`in_wall`, `in_wall_door`, `in_wall_window`, `in_floor` — walls block shots, openings pass), wirable sliding door (`pr_door`), furniture (`d_table/chair/lamp/rug`), multi-prim manifest support (`test-interiors.js`); pocket-interior cell door (`pr_door_cell`: walk in → teleport to a themed room built from raw meshes, exit pad returns, outdoor enemies freeze, entered/exited wiring events, dollhouse camera) (`test-interior-cells.js`) |
 | Path/track creation (races, patrols, moving platforms) | ✅ | `l_pathnode` waypoints chain via wires; `pr_platform_moving` follows the chain dt-based; `en_blob` patrols a wired chain (`test-paths.js`); `l_race` packages start gate + distinct-checkpoint tracking + finish line with a HUD stopwatch, `finished`/`record` outputs; best times persist per save slot via `params.bestTime` (`test-races.js`) |
+| Music/SFX toys (synthesized, wired) | ✅ | `l_chime`: a `play` input synthesizes its pattern via WebAudio oscillators (zero asset files) — jingle/alarm/gong/powerup with volume param — and fires `played` for chaining; App gains a lazy audio layer (`audio()`/`playTones`, seq-marked for suspended-context tests) (`test-sound.js`) |
 | Day/night cycle (wired sun, mood lighting) | ✅ | `l_sun`: play-mode time cycles the hemispheric light (bright noon → dim night, warm dawn/dusk tint) and darkens the sky from the CAPTURED baseline (hex themes compose); edge-fired `dawn`/`noon`/`dusk`/`midnight` wiring + `start`/`stop` inputs; build mode and removal restore exact daylight; play reset returns to dawn (`test-daynight.js`) |
 | Photo mode (freeze + free camera + capture) | ✅ | `P` in play mode freezes the whole world (update short-circuit) and hides the HUD; WASD/R/F dolly the free camera (Shift speeds it) with mouse orbit live; `Enter` captures a 1280×720 PNG via `CreateScreenshotUsingRenderTarget` (downloads, `app.lastPhotoData` for tests); `P` resumes, Esc-teardown restores the HUD (`test-photo.js`) |
 | AI builder assistants | ⬜ | |
@@ -110,7 +111,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Music/SFX toys (wired jingles, ambient loops)
-2. NPC villagers (wander + talk bubbles + quest hooks)
+1. NPC villagers (wander + talk bubbles + quest hooks)
+2. Water blocks (swim volumes, floating props)
 3. Online co-op exploration (WebRTC world sync spike)
-4. Water blocks (swim volumes, floating props)
+4. Built-in game SFX (combat/pickup/UI hooks on the chime synth)

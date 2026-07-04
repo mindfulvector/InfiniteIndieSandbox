@@ -249,6 +249,12 @@ way. It's slower than the kart but turns on the spot, its legs trot as you
 ride, and `Space` makes it **jump** — `C` hops off. Perfect for bounding
 around rough terrain the kart hates.
 
+**Sound:** the **Chime** (Logic) plays a synthesized jingle whenever
+anything wires into its *Play* input — pick jingle, alarm, gong, or
+power-up in its options, set the volume, and chain its *Played* event
+onward. Wire a door to a gong, a spawner to an alarm, a quest to a
+fanfare; every sound is generated on the spot, no files involved.
+
 **Day & night:** place a **Sun** (Logic) and play mode gets a living sky —
 noon blazes, dusk glows warm, night falls deep and blue, on a cycle you
 choose in its options. The sun fires *Dawn / Noon / Dusk / Midnight* wiring

@@ -3369,6 +3369,52 @@ class App {
         return true;
     }
 
+    // ---- synthesized audio ---------------------------------------------------
+    // Zero asset files: every sound is WebAudio oscillators. The context is
+    // lazy (autoplay policy: it may sit suspended until a user gesture; we
+    // nudge resume() on every use and schedule regardless -- scheduling
+    // against a suspended context is legal and simply plays once resumed).
+
+    audio() {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        if (!this._audioCtx) {
+            this._audioCtx = new AC();
+            this._masterGain = this._audioCtx.createGain();
+            this._masterGain.gain.value = 0.6;
+            this._masterGain.connect(this._audioCtx.destination);
+            this._chimeSeq = 0;
+        }
+        if (this._audioCtx.state === 'suspended') this._audioCtx.resume().catch(() => {});
+        return this._audioCtx;
+    }
+
+    // Schedule a tone pattern: notes are {f (Hz), t (start offset s),
+    // d (duration s), type (osc waveform)}. Returns true when scheduled.
+    // lastChime carries a monotonic seq for tests -- currentTime is frozen
+    // while a headless context stays suspended, so it can't be the marker.
+    playTones(notes, volume) {
+        const ctx = this.audio();
+        if (!ctx) return false;
+        const now = ctx.currentTime;
+        const vol = (volume != null ? volume : 0.5);
+        notes.forEach((n) => {
+            const osc = ctx.createOscillator();
+            const g = ctx.createGain();
+            osc.type = n.type || 'sine';
+            osc.frequency.value = n.f;
+            g.gain.setValueAtTime(0, now + n.t);
+            g.gain.linearRampToValueAtTime(vol, now + n.t + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.001, now + n.t + n.d);
+            osc.connect(g);
+            g.connect(this._masterGain);
+            osc.start(now + n.t);
+            osc.stop(now + n.t + n.d + 0.05);
+        });
+        this.lastChime = { count: notes.length, volume: vol, seq: ++this._chimeSeq };
+        return true;
+    }
+
     toasty(message) {
         let app = this;
         if(this.message) this.message.text = message;

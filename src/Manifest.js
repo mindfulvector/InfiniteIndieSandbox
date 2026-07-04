@@ -271,6 +271,14 @@ class Manifest {
                   ]
         }, 'PathNodeScript');
 
+        // A wired chime: `play` synthesizes its jingle (WebAudio, no asset
+        // files); `played` fires after for chaining.
+        app.createWorldObject('l_chime', {
+            prims: [
+                     {ty: 'box', s: [0.5, 0.7, 0.5], p: [0, 0, 0]},
+                  ]
+        }, 'ChimeScript');
+
         // A day/night sun: placed, it cycles play-mode lighting and fires
         // dawn/noon/dusk/midnight wiring edges. Build mode stays daylit.
         app.createWorldObject('l_sun', {
