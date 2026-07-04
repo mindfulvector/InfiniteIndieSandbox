@@ -117,6 +117,18 @@ to the doorway gap — in the Wiring view it accepts *Open* / *Close* /
 counter can unlock a room (a settings option makes it start open instead).
 Furnish with the **Decor** category: table, chair, floor lamp, and rug.
 
+#### Paths and moving platforms
+
+Place **Path Node** markers (Logic category) and chain them in the Wiring
+view — wire each node's *Next Node* to the following node's *Chain From
+Previous*. Then place a **Moving Platform** (Props) and wire its *Follow Path
+From* to the first node: in play mode the platform travels the chain at its
+configured speed, in **loop**, **ping-pong**, or **once** mode. Wires can
+*Start*/*Stop*/*Reset* it, it fires *Arrived At Node* and *Path Completed*
+events (drive counters, spawners, cameras…), and dying resets it to the path
+start. Note: the platform pushes things in its way, but doesn't carry riders
+yet — use it for sweepers, barriers, and timed crossings.
+
 #### Pickups
 
 The **Pickups** category has placeable collectables that bob and spin in play

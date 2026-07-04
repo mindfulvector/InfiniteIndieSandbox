@@ -221,12 +221,15 @@ class WorldObject {
             result.push({
                 'wo': wo.name,                          // (keys are short for storage efficiency)
                 'id': inst.worldId,
-                // Scripts that animate position (e.g. bobbing pickups) set
-                // inst.restY to their true rest height so a mid-animation save
-                // doesn't bake the offset into the file.
-                'po': (inst.restY != null)
-                    ? new BABYLON.Vector3(inst.position.x, inst.restY, inst.position.z)
-                    : inst.position,
+                // Scripts that animate position set their true rest pose so a
+                // mid-animation save doesn't bake the offset into the file:
+                // restPos (full vector, e.g. a platform mid-route) wins over
+                // restY (height only, e.g. a bobbing pickup).
+                'po': (inst.restPos != null)
+                    ? WorldObject.toVector3(inst.restPos)
+                    : (inst.restY != null)
+                        ? new BABYLON.Vector3(inst.position.x, inst.restY, inst.position.z)
+                        : inst.position,
                 'ro': inst.rotationQuaternion,
                 'sc': inst.scaling,
                 's1': inst.isOpened,

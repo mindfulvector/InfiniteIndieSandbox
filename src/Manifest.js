@@ -153,6 +153,20 @@ class Manifest {
                   ]
         }, 'CameraScript');
 
+        // Path building: waypoint nodes chain via wires (node `next` -> next
+        // node's `chain`); a moving platform wires its `follow` output to the
+        // first node and travels the chain in play mode (loop/pingpong/once).
+        app.createWorldObject('l_pathnode', {
+            prims: [
+                     {ty: 'box',       s: [0.5, 0.5, 0.5], p: [0,0,0]},
+                  ]
+        }, 'PathNodeScript');
+        app.createWorldObject('pr_platform_moving', {
+            prims: [
+                     {ty: 'box',       s: [2, 0.3, 2], p: [0,0,0], tex: {id: 'road'}},
+                  ]
+        }, 'MovingPlatformScript');
+
         // Pickups: collect by touching in play mode. One script drives all
         // three; texture + tint tell them apart (red marble = health, gold
         // grain = pixels, cosmic starfield sphere = collectible star).
