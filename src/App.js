@@ -172,11 +172,19 @@ class App {
         this.gamepad = null;      // player 1's pad (first connected)
         this.gamepads = [];       // all connected pads, in connect order
         this.testPad = null;      // harness hook: {leftStick:{x,y}, rightStick:{x,y}}
-        // Player 2's pad state (drop-in buddy): the SECOND pad's buttons land
-        // here instead of the P1 action maps. testBuddyPad injects the same
+        // Buddy pad states (up to three drop-in buddies = 4P): pad N's
+        // buttons land in buddyPads[N-1] instead of the P1 action maps.
+        // buddyPad stays as the FIRST slot's alias (tests and older code set
+        // flags on it directly); testBuddyPad / testBuddyPads inject the same
         // shape for the harness: {leftStick:{x,y}, jumpHeld, attackQueued}.
-        this.buddyPad = { jumpHeld: false, attackQueued: false };
+        this.buddyPads = [
+            { jumpHeld: false, attackQueued: false },
+            { jumpHeld: false, attackQueued: false },
+            { jumpHeld: false, attackQueued: false },
+        ];
+        this.buddyPad = this.buddyPads[0];
         this.testBuddyPad = null;
+        this.testBuddyPads = [null, null, null];
         const gamepadManager = new BABYLON.GamepadManager();
         gamepadManager.onGamepadConnectedObservable.add((gamepad) => {
             console.log('gamepad connected', gamepad && gamepad.id);
@@ -185,20 +193,23 @@ class App {
             if(!isP2) this.gamepad = gamepad;
             if(gamepad.onButtonDownObservable) {
                 gamepad.onButtonDownObservable.add((button) => {
-                    if(this.gamepads.indexOf(gamepad) === 0) this.handlePadButton(button, true);
-                    else {
-                        // Second pad: A(0) = jump (held), X(2) = attack, and any
-                        // button drops the buddy in if they're not playing yet.
-                        if(button === 0) this.buddyPad.jumpHeld = true;
-                        else if(button === 2) this.buddyPad.attackQueued = true;
-                        this.buddyPad.wantsJoin = true;
+                    const at = this.gamepads.indexOf(gamepad);
+                    if(at === 0) this.handlePadButton(button, true);
+                    else if(at >= 1 && at <= 3) {
+                        // Buddy pads: A(0) = jump (held), X(2) = attack, and
+                        // any button drops that pad's buddy in.
+                        const bp = this.buddyPads[at - 1];
+                        if(button === 0) bp.jumpHeld = true;
+                        else if(button === 2) bp.attackQueued = true;
+                        bp.wantsJoin = true;
                     }
                 });
             }
             if(gamepad.onButtonUpObservable) {
                 gamepad.onButtonUpObservable.add((button) => {
-                    if(this.gamepads.indexOf(gamepad) === 0) this.handlePadButton(button, false);
-                    else if(button === 0) this.buddyPad.jumpHeld = false;
+                    const at = this.gamepads.indexOf(gamepad);
+                    if(at === 0) this.handlePadButton(button, false);
+                    else if(at >= 1 && at <= 3 && button === 0) this.buddyPads[at - 1].jumpHeld = false;
                 });
             }
             // Analog triggers on Xbox pads: press past halfway = shoot / melee.

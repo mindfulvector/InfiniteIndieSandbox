@@ -35,16 +35,22 @@ class PlayMode {
         this.sidekickMesh = null;
         this._sidekickPhase = 0;
 
-        // Drop-in buddy (local 2P v1): a friendly bipedal rig on the second
-        // gamepad. See updateBuddy for the honest scope notes.
-        this.buddy = null;
+        // Drop-in buddies (up to three = 4P): friendly bipedal rigs on the
+        // extra gamepads. `buddy` remains an alias for slot 0 (tests and
+        // older call sites read it); slots are fixed so each pad keeps its
+        // own figure. See updateBuddies.
+        this.buddies = [null, null, null];
+        Object.defineProperty(this, 'buddy', { get: function () { return this.buddies[0]; } });
 
         // The kart instance being driven, or null on foot (see mountKart).
         this.driving = null;
 
-        // Split-screen state (see updateSplitScreen).
+        // Split-screen state (see updateSplitScreen). _buddyCam aliases the
+        // slot-0 camera for older call sites.
         this._split = false;
+        this._splitPanes = 0;
         this._buddyCam = null;
+        this._buddyCams = [null, null, null];
 
         // Lock-on targeting (toggled with T): ranged shots and the aim pose
         // track the locked enemy; a marker floats above it.
@@ -100,7 +106,9 @@ class PlayMode {
         if (this.blockMesh) { this.blockMesh.dispose(false, true); this.blockMesh = null; }
         if (this.sidekickMesh) { this.sidekickMesh.dispose(false, true); this.sidekickMesh = null; }
         this.disposeSplitScreen();
-        if (this.buddy) { this.buddy.root.dispose(false, false); this.buddy = null; }
+        this.buddies.forEach((b, i) => {
+            if (b) { b.root.dispose(false, false); this.buddies[i] = null; }
+        });
         this.driving = null;   // the kart instance belongs to the world, not us
         this.disposePlayer();
         this.enemyManager.dispose();
@@ -280,7 +288,7 @@ class PlayMode {
             this.updatePadMovement();
             this.handleCombat();
         }
-        this.updateBuddy();
+        this.updateBuddies();
         this.updateSidekick();
         this.updatePixelBursts();
         this.updateAttackFx();
@@ -338,9 +346,11 @@ class PlayMode {
         if (this.app.keyPressed('C') || this.app.consumePad('dodge')) {
             this.startDodge();
         }
-        // B toggles the drop-in buddy (a second pad joining does it too).
+        // B adds drop-in buddies (up to three); with a full party it
+        // disbands them all. Extra pads joining does the same per pad.
         if (this.app.keyPressed('B')) {
-            if (this.buddy) this.buddyLeave(); else this.buddyJoin();
+            if (this.buddies.every(Boolean)) this.buddyLeaveAll();
+            else this.buddyJoin();
         }
         this.updateLockOn();
         this.updateDodge();
@@ -710,69 +720,92 @@ class PlayMode {
     // the second pad; enemies still hunt player 1; triggers/pickups only see
     // player 1; falling off the world auto-rescues the buddy to P1's side.
 
-    buddyJoin() {
-        if (this.buddy || !this.player) return;
+    // Fill the first empty slot (or the given one) with a new buddy rig.
+    buddyJoin(slot) {
+        if (!this.player) return;
+        if (slot == null) slot = this.buddies.findIndex((b) => !b);
+        if (slot < 0 || slot > 2 || this.buddies[slot]) {
+            if (slot < 0) this.app.toasty('The party is full (4 players).');
+            return;
+        }
         const em = this.enemyManager;
-        const color = new BABYLON.Color3(0.35, 1.0, 0.55);
-        const root = BABYLON.MeshBuilder.CreateBox('coopBuddy', { width: 0.5, height: 0.2, depth: 0.5 }, this.app.scene);
+        const COLORS = [
+            new BABYLON.Color3(0.35, 1.0, 0.55),   // P2 green
+            new BABYLON.Color3(1.0, 0.65, 0.25),   // P3 orange
+            new BABYLON.Color3(0.75, 0.5, 1.0),    // P4 violet
+        ];
+        const root = BABYLON.MeshBuilder.CreateBox('coopBuddy' + slot,
+            { width: 0.5, height: 0.2, depth: 0.5 }, this.app.scene);
         root.isVisible = false;
-        root.position = this.player.position.add(new BABYLON.Vector3(1.6, 1.5, 0));
-        const parts = em.buildBipedal(root, color);
+        root.position = this.player.position.add(new BABYLON.Vector3(1.6 + slot * 0.9, 1.5, slot * 0.7));
+        const parts = em.buildBipedal(root, COLORS[slot]);
         const body = new GravityBody(this.app.scene, root, {
             ellipsoid: new BABYLON.Vector3(0.4, 1, 0.4),
             ellipsoidOffset: new BABYLON.Vector3(0, 1, 0),
         });
-        this.buddy = {
-            root, parts, body, walkPhase: 0, attackCooldown: 0,
+        this.buddies[slot] = {
+            slot, root, parts, body, walkPhase: 0, attackCooldown: 0,
             hp: 60, maxHp: 60, hurtCooldown: 0, downed: 0,
         };
-        this.app.toasty('Player 2 joined!');
+        this.app.toasty('Player ' + (slot + 2) + ' joined!');
     }
 
+    // Remove the LAST occupied slot (single-buddy callers thus remove "the"
+    // buddy). Any split re-establishes itself next frame if still warranted.
     buddyLeave() {
-        if (!this.buddy) return;
-        this.disposeSplitScreen();
-        this.buddy.root.dispose(false, false);
-        this.buddy = null;
-        this.app.toasty('Player 2 left.');
+        for (let i = 2; i >= 0; i--) {
+            const b = this.buddies[i];
+            if (!b) continue;
+            this.disposeSplitScreen();
+            b.root.dispose(false, false);
+            this.buddies[i] = null;
+            this.app.toasty('Player ' + (i + 2) + ' left.');
+            return;
+        }
     }
 
-    // Every live player position the enemies can hunt (P1 always; the buddy
+    buddyLeaveAll() {
+        while (this.buddies.some(Boolean)) this.buddyLeave();
+    }
+
+    // Every live player position the enemies can hunt (P1 always; each buddy
     // unless it's down). EnemyManager picks the nearest per enemy.
     combatTargets() {
         const out = [];
         if (this.player) out.push({ kind: 'p1', pos: this.player.position });
-        if (this.buddy && this.buddy.downed <= 0) {
-            out.push({ kind: 'buddy', pos: this.buddy.root.position });
-        }
+        this.buddies.forEach((b) => {
+            if (b && b.downed <= 0) out.push({ kind: 'buddy', pos: b.root.position, b: b });
+        });
         return out;
     }
 
     // Route enemy damage to whichever player was struck.
     damageTarget(t, amount, sourcePos) {
-        if (t && t.kind === 'buddy') this.damageBuddy(amount);
+        if (t && t.kind === 'buddy') this.damageBuddy(t.b || this.buddies[0], amount);
         else this.damagePlayer(amount, sourcePos);
     }
 
     // Buddy damage: no blocking or i-frames, just a hurt cooldown and a
     // downed state -- at 0 HP the buddy slumps for a few seconds, enemies
     // lose interest, then it pops back up at half health. Couch-friendly:
-    // nobody sits out for long.
-    damageBuddy(amount) {
-        const b = this.buddy;
+    // nobody sits out for long. Accepts (buddy, amount) or the legacy
+    // single-buddy (amount) form.
+    damageBuddy(a, b2) {
+        const b = (typeof a === 'number') ? this.buddies[0] : a;
+        const amount = (typeof a === 'number') ? a : b2;
         if (!b || b.downed > 0 || b.hurtCooldown > 0) return;
         b.hurtCooldown = 15;
         b.hp -= amount;
         if (b.hp <= 0) {
             b.hp = 0;
             b.downed = 180;
-            this.app.toasty('Player 2 is down!  Back up in a moment...');
+            this.app.toasty('Player ' + (b.slot + 2) + ' is down!  Back up in a moment...');
         }
     }
 
-    // The buddy's melee: the same frontal-arc swing as P1, from the buddy.
-    buddyAttack() {
-        const b = this.buddy;
+    // A buddy's melee: the same frontal-arc swing as P1, from that buddy.
+    buddyAttack(b) {
+        b = b || this.buddies[0];
         if (!b || b.attackCooldown > 0) return;
         b.attackCooldown = 14;
         const fwd = new BABYLON.Vector3(Math.sin(b.root.rotation.y), 0, Math.cos(b.root.rotation.y));
@@ -781,13 +814,35 @@ class PlayMode {
         this.damageBlobsInArc(b.root.position, fwd, 3.0, 0.34, 1);
     }
 
-    updateBuddy() {
-        const b = this.buddy;
+    updateBuddies() {
+        for (let i = 0; i < 3; i++) this._updateBuddySlot(i);
+
+        // Frame the party (single-camera mode): widen toward the farthest
+        // live buddy. While split, each pane frames its own player instead.
+        if (this.player && !this._split) {
+            let maxSep = 0;
+            this.buddies.forEach((b) => {
+                if (b) maxSep = Math.max(maxSep,
+                    BABYLON.Vector3.Distance(b.root.position, this.player.position));
+            });
+            if (maxSep > 8 && this.app.camera.radius < Math.min(46, maxSep * 1.4)) {
+                const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);
+                const want = Math.min(46, maxSep * 1.4);
+                this.app.camera.radius += (want - this.app.camera.radius) * Math.min(1, 2.5 * dt);
+            }
+        }
+
+        this.updateSplitScreen();
+    }
+
+    _updateBuddySlot(i) {
+        const b = this.buddies[i];
+        const pads = this.app.buddyPads;
         if (!b) {
-            // A second pad pressing any button drops the buddy in.
-            if (this.app.buddyPad && this.app.buddyPad.wantsJoin) {
-                this.app.buddyPad.wantsJoin = false;
-                this.buddyJoin();
+            // That slot's pad pressing any button drops its buddy in.
+            if (pads && pads[i] && pads[i].wantsJoin) {
+                pads[i].wantsJoin = false;
+                this.buddyJoin(i);
             }
             return;
         }
@@ -804,19 +859,21 @@ class PlayMode {
             if (b.downed === 0) {
                 b.hp = Math.ceil(b.maxHp / 2);
                 b.root.scaling.y = 1;
-                this.app.toasty('Player 2 is back up!');
+                this.app.toasty('Player ' + (i + 2) + ' is back up!');
             }
             return;
         }
 
-        // Input: the harness hook, else live sticks from the second pad.
-        const test = this.app.testBuddyPad;
-        const pad2 = this.app.gamepads && this.app.gamepads[1];
-        const ls = (test && test.leftStick) || (pad2 && pad2.leftStick) || null;
-        const jumpHeld = test ? !!test.jumpHeld : this.app.buddyPad.jumpHeld;
+        // Input: the harness hooks (testBuddyPad = slot 0's legacy alias),
+        // else live sticks from that slot's gamepad.
+        const test = (i === 0 ? this.app.testBuddyPad : null) ||
+            (this.app.testBuddyPads && this.app.testBuddyPads[i]);
+        const padDev = this.app.gamepads && this.app.gamepads[i + 1];
+        const ls = (test && test.leftStick) || (padDev && padDev.leftStick) || null;
+        const jumpHeld = test ? !!test.jumpHeld : pads[i].jumpHeld;
         let attack = false;
         if (test && test.attackQueued) { attack = true; test.attackQueued = false; }
-        else if (this.app.buddyPad.attackQueued) { attack = true; this.app.buddyPad.attackQueued = false; }
+        else if (pads[i].attackQueued) { attack = true; pads[i].attackQueued = false; }
 
         // Camera-relative stick movement, dt-based like everything else.
         let vx = 0, vz = 0, moving = false;
@@ -839,7 +896,7 @@ class PlayMode {
         }
         if (jumpHeld && b.body.grounded) b.body.vy = 7;
         b.body.step(vx, vz);
-        if (attack) this.buddyAttack();
+        if (attack) this.buddyAttack(b);
 
         // Walk cycle (the same leg swing the walkers use).
         if (moving) b.walkPhase += 0.28; else b.walkPhase *= 0.8;
@@ -854,79 +911,94 @@ class PlayMode {
         if (this.player &&
             (b.root.position.y < this.player.position.y - 20 ||
              BABYLON.Vector3.Distance(b.root.position, this.player.position) > 60)) {
-            b.root.position = this.player.position.add(new BABYLON.Vector3(1.6, 1.5, 0));
+            b.root.position = this.player.position.add(
+                new BABYLON.Vector3(1.6 + i * 0.9, 1.5, i * 0.7));
             b.body.vy = 0;
         }
-
-        // Frame both players: when the buddy roams, ease the orbit radius out
-        // so both stay on screen. Camera elasticity is OFF, so the controller
-        // leaves the radius to us and the mouse wheel; we only ever widen.
-        // (While split, each pane frames its own player instead.)
-        if (this.player && !this._split) {
-            const sep = BABYLON.Vector3.Distance(b.root.position, this.player.position);
-            if (sep > 8 && this.app.camera.radius < Math.min(46, sep * 1.4)) {
-                const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);
-                const want = Math.min(46, sep * 1.4);
-                this.app.camera.radius += (want - this.app.camera.radius) * Math.min(1, 2.5 * dt);
-            }
-        }
-
-        this.updateSplitScreen();
     }
 
-    // Automatic split-screen: past comfortable framing range the view splits
-    // (P1 left, buddy right, a FollowCamera trailing the buddy); reuniting
-    // merges back. Split at >26, merge at <18 -- hysteresis so hovering at
-    // the boundary can't flicker the panes. The fullscreen HUD is masked out
-    // of the buddy pane via layer masks (the classic multi-viewport trap:
-    // without it the GUI renders once per camera).
+    // Automatic split-screen, up to four panes: past comfortable framing
+    // range the view splits (P1 always in the first pane, live buddies in
+    // the rest -- halves for 2 players, half + quadrants for 3, a 2x2 grid
+    // for 4); reuniting merges. Split when ANY buddy passes 26, merge when
+    // ALL are back under 18 (hysteresis, so the boundary can't flicker).
+    // The fullscreen HUD is masked out of every buddy pane via layer masks.
     updateSplitScreen() {
-        const b = this.buddy;
         const cam = this.app.camera;
         const scene = this.app.scene;
-        const sep = (b && this.player)
-            ? BABYLON.Vector3.Distance(b.root.position, this.player.position) : 0;
-        const want = !!(b && this.player && (this._split ? sep > 18 : sep > 26));
-        if (want === this._split) return;
-        this._split = want;
-        if (want) {
-            if (!this._buddyCam) {
-                const bc = new BABYLON.FollowCamera('buddyCam',
-                    b.root.position.add(new BABYLON.Vector3(0, 6, -10)), scene);
+        const live = [];
+        this.buddies.forEach((b, i) => { if (b) live.push({ b, i }); });
+        let maxSep = 0;
+        if (this.player) live.forEach((e) => {
+            maxSep = Math.max(maxSep,
+                BABYLON.Vector3.Distance(e.b.root.position, this.player.position));
+        });
+        const want = !!(live.length && this.player &&
+            (this._split ? maxSep > 18 : maxSep > 26));
+        const panes = 1 + live.length;
+        if (!want) {
+            if (!this._split) return;
+            this._split = false;
+            this._splitPanes = 0;
+            scene.activeCameras = null;
+            scene.activeCamera = cam;
+            cam.viewport = new BABYLON.Viewport(0, 0, 1, 1);
+            return;
+        }
+        if (this._split && panes === this._splitPanes) return;
+
+        // (Re)apply the layout -- also runs when the party size changes.
+        const firstSplit = !this._split;
+        this._split = true;
+        this._splitPanes = panes;
+        const LAYOUTS = {
+            2: [[0, 0, 0.5, 1], [0.5, 0, 0.5, 1]],
+            3: [[0, 0, 0.5, 1], [0.5, 0.5, 0.5, 0.5], [0.5, 0, 0.5, 0.5]],
+            4: [[0, 0.5, 0.5, 0.5], [0.5, 0.5, 0.5, 0.5], [0, 0, 0.5, 0.5], [0.5, 0, 0.5, 0.5]],
+        };
+        const layout = LAYOUTS[panes];
+        if (this.app.gui && this.app.gui.layer) {
+            this.app.gui.layer.layerMask = 0x10000000;
+            cam.layerMask = 0x1FFFFFFF;
+        }
+        const L0 = layout[0];
+        cam.viewport = new BABYLON.Viewport(L0[0], L0[1], L0[2], L0[3]);
+        const cams = [cam];
+        live.forEach((e, k) => {
+            let bc = this._buddyCams[e.i];
+            if (!bc) {
+                bc = new BABYLON.FollowCamera('buddyCam' + e.i,
+                    e.b.root.position.add(new BABYLON.Vector3(0, 6, -10)), scene);
                 bc.radius = 11;
                 bc.heightOffset = 5;
                 bc.cameraAcceleration = 0.06;
                 bc.maxCameraSpeed = 25;
-                this._buddyCam = bc;
+                this._buddyCams[e.i] = bc;
             }
-            // HUD only in P1's pane: the GUI layer gets a bit only P1's
-            // camera carries; meshes keep the default mask both cameras see.
-            if (this.app.gui && this.app.gui.layer) {
-                this.app.gui.layer.layerMask = 0x10000000;
-                cam.layerMask = 0x1FFFFFFF;
-                this._buddyCam.layerMask = 0x0FFFFFFF;
-            }
-            this._buddyCam.lockedTarget = b.root;
-            cam.viewport = new BABYLON.Viewport(0, 0, 0.5, 1);
-            this._buddyCam.viewport = new BABYLON.Viewport(0.5, 0, 0.5, 1);
-            scene.activeCameras = [cam, this._buddyCam];
-            this.app.toasty('Split screen — reunite to merge!');
-        } else {
-            scene.activeCameras = null;
-            scene.activeCamera = cam;
-            cam.viewport = new BABYLON.Viewport(0, 0, 1, 1);
-        }
+            bc.layerMask = 0x0FFFFFFF;
+            bc.lockedTarget = e.b.root;
+            const L = layout[k + 1];
+            bc.viewport = new BABYLON.Viewport(L[0], L[1], L[2], L[3]);
+            cams.push(bc);
+        });
+        this._buddyCam = this._buddyCams[0];
+        scene.activeCameras = cams;
+        if (firstSplit) this.app.toasty('Split screen — reunite to merge!');
     }
 
-    // Tear the split down (buddy left, mode exit): merge and free the camera.
+    // Tear the split down (buddy left, mode exit): merge and free cameras.
     disposeSplitScreen() {
         if (this._split) {
             this.app.scene.activeCameras = null;
             this.app.scene.activeCamera = this.app.camera;
             this.app.camera.viewport = new BABYLON.Viewport(0, 0, 1, 1);
             this._split = false;
+            this._splitPanes = 0;
         }
-        if (this._buddyCam) { this._buddyCam.dispose(); this._buddyCam = null; }
+        this._buddyCams.forEach((c, i) => {
+            if (c) { c.dispose(); this._buddyCams[i] = null; }
+        });
+        this._buddyCam = null;
     }
 
     // ---- sidekick follower ---------------------------------------------------
@@ -1462,14 +1534,15 @@ class PlayMode {
 
     respawn() {
         if (this.driving) this.dismountKart();   // death mid-drive: on foot first
-        // The buddy comes back with P1, healthy and at their side.
-        if (this.buddy) {
-            this.buddy.hp = this.buddy.maxHp;
-            this.buddy.downed = 0;
-            this.buddy.root.scaling.y = 1;
-            this.buddy.root.position = this.spawnPoint.add(new BABYLON.Vector3(1.6, 1.5, 0));
-            this.buddy.body.vy = 0;
-        }
+        // The whole party comes back with P1, healthy and at their side.
+        this.buddies.forEach((b, i) => {
+            if (!b) return;
+            b.hp = b.maxHp;
+            b.downed = 0;
+            b.root.scaling.y = 1;
+            b.root.position = this.spawnPoint.add(new BABYLON.Vector3(1.6 + i * 0.9, 1.5, i * 0.7));
+            b.body.vy = 0;
+        });
         this.playerHp = this.playerMaxHp;
         this.hurtCooldown = 60;
         if (this.player) this.player.position = this.spawnPoint.clone();
