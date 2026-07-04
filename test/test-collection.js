@@ -45,7 +45,8 @@ async function main() {
             ownsBlaze: window.app.ownsFigure('blaze'),
         }));
         console.log('\n[1] roster', roster);
-        check('roster has 4 figures', roster.n === 4, roster);
+        check('roster has the 4 pixel figures plus the campaign heroes',
+            roster.n === 6 && roster.ids.includes('wick') && roster.ids.includes('warden'), roster);
         check('default figure is owned and active', roster.ownsDefault && roster.active === 'scout', roster);
 
         // --- 2. Into play mode; avatar wears the default (white) colorway ---

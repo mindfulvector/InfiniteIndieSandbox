@@ -48,6 +48,14 @@ const FIGURES = [
       special: 'nova', specialName: 'Frost Nova' },
     { id: 'volt',  name: 'Volt',  price: 250, tint: [1.00, 0.95, 0.40], hpBonus: 10, meleeBonus: 0, rangedHaste: 6, desc: 'Faster ranged fire, +10 HP',
       special: 'bolt', specialName: 'Chain Bolt' },
+    // Campaign heroes: not pixel-buyable -- they come WITH their Play Set
+    // (buyPlayset grants them into the shared collection) and are the only
+    // figures you can SWITCH TO inside that campaign; everywhere else in the
+    // Sandbox they play like any other figure.
+    { id: 'wick',   name: 'Wick',   price: null, campaign: 'glowlands.json',       tint: [0.55, 1.00, 0.75], hpBonus: 10, meleeBonus: 1, rangedHaste: 0, desc: 'Glowlands hero — +10 HP, +1 melee',
+      special: 'shockwave', specialName: 'Shockwave' },
+    { id: 'warden', name: 'Warden', price: null, campaign: 'nightfall-crown.json', tint: [0.75, 0.45, 1.00], hpBonus: 20, meleeBonus: 0, rangedHaste: 2, desc: 'Crown warden — +20 HP, faster shots',
+      special: 'nova', specialName: 'Frost Nova' },
 ];
 
 // Round power discs: passive buff tokens, global across figures (they are
@@ -1514,6 +1522,7 @@ class App {
                     app.world = new SandboxWorld(app);
                 }
                 const nm = app.namedWorlds()[menuItem - 1];
+                app.currentWorldFile = null;   // named saves are sandbox worlds
                 if(nm && app.world.loadNamed(nm)) {
                     app.toasty('Loaded "' + nm + '".');
                     app.menu.state = MENU_HUD;
@@ -3233,6 +3242,13 @@ class App {
         }
         this.pixels -= entry.price;
         this.purchasedSet.add('playset_' + entry.file);
+        // The Play Set's heroes join the (shared) collection with it.
+        FIGURES.forEach((f) => {
+            if (f.campaign === entry.file && !this.ownedFigures.has(f.id)) {
+                this.ownedFigures.add(f.id);
+                this.toasty(f.name + ' joins your collection!');
+            }
+        });
         this.saveEconomy();
         this.toasty('Play Set unlocked: ' + entry.name + '!');
         return true;
@@ -3264,7 +3280,14 @@ class App {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.text();
             })
-            .then((text) => this.importWorldData(text))
+            .then((text) => {
+                const ok = this.importWorldData(text);
+                // Campaign context: gallery/URL worlds are identified by
+                // file name (figure locks key off it). Anything else --
+                // templates, named saves, file imports -- clears it.
+                this.currentWorldFile = ok ? url.split('/').pop() : null;
+                return ok;
+            })
             .catch((e) => {
                 console.error('world fetch failed', url, e);
                 this.toasty('Could not fetch that world.');
@@ -3553,6 +3576,11 @@ class App {
         const fig = this.figureById(id);
         if (!fig) return false;
         if (this.ownsFigure(id)) return this.selectFigure(id);
+        if (fig.campaign) {
+            this.sound.play('denied');
+            this.toasty(fig.name + ' comes with a Play Set — unlock it on the Share screen.');
+            return false;
+        }
         if (this.pixels < fig.price) {
             this.sound.play('denied');
             this.toasty('Not enough pixels — ' + fig.name + ' costs ' + fig.price + '.');
@@ -3567,9 +3595,26 @@ class App {
 
     // Make a figure the active character: swap in its saved level/XP and apply
     // its tint/stats to a live play session immediately.
+    // Inside a campaign world, only that campaign's own heroes may be
+    // SWITCHED TO (the figure you arrived with keeps playing -- a guest
+    // hero); in the open Sandbox every owned figure is fair game.
+    figureAllowed(id) {
+        const fig = this.figureById(id);
+        if (!fig) return false;
+        const w = this.currentWorldFile;
+        if (!w || !FIGURES.some((f) => f.campaign === w)) return true;
+        return fig.campaign === w;
+    }
+
     selectFigure(id) {
         const fig = this.figureById(id);
         if (!fig || !this.ownsFigure(id)) return false;
+        if (id !== this.activeFigure && !this.figureAllowed(id)) {
+            this.sound.play('denied');
+            this.toasty('This Play Set calls for its own hero — ' +
+                (FIGURES.find((f) => f.campaign === this.currentWorldFile) || {}).name + '.');
+            return false;
+        }
         // Bank the current figure's progress before switching identities.
         this.saveEconomy();
         this.activeFigure = id;

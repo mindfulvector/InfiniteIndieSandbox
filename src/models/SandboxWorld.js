@@ -158,6 +158,7 @@ class SandboxWorld {
     // Each returns the number of tiles created and records a safe spawnPoint.
 
     buildTemplate(kind) {
+        this.app.currentWorldFile = null;   // fresh templates are sandbox worlds
         switch(kind) {
         case 'flat':    return this.buildFlatTemplate();
         case 'arena':   return this.buildArenaTemplate();

@@ -11,7 +11,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 |---|---|---|
 | Standalone purchasable campaign modules (themed universes) | ✅ | "The Glowlands" gallery Play Set: a 3-mission chain built purely from shipped toys (`test-campaign.js`); priced gallery entries lock behind a one-time pixel purchase on the Share screen (🔒 + price, `purchasedSet` key `playset_<file>`, buy-then-import) (`test-playset-gating.js`) |
 | Action-adventure / puzzle-platformer / arena-brawler campaign types | 🟡 | Arena-brawler: "Nightfall Crown" premium Play Set (200 px) — a walled boss arena under a living `l_sun` sky: the gate triggers a camera reveal + Q1, phase 2 musters spawner adds, phase 3 cuts to an enrage shot, victory opens the loot vault and pays Q2 + scoreboard (`test-boss-arena.js`); other campaign types planned |
-| Characters locked to campaign, usable in Sandbox | ⬜ | |
+| Characters locked to campaign, usable in Sandbox | ✅ | Campaign heroes (Wick/Glowlands, Warden/Nightfall Crown): not pixel-buyable — they join the SHARED collection with their Play Set purchase; inside a campaign world (`currentWorldFile` from gallery imports) only that campaign's hero can be switched TO (the figure you arrived with keeps playing as a guest); templates/named saves clear the context and everyone plays anywhere in the Sandbox (`test-campaign-figures.js`) |
 | Mission-based progression (story/side missions, collectibles) | ✅ | Quest toys chain into missions: Glowlands M1 (collect stars) physically opens the vault door, M2 (enter the pocket room) unlocks M3 (win a lap), with escalating pixel rewards and a camera-cut finale (`test-campaign.js`) |
 
 ### Combat and character systems

@@ -226,7 +226,11 @@ unlocks the next (the vault door literally stays shut until you do), and the
 finale pays out with a camera flourish. Every mission is ordinary wiring, so
 open it in the Wiring view to learn how to build campaigns of your own. The
 Glowlands is a **premium Play Set** — 150 pixels unlocks it forever (earn
-them fighting and questing in the Sandbox). Its sequel, **Nightfall Crown**
+them fighting and questing in the Sandbox), and it comes with its own
+hero: **Wick** joins your collection when you buy the set. Play Set
+heroes are special — inside their campaign only they can take the stage
+(whoever you brought in may finish as a guest), but out in the Sandbox
+they're yours to play anywhere, like every figure you own. Its sequel, **Nightfall Crown**
 (200 pixels), is a boss-arena showdown under a living day/night sky: enter
 the arena for a dramatic camera reveal, fight the crowned titan through all
 three of its phases while reinforcements pour in, and depose it to swing
