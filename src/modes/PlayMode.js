@@ -18,6 +18,11 @@ class PlayMode {
         this.comboStage = 0;        // which swing of the chain this is (0..2)
         this.comboTimer = 0;        // frames left to land the next chained swing
 
+        // Aerial juggling: R launches enemies upward; hits on airborne
+        // targets deal +1 and keep them aloft. juggleHits counts the chain.
+        this.launcherCooldown = 0;
+        this.juggleHits = 0;
+
         // Lock-on targeting (toggled with T): ranged shots and the aim pose
         // track the locked enemy; a marker floats above it.
         this.lockTarget = null;     // {type:'em', rec} | {type:'inst', inst, wo}
@@ -267,10 +272,17 @@ class PlayMode {
         if (this.rangedCooldown > 0) this.rangedCooldown--;
         if (this.comboTimer > 0) this.comboTimer--;
         if (this.dodgeCooldown > 0) this.dodgeCooldown--;
+        if (this.launcherCooldown > 0) this.launcherCooldown--;
+        // The juggle chain ends when nothing is left in the air.
+        if (this.juggleHits > 0 && !this.enemyManager.anyAirborne()) this.juggleHits = 0;
 
         // Melee: F key (kept for keyboard-only play) or a gamepad melee button.
         if (this.app.keyPressed('F') || this.app.consumePad('meleeAttack')) {
             this.meleeAttack();
+        }
+        // Launcher: R pops enemies into the air for juggling.
+        if (this.app.keyPressed('R') || this.app.consumePad('launcher')) {
+            this.launcherAttack();
         }
         // Ranged: a gamepad ranged button (mouse right-click is handled by the
         // pointer observer). Auto-aims at the lock-on/nearest enemy on a pad.
@@ -350,6 +362,49 @@ class PlayMode {
                 }
             });
         });
+    }
+
+    // The launcher: an upward swing that knocks enemies in the frontal arc
+    // into the air (see EnemyManager.launchInArc). Airborne enemies take +1
+    // from every hit and get re-popped, so launch -> swing -> swing juggles.
+    launcherAttack(aimPoint) {
+        if (!this.player || this.launcherCooldown > 0) return;
+        this.launcherCooldown = 30;
+        const bonus = this.app.meleeBonus ? this.app.meleeBonus() : 0;
+        const dmg = 1 + Math.floor(bonus / 2);
+        const aim = this.resolveAim(aimPoint, 2.8);
+        if (aim) this.aimAt(aim);
+        const p = this.player.position;
+        this.spawnAttackFx(p, true);
+        let dir = null;
+        if (aim) { dir = aim.subtract(p); dir.y = 0; }
+        if (!dir || dir.lengthSquared() < 0.0001) dir = this.playerForward();
+        dir.normalize();
+        this.enemyManager.launchInArc(p, dir, 2.8, 0.34, dmg, 7);
+        // Player-placed blobs just take the hit (jelly doesn't launch).
+        this.app.BuildableObjectList.forEach((wo) => {
+            wo.instances.forEach((inst) => {
+                if (inst && inst.isEnemy && !inst.defeated) {
+                    const ip = inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position;
+                    const to = ip.subtract(p);
+                    to.y = 0;
+                    const d = to.length();
+                    if (d > 2.8) return;
+                    if (d > 0.3) {
+                        to.scaleInPlace(1 / d);
+                        if (to.x * dir.x + to.z * dir.z < 0.34) return;
+                    }
+                    inst.hp -= dmg;
+                    if (inst.hp <= 0) this.defeatEnemy(inst, wo);
+                }
+            });
+        });
+    }
+
+    // Called by EnemyManager whenever a hit lands on an airborne enemy.
+    registerJuggleHit() {
+        this.juggleHits++;
+        if (this.juggleHits >= 2) this.app.toasty('JUGGLE x' + this.juggleHits + '!');
     }
 
     // Fire a neon shot from the player's hand toward the aim point (or the
@@ -862,6 +917,8 @@ class PlayMode {
         this.dodgeFrames = 0;
         this.dodgeCooldown = 0;
         this.dodgeVel = null;
+        this.launcherCooldown = 0;
+        this.juggleHits = 0;
         this.clearLockOn();
         this.enemyManager.reset();
 

@@ -178,6 +178,13 @@ Keys:
 **Combos:** land melee swings back-to-back to chain a 3-hit combo — the third
 hit is a finisher that deals triple damage.
 
+**Juggling:** press `R` for a **launcher** — an upward swing that knocks
+enemies in front of you into the air. While they're airborne every hit deals
+**+1 bonus damage** and pops them back up, so launch → swing → swing keeps
+them helpless in the air (the HUD celebrates your juggle chain). Walkers
+ragdoll up and crash back down; flyers tumble. Launched enemies can't attack
+until they land.
+
 Aim the ranged shot with the mouse; a gamepad auto-aims at the locked/nearest enemy.
 
 **Gamepad:** the right trigger / right bumper fires a ranged attack, the left

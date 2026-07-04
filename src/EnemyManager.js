@@ -266,6 +266,19 @@ class EnemyManager {
     updateFlyer(e, p) {
         const m = e.mesh;
         if (e.fade > 0) { e.fade--; m.visibility = 1 - e.fade / 12; }
+
+        // Launched: a ballistic pop (rise, tumble, fall back to hover) during
+        // which the flyer neither homes nor attacks.
+        if (e.airborne > 0) {
+            e.airborne--;
+            m.position.y += e.launchVy;
+            e.launchVy -= 0.02;              // per-frame gravity for the pop
+            m.rotation.y += e.spin * 3;      // tumble harder so the hit reads
+            m.rotation.x += e.spin * 1.5;
+            if (e.attackCd > 0) e.attackCd--;
+            return;
+        }
+
         m.rotation.y += e.spin;
         m.rotation.x += e.spin * 0.5;
 
@@ -293,6 +306,28 @@ class EnemyManager {
         const dx = p.x - m.position.x, dz = p.z - m.position.z;
         const dist = Math.hypot(dx, dz);
         m.rotation.y = Math.atan2(dx, dz);   // face the player
+
+        // Launched/stunned: ragdoll up and back down under gravity alone --
+        // no walking, no attacks -- until the stun runs out or it lands.
+        if (e.stun > 0) {
+            e.stun--;
+            e.body.step(0, 0);
+            // Landing ends the stun early (grace for the liftoff frame, when
+            // the grounded flag hasn't cleared yet).
+            if (e.body.grounded && e.stun < 40) e.stun = 0;
+            if (m.position.y < p.y - 25) {
+                m.dispose(false, false);
+                this.enemies.splice(index, 1);
+                return;
+            }
+            e.walkPhase *= 0.8;
+            const sw0 = Math.sin(e.walkPhase) * 0.5;
+            e.parts.leftHip.rotation.x = sw0;
+            e.parts.rightHip.rotation.x = -sw0;
+            e.parts.leftSh.rotation.x = -sw0 * 0.8;
+            e.parts.rightSh.rotation.x = sw0 * 0.8;
+            return;
+        }
 
         let vx = 0, vz = 0, moving = false;
         if (dist > e.meleeRange) {
@@ -351,6 +386,30 @@ class EnemyManager {
         }
     }
 
+    // True while an enemy is up in the air from a launcher hit -- airborne
+    // targets take juggle bonuses and are re-popped by further hits.
+    isAirborne(e) {
+        if (e.kind === 'walker') return e.stun > 0 && !e.body.grounded;
+        return (e.airborne || 0) > 0;
+    }
+
+    anyAirborne() {
+        return this.enemies.some((e) => e && this.isAirborne(e));
+    }
+
+    // The damage a hit actually deals to `e`: airborne targets take +1 and
+    // get re-popped so a chain of hits keeps them aloft (the juggle).
+    _juggleAdjust(e, dmg) {
+        if (!this.isAirborne(e)) return dmg;
+        if (e.kind === 'walker') e.body.vy = Math.max(e.body.vy, 3.5);
+        else {
+            e.airborne = Math.max(e.airborne, 20);
+            e.launchVy = Math.max(e.launchVy, 0.12);
+        }
+        if (this.pm.registerJuggleHit) this.pm.registerJuggleHit();
+        return dmg + 1;
+    }
+
     // Damage every enemy within `range` of `pos`. Returns the number hit.
     damageNear(pos, range, dmg) {
         let hits = 0;
@@ -358,11 +417,43 @@ class EnemyManager {
             const e = this.enemies[i];
             if (!e) continue;
             if (BABYLON.Vector3.Distance(e.mesh.position, pos) <= range) {
-                e.hp -= dmg;
+                e.hp -= this._juggleAdjust(e, dmg);
                 hits++;
                 if (e.hp <= 0) this.defeat(i);
                 else this.spawnFlash(e.mesh.position.add(new BABYLON.Vector3(0, 1, 0)), new BABYLON.Color3(1, 1, 1), 6);
             }
+        }
+        return hits;
+    }
+
+    // A launcher swing: like damageInArc, but survivors are knocked into the
+    // air -- walkers get real upward velocity through their GravityBody,
+    // flyers a ballistic pop -- opening them up to juggle bonuses.
+    launchInArc(pos, dir, range, cosHalf, dmg, vy) {
+        let hits = 0;
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const e = this.enemies[i];
+            if (!e) continue;
+            const to = e.mesh.position.subtract(pos);
+            to.y = 0;
+            const d = to.length();
+            if (d > range) continue;
+            if (d > 0.3) {
+                to.scaleInPlace(1 / d);
+                if (to.x * dir.x + to.z * dir.z < cosHalf) continue;
+            }
+            e.hp -= this._juggleAdjust(e, dmg);
+            hits++;
+            if (e.hp <= 0) { this.defeat(i); continue; }
+            if (e.kind === 'walker') {
+                e.stun = 45;
+                e.body.vy = vy;
+            } else {
+                e.airborne = 50;
+                e.launchVy = (vy || 7) * 0.045;   // flyers pop in per-frame units
+            }
+            this.spawnFlash(e.mesh.position.add(new BABYLON.Vector3(0, 1.5, 0)),
+                new BABYLON.Color3(1.0, 0.85, 0.3), 10);
         }
         return hits;
     }
@@ -383,7 +474,7 @@ class EnemyManager {
                 to.scaleInPlace(1 / d);
                 if (to.x * dir.x + to.z * dir.z < cosHalf) continue;
             }
-            e.hp -= dmg;
+            e.hp -= this._juggleAdjust(e, dmg);
             hits++;
             if (e.hp <= 0) this.defeat(i);
             else this.spawnFlash(e.mesh.position.add(new BABYLON.Vector3(0, 1, 0)), new BABYLON.Color3(1, 1, 1), 6);

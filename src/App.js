@@ -934,6 +934,7 @@ class App {
                 {k:'Space', label:'Jump ×2 · hold: Glide'},
                 {k:'LMB',   label:'Melee'},
                 {k:'RMB',   label:'Shoot'},
+                {k:'R',     label:'Launch'},
                 {k:'G',     label:'Block'},
                 {k:'C',     label:'Dodge'},
                 {k:'T',     label:'Lock-on'},

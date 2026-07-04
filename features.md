@@ -18,7 +18,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Feature | Status | Notes |
 |---|---|---|
 | Melee combat with combo chains | ✅ | 3-hit chain; finisher deals bonus damage; swings only strike a frontal arc (player and walkers alike) (`test-combat-combo.js`) |
-| Aerial juggling, blocking, dodging | 🟡 | Hold `G` (pad LB) to block — negates damage from the frontal arc, shield visual; tap `C` (pad Y) to dodge-roll — i-frames + burst move, 40-frame cooldown (`test-blocking.js`); aerial juggling planned |
+| Aerial juggling, blocking, dodging | ✅ | Hold `G` (pad LB) to block — negates damage from the frontal arc, shield visual; tap `C` (pad Y) to dodge-roll — i-frames + burst move (`test-blocking.js`); `R` launcher knocks enemies airborne (walkers via GravityBody velocity + stun, flyers via ballistic pop), airborne hits deal +1 and re-pop, juggle counter + toast (`test-juggling.js`) |
 | Ranged combat with aimable projectiles | ✅ | Right-click fires at cursor; projectile from hand (`test-ranged-attack.js`) |
 | Lock-on targeting | ✅ | `T` toggles lock-on to nearest enemy; marker + auto-aim (`test-combat-combo.js`) |
 | Character-specific movesets / special attacks / super moves | ⬜ | Single starter avatar today |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Aerial juggling (launcher attacks + air combos)
-2. Interior cells (enter a door → decorated room scene)
-3. Sandbox Hub world (zones/quests/challenges)
-4. Race packaging (start gate + checkpoints + finish timer from existing toys)
+1. Interior cells (enter a door → decorated room scene)
+2. Sandbox Hub world (zones/quests/challenges)
+3. Race packaging (start gate + checkpoints + finish timer from existing toys)
+4. Character-specific movesets / special attacks
