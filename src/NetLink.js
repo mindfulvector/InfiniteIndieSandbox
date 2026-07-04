@@ -58,6 +58,22 @@ class NetLink {
         } catch (e) { /* channel closing */ }
     }
 
+    sendWire(op, src, event, toWo, toId, action) {
+        if (this.closed || !src || !src.worldObject) return;
+        try {
+            this.transport.send(JSON.stringify({
+                t: 'wire', op: op, srcWo: src.worldObject.name, srcId: src.worldId,
+                event: event, toWo: toWo, toId: toId, action: action }));
+        } catch (e) { /* channel closing */ }
+    }
+
+    // Resolve a remote (wo, id) endpoint locally: streamed objects live in
+    // the remote-id map (fresh local ids); snapshot-era objects kept their
+    // ids on both sides, so findInstance covers them.
+    _resolveRemote(wo, id) {
+        return this.remoteIds[wo + '#' + id] || this.app.findInstance(wo, id) || null;
+    }
+
     close() {
         if (this.closed) return;
         try { this.transport.send(JSON.stringify({ t: 'bye' })); } catch (e) { /* gone */ }
@@ -103,6 +119,20 @@ class NetLink {
                 delete this.remoteIds[key];
                 const wo = this.app.findWorldObject(msg.wo);
                 if (wo) wo.disposeInstance(inst);
+            }
+        } else if (msg.t === 'wire') {
+            this.log.push({ t: 'wire', op: msg.op });
+            const src = this._resolveRemote(msg.srcWo, msg.srcId);
+            const dst = this._resolveRemote(msg.toWo, msg.toId);
+            if (src && dst) {
+                this.app._netMute = true;   // never echo a remote apply back
+                try {
+                    if (msg.op === 'add') {
+                        this.app.addWire(src, msg.event, msg.toWo, dst.worldId, msg.action);
+                    } else {
+                        this.app.removeWire(src, msg.event, msg.toWo, dst.worldId, msg.action);
+                    }
+                } finally { this.app._netMute = false; }
             }
         } else if (msg.t === 'tf') {
             this.ghostTarget = { p: msg.p, ry: msg.ry };

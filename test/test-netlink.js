@@ -151,6 +151,43 @@ async function main() {
         check('a deletion crosses the wire and clears the remote mapping',
             edits.after === edits.midway - 1 && edits.delLogged && edits.mapCleared, edits);
 
+        // --- 2c. Wire streaming with remote-id resolution ---
+        const wires = await h.evaluate(() => new Promise((resolve) => {
+            const app = window.app;
+            // Stream TWO placements host->guest, then wire them by the
+            // HOST's ids: the guest must resolve both endpoints to ITS
+            // fresh-id copies and land the wire there.
+            const a = app.findWorldObject('l_trigger').createInstance();
+            a.position = new BABYLON.Vector3(9, 4, 9);
+            const b = app.findWorldObject('l_spawner').createInstance();
+            b.position = new BABYLON.Vector3(11, 4, 9);
+            window.__host.sendAdd(a);
+            window.__host.sendAdd(b);
+            setTimeout(() => {
+                app.net = window.__host;   // hooks stream the HOST side
+                app.addWire(a, 'entered', 'l_spawner', b.worldId, 'spawn');
+                setTimeout(() => {
+                    const ga = window.__guest.remoteIds['l_trigger#' + a.worldId];
+                    const gb = window.__guest.remoteIds['l_spawner#' + b.worldId];
+                    const landed = ga && gb && ga.wires && ga.wires.length === 1 &&
+                        ga.wires[0].toId === gb.worldId && ga.wires[0].action === 'spawn';
+                    const distinct = ga !== a && (!ga || ga.wires !== a.wires);
+                    const echo = window.__host.log.some((l) => l.t === 'wire');
+                    app.removeWire(a, 'entered', 'l_spawner', b.worldId, 'spawn');
+                    setTimeout(() => {
+                        resolve({ landed: !!landed, distinct, echo,
+                            removedRemotely: ga ? ga.wires.length === 0 : false,
+                            hostWires: a.wires.length });
+                    }, 300);
+                }, 300);
+            }, 300);
+        }));
+        console.log('[2c] wires', wires);
+        check('a wire streams and resolves to the guest\'s own copies',
+            wires.landed && wires.distinct, wires);
+        check('wire removal streams too, and the apply never echoes back',
+            wires.removedRemotely && wires.hostWires === 0 && !wires.echo, wires);
+
         // --- 3. Goodbye disposes the ghost ---
         await h.evaluate(() => { window.__host.close(); });
         await h.waitFor(() => !window.app.scene.getMeshByName('netGhost') &&

@@ -3916,6 +3916,11 @@ class App {
         if(this.hasWire(inst, event, toWo, toId, action)) return;
         inst.wires.push({ event: event, toWo: toWo, toId: toId, action: action });
         this.sound.play('wire-connect');
+        // Linked builders share wiring live (_netMute stops the remote
+        // apply from echoing straight back).
+        if(this.net && !this.net.closed && !this._netMute) {
+            this.net.sendWire('add', inst, event, toWo, toId, action);
+        }
     }
 
     removeWire(inst, event, toWo, toId, action) {
@@ -3923,6 +3928,9 @@ class App {
         inst.wires = inst.wires.filter((w) => !(w.event === event && w.toWo === toWo &&
             w.toId == toId && w.action === action));
         this.sound.play('wire-delete');
+        if(this.net && !this.net.closed && !this._netMute) {
+            this.net.sendWire('remove', inst, event, toWo, toId, action);
+        }
     }
 
     // Add the wire if absent, remove it if present. Returns true if now wired.
