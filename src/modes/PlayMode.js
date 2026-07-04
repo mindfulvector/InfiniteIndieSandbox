@@ -404,9 +404,18 @@ class PlayMode {
         this._prevJumping = jumping;
         this._prevJumpsUsed = jumpsUsed;
 
-        if (this._wasAirborne && !airborne) {
-            s.play('land', { surface: this.footstepSurface() });
-            this._stepTimer = 8;   // don't step in the same instant as the thud
+        // Landing thuds need a REAL fall behind them: walking rolling
+        // terrain flickers _inFreeFall for single frames at high fps (the
+        // GravityBody hysteresis lesson, CC edition), and un-debounced
+        // landings flooded the sound log while starving the footstep timer.
+        if (airborne) {
+            this._airFrames = (this._airFrames || 0) + 1;
+        } else {
+            if ((this._airFrames || 0) >= 6) {
+                s.play('land', { surface: this.footstepSurface() });
+                this._stepTimer = 8;   // don't step in the same instant as the thud
+            }
+            this._airFrames = 0;
         }
         this._wasAirborne = airborne;
 
