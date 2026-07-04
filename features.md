@@ -60,7 +60,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Feature | Status | Notes |
 |---|---|---|
 | Open building mode with placeable objects | ✅ | Object browser w/ runtime thumbnails, categories, arrow-key cycling |
-| Magic-wand: place / move / rotate / scale / link / delete | ✅ | Cursor select+grab, R/V raise, Z/C rotate, [/] scale, wiring view links, Delete |
+| Magic-wand: place / move / rotate / scale / link / delete | ✅ | Cursor mode: Space grabs (one key with placement), Shift+Space opens properties, mouse TAP selects any placed object; left sidebar lists the browsed category (arrow keys + clickable rows); R/V raise, Z/C rotate, [/] scale, Delete (`test-build-ux.js`, `test-move-object.js`); wiring view: tap an object for its inspector card (ports + wires), tap a wire for its card — Delete lives inside the card (`test-build-ux.js`) |
 | Terrain sculpting with block terrain, themes | 🟡 | Block tiles w/ top-snap anchor + rolling default grid; more themes planned |
 | Logic toys: triggers | ✅ | `l_trigger` volumes fire enter/exit events (`test-wiring.js`) |
 | Logic toys: spawners | ✅ | `l_spawner` w/ enemy type / frequency / limit params (`test-spawner.js`) |
@@ -111,7 +111,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. NPC villagers (wander + talk bubbles + quest hooks)
-2. Water blocks (swim volumes, floating props)
-3. Online co-op exploration (WebRTC world sync spike)
+1. **USER REQUEST — snap-assisted placement**: holding Shift (or CapsLock on, or the left bumper) while pressing movement keys vertex-snaps the moving object to the nearest object in that direction; while rotating in snap mode, snap to the rotation angle of the nearest piece of the same type or similar size
+2. NPC villagers (wander + talk bubbles + quest hooks)
+3. Water blocks (swim volumes, floating props)
 4. Built-in game SFX (combat/pickup/UI hooks on the chime synth)

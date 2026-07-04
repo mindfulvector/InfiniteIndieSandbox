@@ -74,10 +74,18 @@ the cursor (a tree sits *on* the surface), while **terrain** tiles snap their
 the same walking surface and tile together seamlessly. Use `R`/`V` to raise or
 lower the object (and the whole surface height) before placing.
 
+A **sidebar on the left** lists every object in the current category — click
+a row (or use the arrow keys) to switch what you're placing.
+
 Some objects have **settings**: place a **Spawner** (Logic category) and a
 parameters popup opens automatically so you can choose the enemy type, spawn
 frequency and max-alive limit. To edit a placed object's settings later, enter
-cursor mode (`0`), move the cursor over it and press `Space`.
+cursor mode (`0`), select it and press `Shift+Space`.
+
+**Selecting placed objects** (cursor mode, `0`): move the cursor onto an
+object with `WASD` — or just **click it with the mouse**. Then `Space` picks
+it up to move it (drop it with `Space` again), and `Shift+Space` opens its
+properties.
 
 #### Wiring: triggers → spawners
 
@@ -90,8 +98,13 @@ the interactive objects, with 3D arrows drawn between wired objects:
   target object (one that accepts actions) to connect them. If several
   event/action combinations fit, a chooser asks exactly which event drives
   which action.
-* **Click a wire** to delete it. Every wire is labelled with what it carries
-  ("Player Enters → Spawn One").
+* **Click any object** to open its inspector card: what events it fires,
+  what actions it accepts, and every wire leaving it (click a wire row to
+  jump to that wire).
+* **Click a wire** to select it — its card shows exactly what it carries
+  (from, event, to, action) with a **Delete Wire** button inside, so you can
+  explore an existing setup without breaking anything. Every wire is also
+  labelled in the world ("Player Enters → Spawn One").
 * A **guide panel** on the right explains the model and lists each object
   type's events (▸ fires) and actions (◂ accepts).
 
@@ -176,8 +189,10 @@ timers.
 #### Select / move placed objects
 
 * Press `0` to enter cursor (select) mode
-* Move the cursor (`W`,`A`,`S`,`D`) over a placed object to highlight it
-* Press `Enter` to pick it up and move it (then `Space` to drop it back)
+* Move the cursor (`W`,`A`,`S`,`D`) over a placed object — or **click the
+  object with the mouse** — to highlight it
+* Press `Space` to pick it up and move it (then `Space` again to drop it)
+* Press `Shift+Space` to open its properties
 * Press `Delete` to remove the highlighted object
 
 **Saving:** Press `Esc` and choose Save Game / Load Game to store worlds in
