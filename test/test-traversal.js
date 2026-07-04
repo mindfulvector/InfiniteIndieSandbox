@@ -53,8 +53,11 @@ async function main() {
             const t = () => {
                 maxY = Math.max(maxY, pm.player.position.y);
                 frames++;
-                // done when back on the ground (or safety cap)
-                if ((frames > 20 && Math.abs(pm.player.position.y - y0) < 0.05) || frames > 600) {
+                // done when back on the ground AND the controller has finished
+                // the jump (_endJump runs one frame after touchdown; at high
+                // fps resolving on the landing frame would leak
+                // _act._jump=true into the next test step) — or safety cap
+                if ((frames > 20 && Math.abs(pm.player.position.y - y0) < 0.05 && !cc._act._jump) || frames > 600) {
                     resolve({ h: Math.round((maxY - y0) * 100) / 100, landedY: Math.round(pm.player.position.y * 100) / 100, y0: Math.round(y0 * 100) / 100 });
                 } else requestAnimationFrame(t);
             };
@@ -75,7 +78,9 @@ async function main() {
             const t = () => {
                 maxY = Math.max(maxY, pm.player.position.y);
                 frames++;
-                if ((frames > 40 && Math.abs(pm.player.position.y - y0) < 0.05) || frames > 900) {
+                // wait for _endJump (one frame after touchdown) so
+                // _jumpsUsed reflects the post-landing reset
+                if ((frames > 40 && Math.abs(pm.player.position.y - y0) < 0.05 && !cc._act._jump) || frames > 900) {
                     resolve({ h1: h1, h2: Math.round((maxY - y0) * 100) / 100, jumpsUsedAfter: cc._jumpsUsed });
                 } else requestAnimationFrame(t);
             };
@@ -123,12 +128,17 @@ async function main() {
         const normalFall = await h.evaluate(() => new Promise((resolve) => {
             const pm = window.app.activeMode, cc = pm.cc;
             // Wait to land first, then a plain tap jump and measure post-apex fall.
-            const y0 = pm.player.position.y;
-            let frames = 0;
+            // The previous step resolves while the player is still mid-air after
+            // the glide release, so "settled" must mean "y stopped changing"
+            // (resting on the ground), not "y returned to its starting value".
+            let frames = 0, lastY = null, stable = 0;
             const settle = () => {
                 frames++;
                 if (frames > 400) return resolve({ err: 'never settled' });
-                if (Math.abs(pm.player.position.y - y0) > 0.02 || frames < 30) return requestAnimationFrame(settle);
+                const yNow = pm.player.position.y;
+                if (lastY !== null && Math.abs(yNow - lastY) < 0.001) stable++; else stable = 0;
+                lastY = yNow;
+                if (stable < 5 || frames < 30 || cc._act._jump) return requestAnimationFrame(settle);
                 cc._onKeyDown({ key: ' ' });
                 setTimeout(() => cc._onKeyUp({ key: ' ' }), 60);
                 let apex = -Infinity, phase = 'rise';

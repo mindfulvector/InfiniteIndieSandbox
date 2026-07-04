@@ -74,10 +74,25 @@ async function main() {
             pm.attackFxList.forEach((fx) => fx.mesh.dispose()); pm.attackFxList = [];
             pm.rangedCooldown = 0; pm.attackCooldown = 0;
         });
-        // Right-click -> ranged shot.
+        // Right-click -> ranged shot. The screen-centre aim point is the
+        // terrain at the player's feet, so the shot legitimately hits the
+        // ground ~3 frames after firing; sample the running max across frames
+        // (like section 1's maxProj) instead of the instantaneous count,
+        // which races the projectile's destruction at high frame rates.
+        await h.evaluate(() => {
+            const pm = window.app.activeMode;
+            window.__maxRightProj = 0;
+            let n = 0;
+            const tick = () => {
+                window.__maxRightProj = Math.max(window.__maxRightProj, pm.playerProjectiles.length);
+                if (++n < 120) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        });
         await h.page.mouse.click(canvasBox.x, canvasBox.y, { button: 'right' });
         await h.waitFrames(2);
-        const afterRight = await h.evaluate(() => window.app.activeMode.playerProjectiles.length);
+        const afterRight = await h.evaluate(() =>
+            Math.max(window.__maxRightProj, window.app.activeMode.playerProjectiles.length));
         // Left-click -> melee swing.
         await h.evaluate(() => { window.app.activeMode.attackCooldown = 0; window.app.activeMode.attackFxList.forEach((fx) => fx.mesh.dispose()); window.app.activeMode.attackFxList = []; });
         await h.page.mouse.click(canvasBox.x, canvasBox.y, { button: 'left' });

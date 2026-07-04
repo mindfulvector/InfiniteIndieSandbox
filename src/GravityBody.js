@@ -40,7 +40,12 @@ class GravityBody {
         if (this.vy <= 0 && actualDy > intendedDy + 1e-4) {
             this.grounded = true;
             this.vy = 0;
-        } else {
+        } else if (this.vy > 0 || intendedDy < -0.015 * this.mesh.ellipsoid.y) {
+            // Only a conclusive move may clear the flag. Babylon's collision
+            // response parks a resting body ~0.01 * ellipsoid.y above the
+            // surface (CollisionsEpsilon * 10), so at high frame rates the
+            // first micro-fall after vy resets is smaller than that hover gap,
+            // touches nothing, and proves nothing about the ground below.
             this.grounded = false;
         }
         return this.grounded;
