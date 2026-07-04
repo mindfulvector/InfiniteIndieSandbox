@@ -271,6 +271,14 @@ class Manifest {
                   ]
         }, 'PathNodeScript');
 
+        // A day/night sun: placed, it cycles play-mode lighting and fires
+        // dawn/noon/dusk/midnight wiring edges. Build mode stays daylit.
+        app.createWorldObject('l_sun', {
+            prims: [
+                     {ty: 'box', s: [0.6, 0.6, 0.6], p: [0, 0, 0]},
+                  ]
+        }, 'SunScript');
+
         // An aerial ring: fires `flown` when the player (or their vehicle)
         // passes through. Wire rings into l_race for fly-through courses.
         app.createWorldObject('l_ring', {

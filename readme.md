@@ -245,6 +245,12 @@ way. It's slower than the kart but turns on the spot, its legs trot as you
 ride, and `Space` makes it **jump** — `C` hops off. Perfect for bounding
 around rough terrain the kart hates.
 
+**Day & night:** place a **Sun** (Logic) and play mode gets a living sky —
+noon blazes, dusk glows warm, night falls deep and blue, on a cycle you
+choose in its options. The sun fires *Dawn / Noon / Dusk / Midnight* wiring
+events, so you can make monsters spawn only at night or lamps greet the
+dark. Build mode always stays daylit, and every run starts at first light.
+
 **Photo mode:** press `P` to freeze the whole world mid-action. The HUD
 slips away, the camera comes off its leash (`WASD` to move, `R`/`F` for
 height, `Shift` to hurry, mouse to orbit), and `Enter` saves a PNG of your
