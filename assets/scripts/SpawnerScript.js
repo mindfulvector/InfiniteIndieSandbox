@@ -17,8 +17,16 @@ class SpawnerScript {
             { key: 'frequency',   label: 'Every',     type: 'number', options: [1, 2, 3, 5, 8, 12],          default: 3, unit: 's' },
             { key: 'limit',       label: 'Max alive', type: 'number', options: [1, 2, 3, 5, 8],              default: 3 },
             { key: 'startActive', label: 'Start on',  type: 'enum',   options: ['yes', 'no'],                default: 'yes' },
+            { key: 'wave',        label: 'Wave total',type: 'number', options: [0, 3, 5, 8, 12],             default: 0 },
         ];
         this.eventDefs = [];
+
+        // `cleared` fires ONCE when a finite wave (wave > 0) has spawned its
+        // whole quota AND every spawned enemy is defeated -- the "clear the
+        // room" dungeon primitive. Wire it to a door/counter/camera.
+        this.outputs = [
+            { id: 'cleared', label: 'Wave Cleared' },
+        ];
 
         // Input actions other objects can wire into (shown in the wiring view).
         // A trigger's 'entered' event wired to 'spawn' spawns one enemy on
@@ -34,6 +42,8 @@ class SpawnerScript {
         this._alive = [];           // handles for enemies this spawner has spawned
         this._active = null;        // timed spawning on/off (init from startActive)
         this._spawnRequested = 0;   // one-shot spawns requested via the 'spawn' input
+        this._totalSpawned = 0;     // lifetime spawns this run (for the wave quota)
+        this._clearedFired = false; // `cleared` is a one-shot edge per run
     }
 
     // Player death resets the run: the spawner re-arms from its start state.
@@ -43,6 +53,8 @@ class SpawnerScript {
         this._spawnRequested = 0;
         this._active = (this.getParam('startActive') !== 'no');
         this._alive = [];
+        this._totalSpawned = 0;
+        this._clearedFired = false;
     }
 
     // Handle a wired input action fired by another object (e.g. a trigger).
@@ -97,6 +109,20 @@ class SpawnerScript {
         }
         this._spawnRequested = 0;
 
+        // A finite wave stops spawning once its quota is met, and fires
+        // `cleared` when the last of them falls (the room is clear).
+        const wave = this.getParam('wave') || 0;
+        if (wave > 0) {
+            if (this._totalSpawned >= wave) {
+                this._acc = 0;
+                if (this.countAlive(mode) === 0 && !this._clearedFired) {
+                    this._clearedFired = true;
+                    this.app.fireEvent(this.inst, 'cleared');
+                }
+                return;
+            }
+        }
+
         // Timed spawning only runs while active.
         if (!this._active) { this._acc = 0; return; }
         if (alive >= limit) { this._acc = 0; return; }
@@ -110,6 +136,7 @@ class SpawnerScript {
     }
 
     spawnOne(mode) {
+        this._totalSpawned += 1;
         const pos = this.inst.getAbsolutePosition
             ? this.inst.getAbsolutePosition() : this.inst.position.clone();
         const type = this.getParam('enemyType');

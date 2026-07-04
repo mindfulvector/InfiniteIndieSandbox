@@ -27,6 +27,12 @@
       "name": "Nightfall Crown",
       "desc": "A boss-arena Play Set under a living sky: face the crown, depose it, loot the vault",
       "price": 200
+    },
+    {
+      "file": "deepvault.json",
+      "name": "The Deepvault",
+      "desc": "A co-op dungeon crawl: clear three chambers of foes, depose the boss, loot the vault",
+      "price": 250
     }
   ]
 }

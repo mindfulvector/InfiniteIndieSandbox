@@ -67,7 +67,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Terrain sculpting with block terrain, themes | ✅ | Block tiles w/ top-snap anchor + rolling default grid; THEMED terrain (sand + snow, tile and 2-block sizes): per-theme procedural atlases drawn on canvas (base coat + speckle, zero image assets), one shared material per theme so blocks stay instancable, themed footstep surfaces (sand crunches like stone, snow muffles like carpet) (`test-terrain-themes.js`) |
 | Snap-assisted placement (vertex/rotation snapping) | ✅ | Hold Shift or pad LB (or latch with CapsLock): movement keys JUMP the moving object flush against the nearest object in that direction (dominant world axis, grid pull suspended, idempotent re-press); rotation keys MATCH the nearest same-type or similar-size piece within 12u (AABB similarity) (`test-snap.js`) |
 | Logic toys: triggers | ✅ | `l_trigger` volumes fire enter/exit events (`test-wiring.js`) |
-| Logic toys: spawners | ✅ | `l_spawner` w/ enemy type / frequency / limit params (`test-spawner.js`) |
+| Logic toys: spawners | ✅ | `l_spawner` w/ enemy type / frequency / limit params, plus a `wave` quota that fires a `cleared` output when the room empties — the dungeon-crawl primitive (`test-spawner.js`, `test-dungeon.js`) |
 | Logic toys: counters | ✅ | `l_counter` — increment/decrement/reset inputs, reached/changed outputs (`test-logic-toys.js`) |
 | Logic toys: timers | ✅ | `l_timer` — start/stop/reset inputs, tick output, interval/repeat params (`test-logic-toys.js`) |
 | Logic toys: scoreboards | ✅ | `l_scoreboard` — add/subtract/reset inputs, HUD score display, edge-triggered `reached` output (`test-progression.js`) |
@@ -98,7 +98,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Feature | Status | Notes |
 |---|---|---|
 | Kart racing expansion | ✅ | Kart + triggers + `l_race` compose into lap racing (the VEHICLE trips triggers; Glow Circuit's gate wires finish-then-start for a wire-order lap timer) (`test-kart-racing.js`); `pr_kart_ghost` AI rivals lap wired path chains — translucent, intangible, `lapped` output, shipped on Glow Circuit's 4-node racing line (`test-ghost-kart.js`) |
-| Co-op dungeon-crawl expansion | 🟡 | Enemy waves/loot core exists (EnemyManager waves, pixel loot); packaging planned |
+| Co-op dungeon-crawl expansion | ✅ | New "clear the room" primitive: the spawner takes a `wave` quota and fires a one-shot `cleared` output when its whole wave has spawned AND all its spawns are defeated (re-arms on play reset); "The Deepvault" premium Play Set (250 px) chains three chambers — gate arms wave 1 → cleared opens door 1 + steps quest, threshold arms wave 2 → cleared opens door 2, boss defeated opens the loot vault + scoreboard — with camera cuts, a healing pickup, and a recruit (`test-dungeon.js`) |
 
 ### Community features
 | Feature | Status | Notes |
