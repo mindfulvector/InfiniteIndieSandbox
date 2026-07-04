@@ -97,7 +97,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Saving multiple Sandbox worlds locally | ✅ | 9 save slots, transforms/params/wires persist (`test-save-load.js`) |
 | Upload + share creations online | 🟡 | Serverless sharing via world files: main menu → Share Worlds exports the current world as a versioned `.json` (same snapshot as save slots) and imports validate format/version, rejecting bad files without touching the world; unknown object types skip gracefully (`test-share.js`); online gallery planned |
 | Browse/rate/download community worlds | 🟡 | Gallery browsing on the Share screen: `assets/worlds/index.json` catalog fetched over HTTP, one-digit import into build mode, plus `importWorldFromUrl` for arbitrary links; ships Starter Parkour + Tiny Arena (`test-gallery.js`); remote gallery + ratings planned |
-| Featured/curated rotations | ⬜ | |
+| Featured/curated rotations | ✅ | The gallery index's `featured` list rotates one pick per day (deterministic `day % n`, injectable for tests); the Share screen sorts it first with a ★ FEATURED badge and digit 3 always imports today's pick (`test-featured.js`) |
 
 ## Engine / platform underpinnings (not on the public list)
 | Feature | Status | Notes |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Featured/curated gallery rotations
-2. Split-screen exploration (second camera viewport)
-3. Kart AI opponents (ghost karts on path chains)
-4. Play Set campaign packaging (mission chains in a gallery world)
+1. Split-screen exploration (second camera viewport)
+2. Kart AI opponents (ghost karts on path chains)
+3. Play Set campaign packaging (mission chains in a gallery world)
+4. Mission structure for collectibles (story/side missions)

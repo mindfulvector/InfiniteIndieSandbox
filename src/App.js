@@ -1258,8 +1258,9 @@ class App {
                 app.downloadWorld();
             } else if(menuItem === 2) {
                 app.importWorldFromPicker();
-            } else if(app.gallery && app.gallery[menuItem - 3]) {
-                const entry = app.gallery[menuItem - 3];
+            } else if(app.gallery && app.orderedGallery()[menuItem - 3]) {
+                // Digits map to the DISPLAYED (featured-first) order.
+                const entry = app.orderedGallery()[menuItem - 3];
                 app.importWorldFromUrl('./assets/worlds/' + entry.file).then((ok) => {
                     if(ok) app.goto_buildMode();
                 });
@@ -2029,12 +2030,14 @@ class App {
                 } else if(this.gallery.length === 0) {
                     this.MenuItem({ type: 'text', name: 'galleryEmpty', text: 'No gallery worlds found.', fontSize: 14 });
                 } else {
-                    this.gallery.forEach((g, i) => {
+                    // Featured-first: today's curated pick tops the list.
+                    this.orderedGallery().forEach((g, i) => {
                         const n = 3 + i;
                         this.MenuItem({
                             type: 'button',
                             name: 'btnGallery_' + i,
-                            text: n + '. ' + g.name + ' — ' + g.desc,
+                            text: n + '. ' + (i === 0 && this.featuredWorld() === g ? '★ FEATURED · ' : '') +
+                                g.name + ' — ' + g.desc,
                             handler: () => { app.triggerMenuItem(MENU_SHARE, n); }
                         });
                     });
@@ -2822,6 +2825,7 @@ class App {
             .then((r) => r.json())
             .then((idx) => {
                 this.gallery = (idx && Array.isArray(idx.gallery)) ? idx.gallery : [];
+                this.galleryFeatured = (idx && Array.isArray(idx.featured)) ? idx.featured : [];
                 this.menu.renderedState = -1;
             })
             .catch((e) => {
@@ -2829,6 +2833,25 @@ class App {
                 this.gallery = [];
             })
             .finally(() => { this._galleryLoading = false; });
+    }
+
+    // Today's featured world: the curated `featured` rotation advances one
+    // entry per day, deterministically and serverless. `day` is injectable
+    // for tests; it defaults to the wall-clock day number.
+    featuredWorld(day) {
+        const rot = this.galleryFeatured || [];
+        if (!rot.length || !this.gallery) return null;
+        const d = (day != null) ? day : Math.floor(Date.now() / 86400000);
+        const file = rot[((d % rot.length) + rot.length) % rot.length];
+        return this.gallery.find((g) => g.file === file) || null;
+    }
+
+    // The gallery in display order: today's featured world first.
+    orderedGallery(day) {
+        if (!this.gallery) return [];
+        const feat = this.featuredWorld(day);
+        if (!feat) return this.gallery.slice();
+        return [feat].concat(this.gallery.filter((g) => g !== feat));
     }
 
     // Import a world file straight from a URL. Resolves true on success.

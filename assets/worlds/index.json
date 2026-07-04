@@ -1,4 +1,5 @@
 {
+  "featured": ["glow-circuit.json", "starter-parkour.json", "tiny-arena.json"],
   "gallery": [
     {
       "file": "starter-parkour.json",
