@@ -72,7 +72,10 @@ Objects are placed centred under the cursor. Most objects rest their **base** on
 the cursor (a tree sits *on* the surface), while **terrain** tiles snap their
 **top** to the cursor — so a thin floor panel and a full terrain cube line up at
 the same walking surface and tile together seamlessly. Use `R`/`V` to raise or
-lower the object (and the whole surface height) before placing.
+lower the object (and the whole surface height) before placing. Terrain now
+comes in **themes**: alongside the classic grass blocks you'll find **sand**
+and **snow** — build deserts and snowfields that even sound different
+underfoot.
 
 **Snap mode:** hold `Shift` (or the controller's left bumper), or tap
 `CapsLock` to latch it on. While active, each movement key press **snaps the

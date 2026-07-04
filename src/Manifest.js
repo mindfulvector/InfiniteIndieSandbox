@@ -24,6 +24,13 @@ class Manifest {
         app.createWorldObject('t_block_4', { anchor: 'below', grassBlock: { s: [4, 4, 4] } });
         app.createWorldObject('t_block_2', { anchor: 'below', grassBlock: { s: [2, 2, 2] } });
         app.createWorldObject('t_block_1', { anchor: 'below', grassBlock: { s: [1, 1, 1] } });
+        // Themed terrain: same instancable atlas trick, different climates.
+        // Footstep surfaces borrow the closest existing sound: sand crunches
+        // like stone, snow muffles like carpet.
+        app.createWorldObject('t_sand',   { anchor: 'below', grassBlock: { s: [2, 1, 2], theme: 'sand' }, surface: 'stone' });
+        app.createWorldObject('t_sand_2', { anchor: 'below', grassBlock: { s: [2, 2, 2], theme: 'sand' }, surface: 'stone' });
+        app.createWorldObject('t_snow',   { anchor: 'below', grassBlock: { s: [2, 1, 2], theme: 'snow' }, surface: 'carpet' });
+        app.createWorldObject('t_snow_2', { anchor: 'below', grassBlock: { s: [2, 2, 2], theme: 'snow' }, surface: 'carpet' });
         
         // A wirable sliding (pocket) door: two fixed jambs and a named 'panel'
         // child that DoorScript slides sideways on open/close. Total footprint

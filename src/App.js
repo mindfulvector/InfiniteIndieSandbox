@@ -2522,7 +2522,9 @@ class App {
                 width: s[0], height: s[1], depth: s[2], faceUV: faceUV }, app.scene);
             box.name += '[' + box.uniqueId + ']';
             box.isVisible = false;
-            box.material = app.terrainAtlasMaterial();
+            box.material = assetProps.grassBlock.theme
+                ? app.themeAtlasMaterial(assetProps.grassBlock.theme)
+                : app.terrainAtlasMaterial();
             // Invisible template must never collide (see the mesh branch).
             app.disableCollisionsTree(box);
             let woNewAsset = new WorldObject(app, objectName, box, false, scriptClass);
@@ -2725,6 +2727,38 @@ class App {
         dirt.src = 'assets/textures/dirt.png';
         grass.src = 'assets/textures/grass3_albedo.png';
         this._terrainAtlasMat = mat;
+        return mat;
+    }
+
+    // Themed terrain atlases (sand, snow, ...): same trick as the grass
+    // atlas -- side texture in the left half, top in the right, ONE shared
+    // material per theme so themed blocks stay instancable -- but drawn
+    // procedurally (base coat + speckle) so themes need no image assets.
+    themeAtlasMaterial(theme) {
+        this._themeAtlasMats = this._themeAtlasMats || {};
+        if (this._themeAtlasMats[theme]) return this._themeAtlasMats[theme];
+        const PALETTES = {
+            sand: { side: '#a9834f', top: '#e2c884', fleck: '#c9ad68', fleck2: '#f0dca4' },
+            snow: { side: '#8fa3b8', top: '#eef4fb', fleck: '#ffffff', fleck2: '#cddcec' },
+        };
+        const pal = PALETTES[theme] || PALETTES.sand;
+        const mat = new BABYLON.StandardMaterial('terrainBlockMat_' + theme, this.scene);
+        const dt = new BABYLON.DynamicTexture('themeAtlas_' + theme, { width: 1024, height: 512 }, this.scene, true);
+        mat.diffuseTexture = dt;
+        mat.specularColor = new BABYLON.Color3(0, 0, 0);
+        const ctx = dt.getContext();
+        ctx.fillStyle = pal.side; ctx.fillRect(0, 0, 512, 512);
+        ctx.fillStyle = pal.top;  ctx.fillRect(512, 0, 512, 512);
+        // Speckle so the theme reads as a surface, not a paint swatch.
+        for (let i = 0; i < 2600; i++) {
+            ctx.fillStyle = (i % 2) ? pal.fleck : pal.fleck2;
+            ctx.globalAlpha = 0.25 + Math.random() * 0.3;
+            ctx.fillRect(Math.random() * 1024, Math.random() * 512,
+                2 + Math.random() * 3, 2 + Math.random() * 3);
+        }
+        ctx.globalAlpha = 1;
+        dt.update();
+        this._themeAtlasMats[theme] = mat;
         return mat;
     }
 
