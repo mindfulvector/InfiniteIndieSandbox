@@ -70,6 +70,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Event wiring between logic toys | ✅ | Overhead 3D wiring view; wires persist in saves (`test-wiring.js`) |
 | Interiors (rooms, doors, decoration) | ✅ | INTERIOR category room kit (`in_wall`, `in_wall_door`, `in_wall_window`, `in_floor` — walls block shots, openings pass), wirable sliding door (`pr_door`), furniture (`d_table/chair/lamp/rug`), multi-prim manifest support (`test-interiors.js`); pocket-interior cell door (`pr_door_cell`: walk in → teleport to a themed room built from raw meshes, exit pad returns, outdoor enemies freeze, entered/exited wiring events, dollhouse camera) (`test-interior-cells.js`) |
 | Path/track creation (races, patrols, moving platforms) | ✅ | `l_pathnode` waypoints chain via wires; `pr_platform_moving` follows the chain dt-based; `en_blob` patrols a wired chain (`test-paths.js`); `l_race` packages start gate + distinct-checkpoint tracking + finish line with a HUD stopwatch, `finished`/`record` outputs; best times persist per save slot via `params.bestTime` (`test-races.js`) |
+| Photo mode (freeze + free camera + capture) | ✅ | `P` in play mode freezes the whole world (update short-circuit) and hides the HUD; WASD/R/F dolly the free camera (Shift speeds it) with mouse orbit live; `Enter` captures a 1280×720 PNG via `CreateScreenshotUsingRenderTarget` (downloads, `app.lastPhotoData` for tests); `P` resumes, Esc-teardown restores the HUD (`test-photo.js`) |
 | AI builder assistants | ⬜ | |
 | Templates / starter worlds | ✅ | New Game picker: Rolling Hills / Flat Plane / Arena / Floating Islands (`test-progression.js`) / Sandbox Hub challenge park (`test-hub.js`) |
 | Unlockable toys through play | ✅ | Pixels earned from enemies buy locked objects in the shop (`test-shop-gating.js`) |
@@ -107,7 +108,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Photo mode (freeze + free camera + screenshot)
-2. Online co-op exploration (WebRTC world sync spike)
-3. Aerial rings course (fly-through checkpoint races)
-4. Boss enemy (multi-phase, wired arena fight)
+1. Boss enemy (multi-phase, wired arena fight)
+2. Aerial rings course (fly-through checkpoint races)
+3. Online co-op exploration (WebRTC world sync spike)
+4. Day/night cycle toy (wired sun, mood lighting)

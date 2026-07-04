@@ -245,6 +245,11 @@ way. It's slower than the kart but turns on the spot, its legs trot as you
 ride, and `Space` makes it **jump** — `C` hops off. Perfect for bounding
 around rough terrain the kart hates.
 
+**Photo mode:** press `P` to freeze the whole world mid-action. The HUD
+slips away, the camera comes off its leash (`WASD` to move, `R`/`F` for
+height, `Shift` to hurry, mouse to orbit), and `Enter` saves a PNG of your
+shot. Press `P` again to jump back into the fray exactly where it left off.
+
 **Traversal toys:** the **Trampoline** (Terrain) launches you sky-high when
 you land on it — set its bounce power in its options. The **Grind Rail**
 (Props) carries you hands-free: wire its *Rail Path* to a chain of path

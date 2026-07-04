@@ -52,6 +52,10 @@ class PlayMode {
         this._bounceRestore = 0;
         this._normalJumpSpeed = 6;   // the CC's stock idleJump speed
 
+        // Photo mode (see togglePhotoMode).
+        this.photoMode = false;
+        this._photoReturn = null;
+
         // Split-screen state (see updateSplitScreen). _buddyCam aliases the
         // slot-0 camera for older call sites.
         this._split = false;
@@ -108,6 +112,11 @@ class PlayMode {
 
     dispose() {
         this.app.modeName.text = "Exiting PlayMode...";
+        // Esc mid-photo disposes the mode: bring the HUD back with us.
+        if (this.photoMode && this.app.gui && this.app.gui.rootContainer) {
+            this.app.gui.rootContainer.isVisible = true;
+        }
+        this.photoMode = false;
         this.unbindMouseCombat();
         this.clearLockOn();
         if (this.blockMesh) { this.blockMesh.dispose(false, true); this.blockMesh = null; }
@@ -281,6 +290,17 @@ class PlayMode {
         if (this._pendingRespawn) {
             this._pendingRespawn = false;
             this.respawn();
+        }
+
+        // Photo mode: P freezes the whole world (nothing below this line
+        // runs -- scripts, enemies, physics, combat all simply stop being
+        // updated while rendering continues) and frees the camera.
+        if (app.keyPressed('P') && !this.driving && !this.grinding) {
+            this.togglePhotoMode();
+        }
+        if (this.photoMode) {
+            this.updatePhotoCamera();
+            return;
         }
 
         // run update for all active object scripts
@@ -773,6 +793,73 @@ class PlayMode {
         // Seat the player; the camera follows them for free.
         this.player.position.copyFrom(inst.position.add(new BABYLON.Vector3(0, prof.seatY, 0)));
         this.player.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(inst.rotation.y, 0, 0);
+    }
+
+    // ---- photo mode ------------------------------------------------------------
+
+    // Freeze the world for the perfect shot: the update loop short-circuits
+    // (see update), the HUD hides, and WASD/R/F dolly the free camera while
+    // the mouse keeps orbiting. Enter captures a PNG; P again resumes play.
+    togglePhotoMode() {
+        const app = this.app;
+        if (!this.photoMode) {
+            this.photoMode = true;
+            if (this.cc) this.cc.stop();
+            this.clearLockOn();
+            this._photoReturn = {
+                alpha: app.camera.alpha, beta: app.camera.beta,
+                radius: app.camera.radius, target: app.camera.target.clone(),
+            };
+            if (app.gui && app.gui.rootContainer) app.gui.rootContainer.isVisible = false;
+        } else {
+            this.photoMode = false;
+            if (this._photoReturn) {
+                app.camera.alpha = this._photoReturn.alpha;
+                app.camera.beta = this._photoReturn.beta;
+                app.camera.radius = this._photoReturn.radius;
+                app.camera.target.copyFrom(this._photoReturn.target);
+            }
+            if (app.gui && app.gui.rootContainer) app.gui.rootContainer.isVisible = true;
+            if (this.cc) this.cc.start();
+            app.toasty('Back to the action!');
+        }
+    }
+
+    updatePhotoCamera() {
+        const app = this.app;
+        const cam = app.camera;
+        const dt = Math.min(0.05, app.scene.getEngine().getDeltaTime() / 1000);
+        const speed = (app.keyDown('SHIFT') ? 20 : 8) * dt;
+
+        // Dolly the orbit target camera-relative; the mouse orbits as usual.
+        const fwd = cam.target.subtract(cam.position);
+        fwd.y = 0;
+        if (fwd.lengthSquared() < 0.0001) fwd.copyFromFloats(0, 0, 1);
+        fwd.normalize();
+        const right = BABYLON.Vector3.Cross(BABYLON.Vector3.Up(), fwd);
+        if (app.keyDown('W')) cam.target.addInPlace(fwd.scale(speed));
+        if (app.keyDown('S')) cam.target.addInPlace(fwd.scale(-speed));
+        if (app.keyDown('D')) cam.target.addInPlace(right.scale(speed));
+        if (app.keyDown('A')) cam.target.addInPlace(right.scale(-speed));
+        if (app.keyDown('R')) cam.target.y += speed;
+        if (app.keyDown('F')) cam.target.y -= speed;
+
+        if (app.keyPressed('ENTER')) this.capturePhoto();
+    }
+
+    capturePhoto() {
+        const app = this.app;
+        BABYLON.Tools.CreateScreenshotUsingRenderTarget(
+            app.scene.getEngine(), app.camera, { width: 1280, height: 720 },
+            (data) => {
+                app.lastPhotoData = data;
+                if (!app.noPhotoDownload) {
+                    const a = document.createElement('a');
+                    a.href = data;
+                    a.download = 'iis-photo.png';
+                    a.click();
+                }
+            });
     }
 
     // ---- traversal toys: grind rails + trampolines ----------------------------
