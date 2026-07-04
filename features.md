@@ -88,7 +88,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 ### Sandbox Expansion Games
 | Feature | Status | Notes |
 |---|---|---|
-| Kart racing expansion | 🟡 | Kart + triggers + `l_race` compose into lap racing with no new engine systems: while driving, the VEHICLE trips triggers, and the "Glow Circuit" gallery world wires its gate to finish-then-start so every crossing closes a lap and arms the next (`test-kart-racing.js`); multi-kart AI opponents planned |
+| Kart racing expansion | ✅ | Kart + triggers + `l_race` compose into lap racing (the VEHICLE trips triggers; Glow Circuit's gate wires finish-then-start for a wire-order lap timer) (`test-kart-racing.js`); `pr_kart_ghost` AI rivals lap wired path chains — translucent, intangible, `lapped` output, shipped on Glow Circuit's 4-node racing line (`test-ghost-kart.js`) |
 | Co-op dungeon-crawl expansion | 🟡 | Enemy waves/loot core exists (EnemyManager waves, pixel loot); packaging planned |
 
 ### Community features
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Kart AI opponents (ghost karts on path chains)
-2. Play Set campaign packaging (mission chains in a gallery world)
-3. Mission structure for collectibles (story/side missions)
-4. 4P support (more buddies, more panes)
+1. Play Set campaign packaging (mission chains in a gallery world)
+2. Mission structure for collectibles (story/side missions)
+3. 4P support (more buddies, more panes)
+4. Ridable mounts (saddle a patrol blob)

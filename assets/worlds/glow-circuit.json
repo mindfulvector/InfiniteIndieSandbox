@@ -963,6 +963,94 @@
     "y": 0.8,
     "z": -4
    }
+  },
+  {
+   "wo": "l_pathnode",
+   "id": 710,
+   "po": {
+    "x": 10,
+    "y": 1,
+    "z": 0
+   },
+   "wi": [
+    {
+     "event": "next",
+     "toWo": "l_pathnode",
+     "toId": 711,
+     "action": "chain"
+    }
+   ]
+  },
+  {
+   "wo": "l_pathnode",
+   "id": 711,
+   "po": {
+    "x": 0,
+    "y": 1,
+    "z": 6
+   },
+   "wi": [
+    {
+     "event": "next",
+     "toWo": "l_pathnode",
+     "toId": 712,
+     "action": "chain"
+    }
+   ]
+  },
+  {
+   "wo": "l_pathnode",
+   "id": 712,
+   "po": {
+    "x": -10,
+    "y": 1,
+    "z": 0
+   },
+   "wi": [
+    {
+     "event": "next",
+     "toWo": "l_pathnode",
+     "toId": 713,
+     "action": "chain"
+    }
+   ]
+  },
+  {
+   "wo": "l_pathnode",
+   "id": 713,
+   "po": {
+    "x": 0,
+    "y": 1,
+    "z": -6
+   },
+   "wi": [
+    {
+     "event": "next",
+     "toWo": "l_pathnode",
+     "toId": 710,
+     "action": "chain"
+    }
+   ]
+  },
+  {
+   "wo": "pr_kart_ghost",
+   "id": 714,
+   "po": {
+    "x": 10,
+    "y": 1,
+    "z": 2
+   },
+   "pr": {
+    "speed": 6
+   },
+   "wi": [
+    {
+     "event": "follow",
+     "toWo": "l_pathnode",
+     "toId": 710,
+     "action": "chain"
+    }
+   ]
   }
  ]
 }

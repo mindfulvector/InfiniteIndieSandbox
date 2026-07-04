@@ -186,6 +186,15 @@ class Manifest {
                   ]
         }, 'KartScript');
 
+        // A ghost kart: a translucent AI rival that laps a wired path chain
+        // (wire its `follow` to the first path node). Intangible pace-setter.
+        app.createWorldObject('pr_kart_ghost', {
+            prims: [
+                     {ty: 'box', s: [1.6, 0.45, 2.4], p: [0, 0, 0],       col: [0.5, 0.85, 1.0], tex: {id: 'cloud'}},
+                     {ty: 'box', s: [1.0, 0.4, 1.0],  p: [0, 0.42, -0.3], col: [0.7, 0.95, 1.0], tex: {id: 'cloud'}},
+                  ]
+        }, 'GhostKartScript');
+
         // A quest: wire distinct event sources into its `step` input; when
         // enough different ones have fired it completes and pays pixels.
         app.createWorldObject('l_quest', {

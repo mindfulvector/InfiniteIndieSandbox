@@ -190,7 +190,9 @@ open straight into build mode. The same screen shows the **gallery** — ready-
 made worlds that ship with the game: a parkour star-run, a tiny arena, and
 **Glow Circuit**, a kart lap-race whose start gate times every lap (while
 you're driving, the kart itself trips triggers — build your own courses the
-same way). A **★ FEATURED** pick rotates daily at the top of the list.
+same way) — complete with a translucent **ghost kart** rival lapping the
+circuit to race against; place your own (Props → Ghost Kart) and wire it to
+any path chain. A **★ FEATURED** pick rotates daily at the top of the list.
 
 ### Play Mode
 In play mode, a default avatar will be dropped into the world at the origin `(0,0,0)`.
