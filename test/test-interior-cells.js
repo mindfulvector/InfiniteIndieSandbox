@@ -81,14 +81,22 @@ async function main() {
                 far: BABYLON.Vector3.Distance(pm.player.position,
                     new BABYLON.Vector3(0, 0, 0)) > 1000,
                 entered: C.cIn.script.count,
-                cellMeshes: C.door.script._cellMeshes.length,
+                // The room is REAL instances near the cell origin now.
+                roomObjects: (() => {
+                    const o = C.door.script._cellOrigin();
+                    let n = 0;
+                    window.app.BuildableObjectList.forEach((wo) => wo.instances.forEach((i) => {
+                        if (i && i !== C.door && BABYLON.Vector3.DistanceSquared(i.position, o) < 144) n++;
+                    }));
+                    return n;
+                })(),
                 walkerPos: { x: C.rec.mesh.position.x, z: C.rec.mesh.position.z },
             };
         });
         console.log('\n[2] entered', inside);
         check('walking into the door teleports the player to the far cell',
             inside.insideCell && inside.far, inside);
-        check('the cell room was built (meshes exist)', inside.cellMeshes >= 8, inside);
+        check('the room was furnished from REAL world objects', inside.roomObjects >= 12, inside);
         check('`entered` fired the wired counter', inside.entered === 1, inside);
         await h.screenshot('inside-the-cell');
 
@@ -206,21 +214,40 @@ async function main() {
         check('dying inside clears the cell state and respawns outside',
             !died.insideCell && died.nearSpawn, died);
 
-        // --- 7. Build-mode return disposes the cell; saves stay clean ---
-        const cleanup = await h.evaluate(() => {
-            const C = window.__C;
-            // Simulate the play->build transition the way the mode switch does.
-            C.door.script.update(false, null);
-            const meshesLeft = C.door.script._cellMeshes.length;
-            const cellInScene = !!window.app.scene.getMeshByName('cellFloor');
-            const doorData = window.app.findWorldObject('pr_door_cell').getAllInstanceData();
-            return { meshesLeft, cellInScene, savedInstances: doorData.length };
+        // --- 7. The room PERSISTS: build-mode return keeps it (only the
+        // exit-pad mechanism goes), it rides the world save, and re-entering
+        // NEVER refurnishes over the player's room (_roomExists guard).
+        const persist = await h.evaluate(() => {
+            const C = window.__C, app = window.app;
+            const script = C.door.script;
+            const countRoom = () => {
+                const o = script._cellOrigin();
+                let n = 0;
+                app.BuildableObjectList.forEach((wo) => wo.instances.forEach((i) => {
+                    if (i && i !== C.door && BABYLON.Vector3.DistanceSquared(i.position, o) < 144) n++;
+                }));
+                return n;
+            };
+            const before = countRoom();
+            script.update(false, null);   // play->build transition
+            const padGone = script._cellMeshes.length === 0;
+            const afterBuild = countRoom();
+            // The save carries the room: objects far from the world center.
+            const data = app.world.serialize();
+            const savedRoom = data.objects.filter((ob) => ob.po && ob.po.x > 4000).length;
+            // Back to play + re-enter: the guard must not duplicate a stick.
+            script.update(true, app.activeMode);
+            script._buildCell();
+            const afterReenter = countRoom();
+            return { before, padGone, afterBuild, savedRoom, afterReenter };
         });
-        console.log('[7] cleanup', cleanup);
-        check('returning to build mode disposes every cell mesh',
-            cleanup.meshesLeft === 0 && !cleanup.cellInScene, cleanup);
-        check('the door itself serializes (1 instance), the cell never does',
-            cleanup.savedInstances === 1, cleanup);
+        console.log('[7] persistence', persist);
+        check('build mode keeps the room (only the pad mechanism goes)',
+            persist.padGone && persist.afterBuild === persist.before, persist);
+        check('the room rides the world save (far objects serialized)',
+            persist.savedRoom >= 12, persist);
+        check('re-entering never refurnishes over the player\'s room',
+            persist.afterReenter === persist.before, persist);
 
         // --- 8. No unexpected page errors ---
         const realErrors = h.pageErrors.filter((e) => !h._isExpectedError(e));

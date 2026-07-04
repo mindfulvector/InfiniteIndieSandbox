@@ -110,6 +110,9 @@ async function main() {
             started.starts === 1, started);
         await h.screenshot('grinding');
         await h.waitFor(() => window.app.activeMode.grinding === null, null, 30000);
+        // grindEnd fires on the rail script's NEXT update after the ride
+        // ends -- wait on the wired counter, not on the same frame.
+        await h.waitFor(() => window.__R.ends.script.count >= 1, null, 20000);
         const done = await h.evaluate(() => {
             const pm = window.app.activeMode;
             return {

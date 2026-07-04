@@ -15,6 +15,7 @@ const MENU_SKILLS = 13;
 const MENU_DISCS = 14;
 const MENU_SHARE = 15;
 const MENU_GEAR = 16;
+const MENU_SLOT = 17;
 
 const MAX_LEVEL = 20;   // character level cap
 
@@ -1270,6 +1271,10 @@ class App {
                 app.menu.state = MENU_SHARE;
                 app.fetchGallery();
                 break;
+            case 7:                                 // Progression save slot
+                app.menu.prevState = MENU_MAIN;
+                app.menu.state = MENU_SLOT;
+                break;
             }
             break;
         case MENU_SHARE:
@@ -1463,11 +1468,20 @@ class App {
         case MENU_SAVE:
             if(menuItem == 0) {
                 app.menu.state = app.menu.prevState;
-            } else {
-                if(app.world && app.world.saveToSlot(menuItem)) {
+            } else if(menuItem == 1) {
+                // Save under a fresh name.
+                app.promptText('Name this world:', 'My World', (name) => {
+                    if(!name || !app.world) return;
+                    app.world.saveNamed(name);
+                    app.toasty('Saved "' + name + '".');
                     app.menu.state = app.menu.prevState;
-                } else {
-                    app.showMessage('Failed to save to slot ' + menuItem + '!');
+                });
+            } else {
+                const names = app.namedWorlds();
+                const nm = names[menuItem - 2];
+                if(nm && app.world && app.world.saveNamed(nm) !== undefined) {
+                    app.toasty('Saved "' + nm + '".');
+                    app.menu.state = app.menu.prevState;
                 }
             }
             break;
@@ -1478,12 +1492,22 @@ class App {
                 if(!app.world) {
                     app.world = new SandboxWorld(app);
                 }
-                if(app.world && app.world.loadFromSlot(menuItem)) {
+                const nm = app.namedWorlds()[menuItem - 1];
+                if(nm && app.world.loadNamed(nm)) {
+                    app.toasty('Loaded "' + nm + '".');
                     app.menu.state = MENU_HUD;
                     app.goto_playMode();
                 } else {
-                    app.showMessage('Failed to load from slot ' + menuItem + '!');
+                    app.showMessage('Failed to load that world!');
                 }
+            }
+            break;
+        case MENU_SLOT:
+            if(menuItem >= 1 && menuItem <= 3) {
+                app.selectSlot(menuItem);
+                app.menu.renderedState = -1;
+            } else if(menuItem === 0) {
+                app.menu.state = app.menu.prevState || MENU_MAIN;
             }
             break;
         case MENU_OBJ_PROPS:
@@ -1617,11 +1641,49 @@ class App {
                     type: 'button',
                     name: 'btnShare',
                     text: '6. Share Worlds',
+                    handler: () => { app.triggerMenuItem(MENU_MAIN, 6); }
+                });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnSlot',
+                    text: '7. Progression Slot  (slot ' + (this.saveSlot || 1) + ' active)',
                     handler: () => {
-                        app.triggerMenuItem(MENU_MAIN, 6);
+                        app.triggerMenuItem(MENU_MAIN, 7);
                     }
                 });
                 break;
+            case MENU_SLOT: {
+                this.MenuRect();
+                this.MenuItem({
+                    type: 'text',
+                    name: 'slotTitle',
+                    text: 'PROGRESSION SLOT',
+                    fontSize: 24,
+                    accent: true,
+                });
+                this.MenuItem({
+                    type: 'text',
+                    name: 'slotHint',
+                    text: 'Pixels, levels, skills and companions live per slot.\nThe collection (everything you own) is shared.',
+                    fontSize: 13,
+                    color: '#ff9bce',
+                });
+                for (let n = 1; n <= 3; n++) {
+                    this.MenuItem({
+                        type: 'button',
+                        name: 'btnSlot_' + n,
+                        text: n + '. Slot ' + n + (n === this.saveSlot ? '   ◉ ACTIVE' : ''),
+                        handler: () => { app.triggerMenuItem(MENU_SLOT, n); }
+                    });
+                }
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnSlotBack',
+                    text: '0. Back',
+                    handler: () => { app.triggerMenuItem(MENU_SLOT, 0); }
+                });
+                break;
+            }
             case MENU_PAUSE:                                    // Esc menu when playing
                 this.MenuRect();
 
@@ -1820,19 +1882,37 @@ class App {
                 this.MenuItem({
                     type: 'text',
                     name: 'menuLabel',
-                    text: (this.menu.state == MENU_SAVE ? 'SAVE GAME' : 'LOAD GAME'),
+                    text: (this.menu.state == MENU_SAVE ? 'SAVE WORLD' : 'LOAD WORLD'),
                     fontSize: 24,
                     accent: true,
                 });
 
-                for(let saveSlot = 1; saveSlot <= 9; saveSlot++) {
-                    this.MenuItem({
-                        type: 'button',
-                        name: ((this.menu.state == MENU_SAVE) ? 'btnSave_Slot'+saveSlot : 'btnLoad_Slot'+saveSlot),
-                        text: ((this.menu.state == MENU_SAVE) ? 'Save To Slot '+saveSlot : 'Load From Slot '+saveSlot),
-                        handler: () => {
-                            app.triggerMenuItem(this.menu.state, saveSlot);
-                        }
+                // Worlds save under NAMES now (numbered slots belong to
+                // character progression). SAVE: 1 = new name, 2+ = overwrite
+                // an existing name. LOAD: 1+ = the named worlds.
+                {
+                    const names = this.namedWorlds();
+                    const saving = this.menu.state == MENU_SAVE;
+                    if (saving) {
+                        this.MenuItem({
+                            type: 'button',
+                            name: 'btnSaveNew',
+                            text: '1. Save as new name…',
+                            handler: () => { app.triggerMenuItem(MENU_SAVE, 1); }
+                        });
+                    }
+                    if (!names.length && !saving) {
+                        this.MenuItem({ type: 'text', name: 'noWorlds',
+                            text: 'No saved worlds yet.', fontSize: 14 });
+                    }
+                    names.slice(0, 8).forEach((nm, i) => {
+                        const n = i + (saving ? 2 : 1);
+                        this.MenuItem({
+                            type: 'button',
+                            name: (saving ? 'btnSaveName_' : 'btnLoadName_') + nm,
+                            text: n + '. ' + (saving ? 'Overwrite "' : 'Load "') + nm + '"',
+                            handler: () => { app.triggerMenuItem(this.menu.state, n); }
+                        });
                     });
                 }
 
@@ -2582,7 +2662,83 @@ class App {
 
     // ---- economy (pixels + purchases) --------------------------------------
 
+    // ---- progression slots + named worlds -----------------------------------
+    // The live iis_* keys always hold the ACTIVE slot's progression; slots
+    // are snapshots (iis_slotdata_N). Ownership/collection keys are never
+    // snapshotted, so the collection is shared across slots by construction.
+
+    _isProgressionKey(k) {
+        return k === 'iis_pixels' || k === 'iis_figure' || k === 'iis_sidekick_active' ||
+            k === 'iis_sk_food' || k === 'iis_discs_equipped' || k === 'iis_hex_active' ||
+            /^iis_fig_/.test(k) || /^iis_sk_.+_(level|xp|gear)$/.test(k);
+    }
+
+    _progressionSnapshot() {
+        const out = {};
+        for (let i = 0; i < window.localStorage.length; i++) {
+            const k = window.localStorage.key(i);
+            if (k && this._isProgressionKey(k)) out[k] = window.localStorage.getItem(k);
+        }
+        return out;
+    }
+
+    selectSlot(n) {
+        if (!n || n === this.saveSlot) return;
+        this.saveEconomy();
+        const current = this._progressionSnapshot();
+        window.localStorage.setItem('iis_slotdata_' + this.saveSlot, JSON.stringify(current));
+        Object.keys(current).forEach((k) => window.localStorage.removeItem(k));
+        let blob = {};
+        try { blob = JSON.parse(window.localStorage.getItem('iis_slotdata_' + n) || '{}') || {}; }
+        catch (e) { blob = {}; }
+        Object.keys(blob).forEach((k) => window.localStorage.setItem(k, blob[k]));
+        this.saveSlot = n;
+        window.localStorage.setItem('iis_active_slot', String(n));
+        this.loadEconomy();
+        this.toasty('Progression slot ' + n + ' active.');
+    }
+
+    // Every named world in storage, sorted.
+    namedWorlds() {
+        const out = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+            const k = window.localStorage.key(i);
+            if (k && k.indexOf('iis_world_') === 0) out.push(k.slice(10));
+        }
+        return out.sort();
+    }
+
+    // One-time: old numbered world saves become named worlds ("Slot N").
+    _migrateLegacyWorlds() {
+        if (window.localStorage.getItem('iis_worlds_migrated')) return;
+        for (let n = 1; n <= 9; n++) {
+            const raw = window.localStorage.getItem('saveSlot_' + n);
+            if (raw && !window.localStorage.getItem('iis_world_Slot ' + n)) {
+                window.localStorage.setItem('iis_world_Slot ' + n, raw);
+            }
+        }
+        window.localStorage.setItem('iis_worlds_migrated', '1');
+    }
+
+    // Ask the player for a short text (world names). Tests inject via
+    // app.testPromptValue; browsers fall back to window.prompt.
+    promptText(label, def, cb) {
+        if (this.testPromptValue !== undefined) {
+            const v = this.testPromptValue;
+            this.testPromptValue = undefined;
+            cb(v);
+            return;
+        }
+        let v = null;
+        try { v = window.prompt(label, def || ''); } catch (e) { v = null; }
+        cb(v);
+    }
+
     loadEconomy() {
+        if (!this.saveSlot) {
+            this.saveSlot = parseInt(window.localStorage.getItem('iis_active_slot'), 10) || 1;
+            this._migrateLegacyWorlds();
+        }
         try {
             const p = window.localStorage.getItem('iis_pixels');
             this.pixels = p ? (parseInt(p, 10) || 0) : 0;

@@ -74,6 +74,12 @@ the cursor (a tree sits *on* the surface), while **terrain** tiles snap their
 the same walking surface and tile together seamlessly. Use `R`/`V` to raise or
 lower the object (and the whole surface height) before placing.
 
+**Snap mode:** hold `Shift` (or the controller's left bumper), or tap
+`CapsLock` to latch it on. While active, each movement key press **snaps the
+object flush** against the nearest thing in that direction — perfect for
+clicking blocks together seamlessly — and the rotate keys **match the angle**
+of the nearest similar piece instead of stepping 45°.
+
 A **sidebar on the left** lists every object in the current category — click
 a row (or use the arrow keys) to switch what you're placing.
 
@@ -145,7 +151,10 @@ Furnish with the **Decor** category: table, chair, floor lamp, and rug.
 
 For a whole room behind a single door, place a **Cell Door** (Props) — its
 glowing panel is a portal: walk into it in play mode and you're teleported
-into a small decorated interior (its settings pick the theme, a cozy den or a
+into a small decorated interior — and that room is **yours to remodel**:
+it's made of real objects, so enter build mode while inside (or click its
+pieces from anywhere) to redecorate, and your changes save with the world
+and survive every visit (its settings pick the starting theme, a cozy den or a
 columned hall). Step on the glowing exit pad to return to where you entered.
 While you're inside, enemies outside politely freeze. The door fires *Player
 Entered* / *Player Exited* wiring events, so entering a room can start timers,
@@ -195,8 +204,12 @@ timers.
 * Press `Shift+Space` to open its properties
 * Press `Delete` to remove the highlighted object
 
-**Saving:** Press `Esc` and choose Save Game / Load Game to store worlds in
-save slots.
+**Saving:** Press `Esc` and choose Save World / Load World — worlds save
+under **names you type**, and you can save or load at any time without
+leaving your session. Your character's **progression** (pixels, levels,
+skills, companions) lives separately in one of three **progression slots**
+(main menu → Progression Slot); everything you *own* is shared across
+slots, so buying a figure once means having it everywhere.
 
 **Sharing:** the main menu's **Share Worlds** screen exports your current
 world as a `.json` file you can send to anyone, and imports world files you
