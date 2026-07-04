@@ -96,7 +96,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 |---|---|---|
 | Saving multiple Sandbox worlds locally | ✅ | 9 save slots, transforms/params/wires persist (`test-save-load.js`) |
 | Upload + share creations online | 🟡 | Serverless sharing via world files: main menu → Share Worlds exports the current world as a versioned `.json` (same snapshot as save slots) and imports validate format/version, rejecting bad files without touching the world; unknown object types skip gracefully (`test-share.js`); online gallery planned |
-| Browse/rate/download community worlds | ⬜ | |
+| Browse/rate/download community worlds | 🟡 | Gallery browsing on the Share screen: `assets/worlds/index.json` catalog fetched over HTTP, one-digit import into build mode, plus `importWorldFromUrl` for arbitrary links; ships Starter Parkour + Tiny Arena (`test-gallery.js`); remote gallery + ratings planned |
 | Featured/curated rotations | ⬜ | |
 
 ## Engine / platform underpinnings (not on the public list)
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Community browsing (import from a shared gallery URL)
-2. Buddy upgrade: enemies target both players, buddy HP + shared camera
-3. Kart racing packaging (kart + l_race + checkpoints as a course kit)
-4. Sidekick equipment (hats/trinkets bought with food)
+1. Buddy upgrade: enemies target both players, buddy HP + shared camera
+2. Kart racing packaging (kart + l_race + checkpoints as a course kit)
+3. Sidekick equipment (hats/trinkets bought with food)
+4. Featured/curated gallery rotations

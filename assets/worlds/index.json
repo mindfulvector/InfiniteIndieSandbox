@@ -1,0 +1,14 @@
+{
+  "gallery": [
+    {
+      "file": "starter-parkour.json",
+      "name": "Starter Parkour",
+      "desc": "A rising star-run: four steps, four stars, a scoreboard payoff"
+    },
+    {
+      "file": "tiny-arena.json",
+      "name": "Tiny Arena",
+      "desc": "A walled pit where entering wakes the spawner"
+    }
+  ]
+}

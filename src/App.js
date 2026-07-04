@@ -1237,6 +1237,7 @@ class App {
             case 6:                                 // Share Worlds (export/import files)
                 app.menu.prevState = MENU_MAIN;
                 app.menu.state = MENU_SHARE;
+                app.fetchGallery();
                 break;
             }
             break;
@@ -1247,6 +1248,11 @@ class App {
                 app.downloadWorld();
             } else if(menuItem === 2) {
                 app.importWorldFromPicker();
+            } else if(app.gallery && app.gallery[menuItem - 3]) {
+                const entry = app.gallery[menuItem - 3];
+                app.importWorldFromUrl('./assets/worlds/' + entry.file).then((ok) => {
+                    if(ok) app.goto_buildMode();
+                });
             }
             break;
         case MENU_PAUSE:
@@ -1943,6 +1949,28 @@ class App {
                     text: '2. Import a world file',
                     handler: () => { app.triggerMenuItem(MENU_SHARE, 2); }
                 });
+                this.MenuItem({
+                    type: 'text',
+                    name: 'galleryHdr',
+                    text: '— GALLERY —',
+                    fontSize: 14,
+                    color: '#9fb3c8',
+                });
+                if(!this.gallery) {
+                    this.MenuItem({ type: 'text', name: 'galleryLoading', text: 'Loading gallery…', fontSize: 14 });
+                } else if(this.gallery.length === 0) {
+                    this.MenuItem({ type: 'text', name: 'galleryEmpty', text: 'No gallery worlds found.', fontSize: 14 });
+                } else {
+                    this.gallery.forEach((g, i) => {
+                        const n = 3 + i;
+                        this.MenuItem({
+                            type: 'button',
+                            name: 'btnGallery_' + i,
+                            text: n + '. ' + g.name + ' — ' + g.desc,
+                            handler: () => { app.triggerMenuItem(MENU_SHARE, n); }
+                        });
+                    });
+                }
                 this.MenuItem({
                     type: 'button',
                     name: 'btnShareBack',
@@ -2709,6 +2737,40 @@ class App {
         this.world.loadFromData({ objects: payload.objects });
         this.toasty('World imported!');
         return true;
+    }
+
+    // Fetch the world gallery index (bundled with the game today; the same
+    // path works against any remote gallery base later). Populates
+    // this.gallery and re-renders the Share screen when it arrives.
+    fetchGallery() {
+        if (this.gallery || this._galleryLoading) return;
+        this._galleryLoading = true;
+        fetch('./assets/worlds/index.json')
+            .then((r) => r.json())
+            .then((idx) => {
+                this.gallery = (idx && Array.isArray(idx.gallery)) ? idx.gallery : [];
+                this.menu.renderedState = -1;
+            })
+            .catch((e) => {
+                console.error('gallery index failed to load', e);
+                this.gallery = [];
+            })
+            .finally(() => { this._galleryLoading = false; });
+    }
+
+    // Import a world file straight from a URL. Resolves true on success.
+    importWorldFromUrl(url) {
+        return fetch(url)
+            .then((r) => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.text();
+            })
+            .then((text) => this.importWorldData(text))
+            .catch((e) => {
+                console.error('world fetch failed', url, e);
+                this.toasty('Could not fetch that world.');
+                return false;
+            });
     }
 
     importWorldFromPicker() {
