@@ -80,6 +80,15 @@ async function main() {
             steps.length > 0 && steps.every((s) => s.surface === 'grass'), steps);
         await h.screenshot('walking-footsteps');
 
+        // The walk above can carry the avatar right up to the grid's edge --
+        // re-anchor at the spawn point so the teleports and jumps below happen
+        // over solid ground (jumping off the world edge never lands).
+        await h.evaluate(() => {
+            const pm = window.app.activeMode;
+            pm.player.position = pm.spawnPoint.clone();
+        });
+        await h.waitFrames(20);   // drop + settle
+
         // --- 3. The surface underfoot picks the footstep sound ---
         const surfaces = await h.evaluate(() => {
             const app = window.app, pm = app.activeMode;
@@ -130,8 +139,12 @@ async function main() {
         });
         await h.waitFor(() => {
             const n = window.app.sound.recent.map((r) => r.name);
-            return n.includes('jump') && n.includes('doubleJump') && n.includes('land');
+            return n.includes('jump') && n.includes('doubleJump');
         }, null, 20000).catch(() => {});
+        // The double jump flies high, and under software rendering coming back
+        // down can take a while -- wait for the landing itself, generously.
+        await h.waitFor(() => window.app.sound.recent.some((r) => r.name === 'land'),
+            null, 60000).catch(() => {});
         const jumpNames = await names();
         console.log('\n[4] traversal sounds', jumpNames);
         check('a jump rings jump', jumpNames.includes('jump'), jumpNames);
