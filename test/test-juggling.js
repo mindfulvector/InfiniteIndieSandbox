@@ -55,7 +55,9 @@ async function main() {
         check('the launcher stuns the walker', launch.stun >= 40, launch);
         check('the launcher deals its damage', launch.dmg >= 1, launch);
 
-        await h.waitFrames(6);
+        // Wait for the rise by CONDITION: at unthrottled headless fps a few
+        // frames cover almost no wall-clock time (dt-based physics barely move).
+        await h.waitFor((y0) => window.__rec.mesh.position.y > y0 + 0.4, launch.y0, 20000);
         const rise = await h.evaluate(() => ({
             y: window.__rec.mesh.position.y,
             airborne: window.app.activeMode.enemyManager.isAirborne(window.__rec),
@@ -122,7 +124,7 @@ async function main() {
             pm.launcherAttack();
             return { airborne: rec.airborne, vy: rec.launchVy, y0: rec.mesh.position.y };
         });
-        await h.waitFrames(6);
+        await h.waitFor((y0) => window.__fly.mesh.position.y > y0 + 0.3, flyer.y0, 20000);
         const flyRise = await h.evaluate(() => ({ y: window.__fly.mesh.position.y }));
         console.log('[5] flyer pop', { flyer, flyRise });
         check('the launcher pops the flyer (airborne timer + upward speed)',

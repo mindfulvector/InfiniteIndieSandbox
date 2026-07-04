@@ -34,7 +34,23 @@ async function main() {
             em.enemies.forEach((e) => e.mesh.dispose(false, false));
             em.enemies = [];
         });
-        await h.waitFrames(30);   // settle on the ground
+        // Settle on the ground by CONDITION, not frame count: at unthrottled
+        // headless frame rates a fixed frame wait covers almost no wall-clock
+        // time, and capturing y0 mid-spawn-drop breaks the landing checks.
+        await h.evaluate(() => new Promise((resolve) => {
+            const pm = window.app.activeMode;
+            let last = null, stable = 0, frames = 0;
+            const tick = () => {
+                frames++;
+                if (frames > 900) return resolve();
+                const y = pm.player.position.y;
+                if (last !== null && Math.abs(y - last) < 0.001) stable++; else stable = 0;
+                last = y;
+                if (stable >= 5) return resolve();
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        }));
 
         const cfg = await h.evaluate(() => ({
             maxJumps: window.app.activeMode.cc._maxJumps,
