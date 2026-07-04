@@ -711,7 +711,10 @@ class PlayMode {
             ellipsoid: new BABYLON.Vector3(0.4, 1, 0.4),
             ellipsoidOffset: new BABYLON.Vector3(0, 1, 0),
         });
-        this.buddy = { root, parts, body, walkPhase: 0, attackCooldown: 0 };
+        this.buddy = {
+            root, parts, body, walkPhase: 0, attackCooldown: 0,
+            hp: 60, maxHp: 60, hurtCooldown: 0, downed: 0,
+        };
         this.app.toasty('Player 2 joined!');
     }
 
@@ -720,6 +723,39 @@ class PlayMode {
         this.buddy.root.dispose(false, false);
         this.buddy = null;
         this.app.toasty('Player 2 left.');
+    }
+
+    // Every live player position the enemies can hunt (P1 always; the buddy
+    // unless it's down). EnemyManager picks the nearest per enemy.
+    combatTargets() {
+        const out = [];
+        if (this.player) out.push({ kind: 'p1', pos: this.player.position });
+        if (this.buddy && this.buddy.downed <= 0) {
+            out.push({ kind: 'buddy', pos: this.buddy.root.position });
+        }
+        return out;
+    }
+
+    // Route enemy damage to whichever player was struck.
+    damageTarget(t, amount, sourcePos) {
+        if (t && t.kind === 'buddy') this.damageBuddy(amount);
+        else this.damagePlayer(amount, sourcePos);
+    }
+
+    // Buddy damage: no blocking or i-frames, just a hurt cooldown and a
+    // downed state -- at 0 HP the buddy slumps for a few seconds, enemies
+    // lose interest, then it pops back up at half health. Couch-friendly:
+    // nobody sits out for long.
+    damageBuddy(amount) {
+        const b = this.buddy;
+        if (!b || b.downed > 0 || b.hurtCooldown > 0) return;
+        b.hurtCooldown = 15;
+        b.hp -= amount;
+        if (b.hp <= 0) {
+            b.hp = 0;
+            b.downed = 180;
+            this.app.toasty('Player 2 is down!  Back up in a moment...');
+        }
     }
 
     // The buddy's melee: the same frontal-arc swing as P1, from the buddy.
@@ -744,6 +780,22 @@ class PlayMode {
             return;
         }
         if (b.attackCooldown > 0) b.attackCooldown--;
+        if (b.hurtCooldown > 0) b.hurtCooldown--;
+        if (b.downed <= 0 && b.hp < b.maxHp) b.hp = Math.min(b.maxHp, b.hp + 0.02);
+
+        // Downed: slump in place (gravity still applies), ignore input, and
+        // pop back up at half health when the count runs out.
+        if (b.downed > 0) {
+            b.downed--;
+            b.root.scaling.y = 0.45;
+            b.body.step(0, 0);
+            if (b.downed === 0) {
+                b.hp = Math.ceil(b.maxHp / 2);
+                b.root.scaling.y = 1;
+                this.app.toasty('Player 2 is back up!');
+            }
+            return;
+        }
 
         // Input: the harness hook, else live sticks from the second pad.
         const test = this.app.testBuddyPad;
@@ -792,6 +844,18 @@ class PlayMode {
              BABYLON.Vector3.Distance(b.root.position, this.player.position) > 60)) {
             b.root.position = this.player.position.add(new BABYLON.Vector3(1.6, 1.5, 0));
             b.body.vy = 0;
+        }
+
+        // Frame both players: when the buddy roams, ease the orbit radius out
+        // so both stay on screen. Camera elasticity is OFF, so the controller
+        // leaves the radius to us and the mouse wheel; we only ever widen.
+        if (this.player) {
+            const sep = BABYLON.Vector3.Distance(b.root.position, this.player.position);
+            if (sep > 8 && this.app.camera.radius < Math.min(46, sep * 1.4)) {
+                const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);
+                const want = Math.min(46, sep * 1.4);
+                this.app.camera.radius += (want - this.app.camera.radius) * Math.min(1, 2.5 * dt);
+            }
         }
     }
 
@@ -1294,6 +1358,14 @@ class PlayMode {
 
     respawn() {
         if (this.driving) this.dismountKart();   // death mid-drive: on foot first
+        // The buddy comes back with P1, healthy and at their side.
+        if (this.buddy) {
+            this.buddy.hp = this.buddy.maxHp;
+            this.buddy.downed = 0;
+            this.buddy.root.scaling.y = 1;
+            this.buddy.root.position = this.spawnPoint.add(new BABYLON.Vector3(1.6, 1.5, 0));
+            this.buddy.body.vy = 0;
+        }
         this.playerHp = this.playerMaxHp;
         this.hurtCooldown = 60;
         if (this.player) this.player.position = this.spawnPoint.clone();

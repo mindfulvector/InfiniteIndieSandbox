@@ -229,11 +229,14 @@ and walk into it in play mode to hop in. `W`/`S` (or the left stick) throttle
 with real momentum, `A`/`D` steer — sharper the faster you go — and `Space`
 hops out. Dying parks the kart back where you left it.
 
-**Couch co-op (v1):** press `B` — or press any button on a **second
-gamepad** — and a friendly green figure drops in beside you. Player 2 moves
-with their left stick, jumps with `A` (hold), and swings melee with `X`.
-If they fall off the world they pop back at your side. For now enemies and
-triggers only pay attention to player 1 — the buddy is pure backup muscle.
+**Couch co-op:** press `B` — or press any button on a **second gamepad** —
+and a friendly green figure drops in beside you. Player 2 moves with their
+left stick, jumps with `A` (hold), and swings melee with `X`. Enemies hunt
+whichever of you is **closer**, and player 2 has their own health: at zero
+they slump for a few seconds (enemies lose interest) and pop back up at half.
+Falls teleport them back to your side, the camera widens when you split up,
+and dying together respawns you together. Triggers and pickups still only
+answer to player 1.
 
 **Gamepad:** full pad play is supported. The **left stick** moves, the
 **right stick** orbits the camera, and **A** jumps (hold to glide, tap again

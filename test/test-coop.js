@@ -11,6 +11,11 @@
  *   - falling off the world auto-rescues the buddy to P1's side,
  *   - a second pad's wantsJoin flag drops the buddy in without the keyboard,
  *   - leaving disposes the rig,
+ *   - enemies hunt the NEAREST player: a walker beside the buddy (with P1
+ *     far away) walks at and damages the BUDDY,
+ *   - at 0 HP the buddy goes down (slumped, out of combatTargets, input
+ *     ignored) and auto-revives at half health,
+ *   - respawn brings the buddy back healthy at P1's side,
  *   - no page errors along the way.
  */
 
@@ -130,6 +135,77 @@ async function main() {
         await h.waitFor(() => !!window.app.activeMode.buddy, null, 20000);
         console.log('[6] pad join', rejoin);
         check('leaving disposes the buddy and a pad press re-joins it', rejoin.gone, rejoin);
+
+        // --- 6b. Enemies hunt the nearest player (the buddy) ---
+        const hunt = await h.evaluate(() => {
+            const pm = window.app.activeMode, em = pm.enemyManager, b = pm.buddy;
+            em.enemies.forEach((e) => e.mesh.dispose(false, false)); em.enemies = [];
+            // P1 far, buddy near the walker: the walker must pick the buddy.
+            pm.player.position.copyFrom(b.root.position.add(new BABYLON.Vector3(-30, 0, 0)));
+            em.spawnWalker(b.root.position.add(new BABYLON.Vector3(3, 1, 0)));
+            const rec = em.enemies[0];
+            rec.fade = 0; rec.meleeCd = 0; rec.speed = 4;
+            window.__hunter = rec;
+            b.hp = 60; b.hurtCooldown = 0;
+            return { d0: BABYLON.Vector3.Distance(rec.mesh.position, b.root.position) };
+        });
+        await h.waitFor(() => window.app.activeMode.buddy.hp < 60, null, 30000);
+        const hunted = await h.evaluate(() => ({
+            hp: window.app.activeMode.buddy.hp,
+            targets: window.app.activeMode.combatTargets().map((t) => t.kind),
+        }));
+        console.log('[6b] nearest-player hunting', { hunt, hunted });
+        check('a walker hunts and damages the nearby BUDDY (P1 far away)',
+            hunted.hp < 60 && hunted.targets.includes('buddy'), hunted);
+
+        // --- 6c. Downed at 0 HP: out of targets, then revives at half ---
+        const downed = await h.evaluate(() => {
+            const pm = window.app.activeMode, b = pm.buddy;
+            b.hp = 5; b.hurtCooldown = 0;
+            pm.damageBuddy(50);
+            return {
+                downed: b.downed > 0,
+                squashed: b.root.scaling.y < 0.6,
+                targets: pm.combatTargets().map((t) => t.kind),
+            };
+        });
+        console.log('[6c] downed', downed);
+        check('at 0 HP the buddy goes down and leaves combatTargets',
+            downed.downed && !downed.targets.includes('buddy'), downed);
+        const revived = await h.evaluate(() => {
+            const pm = window.app.activeMode, b = pm.buddy;
+            b.downed = 2;   // deterministic fast-forward to the revive edge
+            return true;
+        });
+        await h.waitFor(() => {
+            const b = window.app.activeMode.buddy;
+            return b.downed === 0 && b.hp >= 30;
+        }, null, 20000);
+        const up = await h.evaluate(() => ({
+            hp: window.app.activeMode.buddy.hp,
+            scale: window.app.activeMode.buddy.root.scaling.y,
+        }));
+        console.log('[6d] revived', up);
+        check('the buddy revives at half health, standing tall', up.hp >= 30 && up.scale === 1, up);
+
+        // --- 6e. Respawn brings the buddy back healthy at P1's side ---
+        const rebirth = await h.evaluate(() => {
+            const pm = window.app.activeMode, b = pm.buddy;
+            b.hp = 7;
+            window.app.pixels = 0;
+            pm.respawn();
+            return {
+                hp: b.hp,
+                near: BABYLON.Vector3.Distance(b.root.position, pm.spawnPoint) < 4,
+            };
+        });
+        console.log('[6e] respawn', rebirth);
+        check('respawn restores the buddy to full health at the spawn point',
+            rebirth.hp === 60 && rebirth.near, rebirth);
+        await h.evaluate(() => {
+            const em = window.app.activeMode.enemyManager;
+            em.enemies.forEach((e) => e.mesh.dispose(false, false)); em.enemies = [];
+        });
 
         // --- 7. Clean leave ---
         const left = await h.evaluate(() => {

@@ -209,7 +209,9 @@ class EnemyManager {
 
     updateProjectiles() {
         if (this.projectiles.length === 0) return;
-        const target = this.pm.player ? this.pm.player.position.add(new BABYLON.Vector3(0, 1, 0)) : null;
+        // Shots can strike EITHER player (chest height).
+        const targets = (this.pm.combatTargets ? this.pm.combatTargets() : [])
+            .map((t) => ({ t: t, hit: t.pos.add(new BABYLON.Vector3(0, 1, 0)) }));
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const pr = this.projectiles[i];
             if (!pr || !pr.mesh) continue;   // array can shrink mid-frame (resets)
@@ -223,8 +225,12 @@ class EnemyManager {
             pr.mesh.rotation.y += 0.3;
             pr.mesh.rotation.x += 0.2;
             pr.life--;
-            if (target && BABYLON.Vector3.Distance(pr.mesh.position, target) < 1.1) {
-                this.pm.damagePlayer(7, pr.mesh.position);
+            let struck = null;
+            for (const rec of targets) {
+                if (BABYLON.Vector3.Distance(pr.mesh.position, rec.hit) < 1.1) { struck = rec.t; break; }
+            }
+            if (struck) {
+                this.pm.damageTarget(struck, 7, pr.mesh.position);
                 pr.mesh.dispose();
                 this.projectiles.splice(i, 1);
             } else if (pr.life <= 0) {
@@ -260,18 +266,34 @@ class EnemyManager {
             this.spawnTimer = Math.max(24, 80 - this.wave * 4);
         }
 
+        // Every enemy hunts the NEAREST live player: P1, or the co-op buddy
+        // (a downed buddy is excluded until it revives).
+        const targets = this.pm.combatTargets
+            ? this.pm.combatTargets()
+            : [{ kind: 'p1', pos: p }];
+
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const e = this.enemies[i];
             if (!e) continue;   // array can shrink mid-frame (defeats, resets)
-            if (e.kind === 'walker') this.updateWalker(e, p, i);
-            else this.updateFlyer(e, p);
+            if (e.kind === 'walker') this.updateWalker(e, p, i, targets);
+            else this.updateFlyer(e, p, targets);
         }
 
         this.updateProjectiles();
         this.updateEffects();
     }
 
-    updateFlyer(e, p) {
+    // Nearest combat target to a mesh (horizontal distance).
+    _nearestTarget(m, targets) {
+        let best = null, bd = Infinity;
+        (targets || []).forEach((t) => {
+            const d = Math.hypot(t.pos.x - m.position.x, t.pos.z - m.position.z);
+            if (d < bd) { bd = d; best = t; }
+        });
+        return best;
+    }
+
+    updateFlyer(e, p, targets) {
         const m = e.mesh;
         if (e.fade > 0) { e.fade--; m.visibility = 1 - e.fade / 12; }
 
@@ -297,30 +319,35 @@ class EnemyManager {
         m.rotation.y += e.spin;
         m.rotation.x += e.spin * 0.5;
 
-        const dx = p.x - m.position.x, dz = p.z - m.position.z;
+        const tgt = this._nearestTarget(m, targets);
+        if (!tgt) return;
+        const tp = tgt.pos;
+        const dx = tp.x - m.position.x, dz = tp.z - m.position.z;
         const dist = Math.hypot(dx, dz);
         if (dist > 2.2) {
             const inv = e.speed / (dist || 1);
             m.position.x += dx * inv;
             m.position.z += dz * inv;
         } else if (e.attackCd <= 0) {
-            this.pm.damagePlayer(6, m.position);
+            this.pm.damageTarget(tgt, 6, m.position);
             e.attackCd = 60;
-            this.spawnFlash(p.add(new BABYLON.Vector3(0, 1, 0)), e.color, 8);
+            this.spawnFlash(tp.add(new BABYLON.Vector3(0, 1, 0)), e.color, 8);
         }
         if (e.attackCd > 0) e.attackCd--;
 
-        const desiredY = p.y + e.hover + Math.sin(this.frame * 0.06 + e.bobPhase) * 0.25;
+        const desiredY = tp.y + e.hover + Math.sin(this.frame * 0.06 + e.bobPhase) * 0.25;
         m.position.y += (desiredY - m.position.y) * 0.1;
     }
 
-    updateWalker(e, p, index) {
+    updateWalker(e, p, index, targets) {
         const m = e.mesh;
         if (e.fade > 0) e.fade--;
 
-        const dx = p.x - m.position.x, dz = p.z - m.position.z;
+        const tgt = this._nearestTarget(m, targets) || { kind: 'p1', pos: p };
+        const tp = tgt.pos;
+        const dx = tp.x - m.position.x, dz = tp.z - m.position.z;
         const dist = Math.hypot(dx, dz);
-        m.rotation.y = Math.atan2(dx, dz);   // face the player
+        m.rotation.y = Math.atan2(dx, dz);   // face the hunted player
 
         // Chilled (Frost Nova): rooted to the spot -- gravity still applies
         // (so a chilled walker mid-air falls) but no walking or attacks. Kept
@@ -362,18 +389,18 @@ class EnemyManager {
             moving = true;
             // Ranged fire while approaching (mid-range).
             if (dist < e.rangedRange && e.rangedCd <= 0) {
-                this.fireProjectile(e, p);
+                this.fireProjectile(e, tp);
                 e.rangedCd = e.rangedRate;
             }
         } else if (e.meleeCd <= 0) {
-            // Walkers swing forward only: the player must be within the
+            // Walkers swing forward only: the target must be within the
             // frontal arc of the walker's facing to take the hit.
             const fwd = { x: Math.sin(m.rotation.y), z: Math.cos(m.rotation.y) };
             const inv = 1 / (dist || 1);
             if (dx * inv * fwd.x + dz * inv * fwd.z >= 0.34) {
-                this.pm.damagePlayer(8, m.position);
+                this.pm.damageTarget(tgt, 8, m.position);
                 e.meleeCd = e.meleeRate;
-                this.spawnFlash(p.add(new BABYLON.Vector3(0, 1, 0)), e.color, 8);
+                this.spawnFlash(tp.add(new BABYLON.Vector3(0, 1, 0)), e.color, 8);
             }
         }
         if (e.rangedCd > 0) e.rangedCd--;

@@ -41,7 +41,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 |---|---|---|
 | 2P local split-screen campaigns (4P brawler) | ⬜ | |
 | Up to 4P Sandbox (local + online) | ⬜ | |
-| Drop-in/drop-out co-op | 🟡 | Drop-in buddy v1: `B` (or any button on a second gamepad) drops in a friendly bipedal rig on the shared GravityBody — second pad's stick moves it camera-relative, A jumps, X swings the shared frontal-arc melee; falls auto-rescue to P1's side; enemies/triggers still track P1 only (`test-coop.js`); full P2 figure + shared camera framing planned |
+| Drop-in/drop-out co-op | ✅ | Drop-in buddy: `B` or any second-pad button joins; stick/A/X drive move/jump/melee; enemies hunt the NEAREST player (flyers, walker melee, projectiles all route via `combatTargets`/`damageTarget`), buddy has 60 HP with a downed-then-revive-at-half cycle (out of targeting while down), falls auto-rescue, respawn restores it, and the camera widens to frame both players (`test-coop.js`); full P2 figure avatar planned |
 
 ### Digital figures and collection
 | Feature | Status | Notes |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Buddy upgrade: enemies target both players, buddy HP + shared camera
-2. Kart racing packaging (kart + l_race + checkpoints as a course kit)
-3. Sidekick equipment (hats/trinkets bought with food)
-4. Featured/curated gallery rotations
+1. Kart racing packaging (kart + l_race + checkpoints as a course kit)
+2. Sidekick equipment (hats/trinkets bought with food)
+3. Featured/curated gallery rotations
+4. Split-screen exploration (second camera viewport)
