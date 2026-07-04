@@ -624,6 +624,11 @@ class PlayMode {
         this.driving = inst;
         this.cc.stop();
         this.clearLockOn();
+        // The seated rider must not collide: the kart's moveWithCollisions
+        // would shove the kart away from its own passenger every frame and
+        // the pair would ratchet skyward.
+        this._riderHadCollisions = this.player.checkCollisions;
+        this.player.checkCollisions = false;
         if (!inst._kartBody) {
             inst._kartBody = new GravityBody(this.app.scene, inst, {
                 ellipsoid: new BABYLON.Vector3(0.9, 0.5, 1.3),
@@ -645,6 +650,7 @@ class PlayMode {
         this.driving = null;
         inst._mountCooldown = 45;   // no instant re-mount while stepping off
         if (this.player) {
+            this.player.checkCollisions = this._riderHadCollisions !== false;
             this.player.position = inst.position.add(new BABYLON.Vector3(1.6, 1.2, 0));
         }
         if (this.cc) this.cc.start();

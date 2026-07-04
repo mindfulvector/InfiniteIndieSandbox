@@ -79,7 +79,11 @@ class TriggerScript {
         if(!player) return;
 
         const key = player.uniqueId != null ? player.uniqueId : 'player';
-        const inside = this.inst.intersectsMesh(player, false);
+        // While driving, the VEHICLE trips triggers (the rider's feet sit
+        // above most volumes; racing semantics want the kart on the line).
+        const rider = modeObject.driving;
+        const inside = this.inst.intersectsMesh(player, false) ||
+            (rider ? this.inst.intersectsMesh(rider, false) : false);
         const wasInside = !!this.state.entered[key];
 
         if(inside && !wasInside) {

@@ -88,7 +88,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 ### Sandbox Expansion Games
 | Feature | Status | Notes |
 |---|---|---|
-| Kart racing expansion | ⬜ | |
+| Kart racing expansion | 🟡 | Kart + triggers + `l_race` compose into lap racing with no new engine systems: while driving, the VEHICLE trips triggers, and the "Glow Circuit" gallery world wires its gate to finish-then-start so every crossing closes a lap and arms the next (`test-kart-racing.js`); multi-kart AI opponents planned |
 | Co-op dungeon-crawl expansion | 🟡 | Enemy waves/loot core exists (EnemyManager waves, pixel loot); packaging planned |
 
 ### Community features
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Kart racing packaging (kart + l_race + checkpoints as a course kit)
-2. Sidekick equipment (hats/trinkets bought with food)
-3. Featured/curated gallery rotations
-4. Split-screen exploration (second camera viewport)
+1. Sidekick equipment (hats/trinkets bought with food)
+2. Featured/curated gallery rotations
+3. Split-screen exploration (second camera viewport)
+4. Kart AI opponents (ghost karts on path chains)
