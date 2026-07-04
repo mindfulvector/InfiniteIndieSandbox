@@ -311,6 +311,13 @@ flash as you pass and fire a *Flown Through* event, so wiring four of them
 into a **Race** controller (start, checkpoints, finish) builds a whole
 aerial time-trial. Rings notice your kart and Sky-Wing too, not just you.
 
+**Villagers:** place **Villagers** (Props) to give your world a
+neighborhood — they wander near home, and when you walk up they stop,
+turn to you, and say something (pick their mood in the options: friendly,
+mysterious, grumpy, or heroic). Every greeting fires a *Talked To* wiring
+event, so a Quest set to a few steps becomes a classic "talk to everyone
+in town" errand.
+
 **Companions:** place a **Recruit** (Props) and walk up to them — a
 conversation opens. Talk, ask questions, and if you like them, hire them:
 Fern joins for free, Rusty and Lumen charge pixels. Hired companions walk

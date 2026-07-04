@@ -186,6 +186,17 @@ class Manifest {
                   ]
         }, 'KartScript');
 
+        // An ambient villager: wanders its home patch, greets with a talk
+        // bubble, edge-fires `talked` (quest fodder). Mood picks its lines.
+        app.createWorldObject('pr_villager', {
+            prims: [
+                     {ty: 'box',      s: [0.5, 0.75, 0.35],      p: [0, 0.15, 0],      col: [0.75, 0.6, 0.4], tex: {id: 'cloud'}},
+                     {ty: 'box',      s: [0.38, 0.38, 0.34],     p: [0, 0.75, 0],      col: [0.92, 0.8, 0.68], tex: {id: 'cloud'}},
+                     {ty: 'cylinder', s: [0.13, 0.55, 0.13, 8, 1], p: [-0.14, -0.5, 0], col: [0.4, 0.35, 0.3], tex: {id: 'wood', s: 60}, nm: 'vleg1'},
+                     {ty: 'cylinder', s: [0.13, 0.55, 0.13, 8, 1], p: [0.14, -0.5, 0],  col: [0.4, 0.35, 0.3], tex: {id: 'wood', s: 60}, nm: 'vleg2'},
+                  ]
+        }, 'VillagerScript');
+
         // A hireable-companion recruit: walk up to open their dialog tree.
         app.createWorldObject('pr_recruit', {
             prims: [
