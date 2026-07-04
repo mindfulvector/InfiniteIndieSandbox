@@ -12,6 +12,9 @@
  *   - a play reset (respawn) puts the platform back at node 1,
  *   - restPos keeps the SAVED position at the build-time home even while the
  *     platform is mid-route,
+ *   - an en_blob wired to the chain PATROLS it (moves between nodes), pauses
+ *     to stare when the player comes near, resumes when they leave, and a
+ *     pathless blob keeps the old stationary bob (external moves stick),
  *   - no page errors along the way.
  */
 
@@ -175,7 +178,76 @@ async function main() {
         check('a mid-route save stores the build-time home, not the live position',
             saved.hasRest && saved.savedMatchesRest, saved);
 
-        // --- 9. No unexpected page errors ---
+        // --- 9. Enemy patrol: a blob wired to the chain walks it ---
+        await h.evaluate(() => {
+            const app = window.app, P = window.__P;
+            const blob = app.findWorldObject('en_blob').createInstance();
+            blob.position = P.n1.position.add(new BABYLON.Vector3(-2, 0, -2));
+            blob.wires.push({ event: 'patrol', toWo: 'l_pathnode', toId: P.n1.worldId, action: 'chain' });
+            blob.params.patrolSpeed = 3;
+            // Park the player far away so the aggro pause can't kick in yet.
+            window.app.activeMode.player.position.copyFrom(
+                P.n1.position.add(new BABYLON.Vector3(-40, 0, -40)));
+            window.__blob = blob;
+            blob.script._wasPlay = null;   // force the play-transition snap
+        });
+        await h.waitFrames(5);
+        const pat0 = await h.evaluate(() => ({
+            d2: BABYLON.Vector3.Distance(window.__blob.script._pathPos, window.__P.n2.position),
+            snapped: BABYLON.Vector3.Distance(window.__blob.position, window.__P.n1.position) < 7,
+        }));
+        await h.waitFrames(12);
+        const pat1 = await h.evaluate(() => ({
+            d2: BABYLON.Vector3.Distance(window.__blob.script._pathPos, window.__P.n2.position),
+        }));
+        console.log('[9] patrol travel', { pat0, pat1 });
+        check('a patrol-wired blob snaps to the path and walks toward node 2',
+            pat0.snapped && pat1.d2 < pat0.d2 - 0.1, { pat0, pat1 });
+
+        // --- 9b. The patrol pauses when the player comes near, then resumes ---
+        await h.evaluate(() => {
+            window.app.activeMode.player.position.copyFrom(
+                window.__blob.script._pathPos.add(new BABYLON.Vector3(2, 0, 0)));
+        });
+        await h.waitFrames(4);
+        const near0 = await h.evaluate(() => ({
+            x: window.__blob.script._pathPos.x, z: window.__blob.script._pathPos.z }));
+        await h.waitFrames(10);
+        const near1 = await h.evaluate(() => ({
+            x: window.__blob.script._pathPos.x, z: window.__blob.script._pathPos.z }));
+        const pausedDist = Math.hypot(near1.x - near0.x, near1.z - near0.z);
+        await h.evaluate(() => {
+            window.app.activeMode.player.position.copyFrom(
+                window.__blob.script._pathPos.add(new BABYLON.Vector3(-40, 0, -40)));
+        });
+        await h.waitFrames(12);
+        const far1 = await h.evaluate(() => ({
+            x: window.__blob.script._pathPos.x, z: window.__blob.script._pathPos.z }));
+        const resumedDist = Math.hypot(far1.x - near1.x, far1.z - near1.z);
+        console.log('[9b] aggro pause', { pausedDist, resumedDist });
+        check('the patrol pauses while the player is near', pausedDist < 0.001, { pausedDist });
+        check('the patrol resumes when the player leaves', resumedDist > 0.2, { resumedDist });
+
+        // --- 9c. A pathless blob keeps the old stationary behavior ---
+        const stationary = await h.evaluate(() => {
+            const app = window.app;
+            const blob = app.findWorldObject('en_blob').createInstance();
+            blob.position = new BABYLON.Vector3(500, 3, 500);   // far from everything
+            blob.script._wasPlay = null;
+            window.__still = blob;
+            return { x: blob.position.x, z: blob.position.z };
+        });
+        await h.waitFrames(12);
+        const still1 = await h.evaluate(() => ({
+            x: window.__still.position.x, z: window.__still.position.z,
+            bobbing: Math.abs(window.__still.position.y - 3) < 0.2,
+        }));
+        console.log('[9c] stationary blob', { stationary, still1 });
+        check('a pathless blob stays put (x/z) and just bobs',
+            still1.x === stationary.x && still1.z === stationary.z && still1.bobbing,
+            { stationary, still1 });
+
+        // --- 10. No unexpected page errors ---
         const realErrors = h.pageErrors.filter((e) => !h._isExpectedError(e));
         check('no page errors during path following', realErrors.length === 0, realErrors.slice(0, 3));
 

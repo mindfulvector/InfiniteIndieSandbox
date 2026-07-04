@@ -2456,6 +2456,26 @@ class App {
         return out;
     }
 
+    // Resolve a wire-built path chain: `inst`'s wire with the given event id
+    // ('follow' for platforms, 'patrol' for enemies) points at the first
+    // l_pathnode; nodes chain onward via their `next` wires. Returns ordered
+    // node positions, stopping at a chain end or the first revisited node
+    // (which also detects a closed circuit). Shared by every path follower so
+    // the traversal rules can't drift between scripts.
+    resolvePathChain(inst, eventId) {
+        const first = (inst.wires || []).find((w) => w.event === eventId);
+        const nodes = [];
+        const seen = new Set();
+        let node = first ? this.findInstance(first.toWo, first.toId) : null;
+        while (node && !node.isDisposed() && !seen.has(node)) {
+            seen.add(node);
+            nodes.push(node);
+            node = (node.script && node.script.nextNode) ? node.script.nextNode() : null;
+        }
+        const closed = !!(node && nodes.length > 1 && node === nodes[0]);
+        return { points: nodes.map((n) => n.position.clone()), closed };
+    }
+
     // ---- packs (figure bundles / Play Sets) ---------------------------------
 
     packs() { return PACKS; }

@@ -129,6 +129,11 @@ events (drive counters, spawners, cameras…), and dying resets it to the path
 start. Note: the platform pushes things in its way, but doesn't carry riders
 yet — use it for sweepers, barriers, and timed crossings.
 
+**Enemy patrols:** wire an `en_blob`'s *Patrol Path From* to a path node the
+same way and it walks the chain (its settings choose speed and loop vs
+ping-pong). When you get close it stops and watches you; back away and the
+patrol resumes.
+
 #### Pickups
 
 The **Pickups** category has placeable collectables that bob and spin in play

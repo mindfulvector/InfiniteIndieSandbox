@@ -65,20 +65,12 @@ class MovingPlatformScript {
 
     onPlayReset(mode) { this._resetRun(); }
 
-    // Walk the wires into an ordered list of node positions. Stops when a node
-    // repeats (that also detects a closed circuit) or the chain ends.
+    // Walk the wires into an ordered list of node positions (shared resolver
+    // on App so platforms and patrolling enemies traverse identically).
     _resolvePath() {
-        const first = (this.inst.wires || []).find((w) => w.event === 'follow');
-        const nodes = [];
-        const seen = new Set();
-        let node = first ? this.app.findInstance(first.toWo, first.toId) : null;
-        while (node && !node.isDisposed() && !seen.has(node)) {
-            seen.add(node);
-            nodes.push(node);
-            node = (node.script && node.script.nextNode) ? node.script.nextNode() : null;
-        }
-        this._closed = !!(node && seen.has(node) && nodes.length > 1 && node === nodes[0]);
-        this._path = nodes.map((n) => n.position.clone());
+        const chain = this.app.resolvePathChain(this.inst, 'follow');
+        this._closed = chain.closed;
+        this._path = chain.points;
     }
 
     _resetRun() {
