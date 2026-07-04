@@ -1843,7 +1843,9 @@ class App {
                 this.MenuItem({
                     type: 'button',
                     name: 'btnSkFeed',
-                    text: '8. Feed sidekick  (10 px → 10 XP)',
+                    text: '8. Feed sidekick  ' + ((this.sidekickFood || 0) > 0
+                        ? '(' + this.sidekickFood + ' food · 1 → 15 XP)'
+                        : '(10 px → 10 XP · grow food on a farm plot)'),
                     handler: () => { app.triggerMenuItem(MENU_COLLECTION, 8); }
                 });
                 this.MenuItem({
@@ -2492,6 +2494,8 @@ class App {
             const skActive = window.localStorage.getItem('iis_sidekick_active');
             this.activeSidekick = (skActive && this.sidekickById(skActive) && this.ownedSidekicks.has(skActive))
                 ? skActive : null;
+            this.sidekickFood = Math.max(0,
+                parseInt(window.localStorage.getItem('iis_sk_food'), 10) || 0);
         } catch (e) {
             this.pixels = 0;
             this.purchasedSet = new Set();
@@ -2506,6 +2510,7 @@ class App {
             this.activeHexDisc = 'classic';
             this.ownedSidekicks = new Set();
             this.activeSidekick = null;
+            this.sidekickFood = 0;
         }
     }
 
@@ -2540,6 +2545,7 @@ class App {
             window.localStorage.setItem('iis_sidekicks_owned', JSON.stringify([...(this.ownedSidekicks || [])]));
             if (this.activeSidekick) window.localStorage.setItem('iis_sidekick_active', this.activeSidekick);
             else window.localStorage.removeItem('iis_sidekick_active');
+            window.localStorage.setItem('iis_sk_food', String(this.sidekickFood || 0));
         } catch (e) { /* storage may be unavailable */ }
     }
 
@@ -2797,10 +2803,24 @@ class App {
         }
     }
 
-    // Feed the active sidekick: 10 pixels for 10 sidekick XP.
+    // Farmed sidekick food (harvested from pr_plot crops).
+    addSidekickFood(n) {
+        this.sidekickFood = Math.max(0, (this.sidekickFood || 0) + n);
+        this.saveEconomy();
+    }
+
+    // Feed the active sidekick. Farmed food is the premium meal (1 food ->
+    // 15 XP); with the pantry empty it falls back to 10 pixels -> 10 XP.
     feedSidekick() {
         if (!this.activeSidekick) { this.toasty('No sidekick to feed.'); return false; }
-        if (this.pixels < 10) { this.toasty('Feeding costs 10 pixels.'); return false; }
+        if ((this.sidekickFood || 0) > 0) {
+            this.sidekickFood -= 1;
+            this.addSidekickXp(15);
+            this.toasty('Yum — glowberries!  (+15 XP)');
+            this.saveEconomy();
+            return true;
+        }
+        if (this.pixels < 10) { this.toasty('Feeding costs 10 pixels (or grow food on a farm plot).'); return false; }
         this.pixels -= 10;
         this.addSidekickXp(10);
         this.saveEconomy();

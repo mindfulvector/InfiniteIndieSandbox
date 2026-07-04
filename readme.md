@@ -280,8 +280,12 @@ The Collection screen also lists **sidekicks** — small companions you adopt
 with pixels (Wisp, Pebble, or Spark). One follows you at a time, hovering at
 your shoulder. Your sidekick earns **half of every XP drop** you collect and
 levels up on its own curve (to level 10); each of its levels adds **+2 max
-HP** to you while it follows. Impatient? **Feed it** (10 pixels for 10 XP)
-from the Collection screen. Each sidekick keeps its own progress, and
+HP** to you while it follows. Impatient? **Feed it** from the Collection
+screen — glowberries are the good stuff (1 food → 15 XP), with a 10-pixel
+snack as the fallback. Grow glowberries on a **Farm Plot** (Props): crops
+ripen on a timer, turn gold, and you harvest by walking over them (they
+replant themselves by default). Plots fire a *Harvested* wiring event, so a
+farm can drive counters and quests too. Each sidekick keeps its own progress, and
 re-selecting the active one sends it home for a while.
 
 ### Power Discs

@@ -83,7 +83,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Feature | Status | Notes |
 |---|---|---|
 | Collectible sidekicks that follow/level/feed/equip | 🟡 | 3 adoptable sidekicks (Wisp/Pebble/Spark), one follows at a time (hover-follow, dt-based), levels from a half share of player XP or by feeding pixels (10 px → 10 XP), aura adds +2 max HP per sidekick level, per-sidekick progress persists, Collection rows 5–8 (`test-sidekicks.js`); equipment planned |
-| Crop farming for sidekick food | ⬜ | |
+| Crop farming for sidekick food | ✅ | `pr_plot` grows glowberries dt-based (growTime/autoReplant params, per-instance crop material, green→gold stages); walking over a ripe plot harvests +2 food and fires a wirable `harvested`; food is the premium sidekick meal (1 → 15 XP, pixel fallback), persisted (`test-farming.js`) |
 
 ### Sandbox Expansion Games
 | Feature | Status | Notes |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Crop farming for sidekick food
-2. Community browsing (import from a shared gallery URL)
-3. Buddy upgrade: enemies target both players, buddy HP + shared camera
-4. Kart racing packaging (kart + l_race + checkpoints as a course kit)
+1. Community browsing (import from a shared gallery URL)
+2. Buddy upgrade: enemies target both players, buddy HP + shared camera
+3. Kart racing packaging (kart + l_race + checkpoints as a course kit)
+4. Sidekick equipment (hats/trinkets bought with food)

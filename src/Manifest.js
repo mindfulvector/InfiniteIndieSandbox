@@ -165,6 +165,16 @@ class Manifest {
                   ]
         }, 'CameraScript');
 
+        // A farm plot: grows glowberries (sidekick food) on a timer; walk
+        // over the ripe crop to harvest. The 'crop' child is scaled/tinted
+        // by FarmPlotScript through the growth stages.
+        app.createWorldObject('pr_plot', {
+            prims: [
+                     {ty: 'box', s: [1.6, 0.25, 1.6], p: [0, 0, 0],   col: [0.42, 0.28, 0.18], tex: {id: 'noise'}},
+                     {ty: 'box', s: [0.7, 0.7, 0.7],  p: [0, 0.5, 0], col: [0.3, 0.8, 0.3], tex: {id: 'cloud'}, nm: 'crop'},
+                  ]
+        }, 'FarmPlotScript');
+
         // A drivable hover-kart: walk into it in play mode to mount, WASD or
         // the left stick drives with momentum, Space hops out. Premium.
         app.createWorldObject('pr_kart', {
