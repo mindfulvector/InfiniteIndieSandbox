@@ -216,6 +216,13 @@ class PlayMode {
     update() {
         const app = this.app;
 
+        // A death last frame respawns now, before any update loop is running,
+        // so the reset can't pull arrays out from under an iteration.
+        if (this._pendingRespawn) {
+            this._pendingRespawn = false;
+            this.respawn();
+        }
+
         // run update for all active object scripts
         app.BuildableObjectList.forEach((wo) => {
             wo.updateAllInstances(true, this);
@@ -294,17 +301,32 @@ class PlayMode {
         const p = this.player.position;
         const range = 3.4;
         this.spawnAttackFx(p, finisher);
+
+        // The swing only strikes a frontal arc (~140 degrees): toward the aim
+        // point when there is one, otherwise the way the player faces.
+        const COS_HALF = 0.34;
+        let dir = null;
+        if (aim) { dir = aim.subtract(p); dir.y = 0; }
+        if (!dir || dir.lengthSquared() < 0.0001) dir = this.playerForward();
+        dir.normalize();
+
         // Auto-spawned TRON enemies.
-        this.enemyManager.damageNear(p, range, dmg);
+        this.enemyManager.damageInArc(p, dir, range, COS_HALF, dmg);
         // Player-placed enemy objects (en_blob).
         this.app.BuildableObjectList.forEach((wo) => {
             wo.instances.forEach((inst) => {
                 if (inst && inst.isEnemy && !inst.defeated) {
                     const ip = inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position;
-                    if (BABYLON.Vector3.Distance(ip, p) <= range) {
-                        inst.hp -= dmg;
-                        if (inst.hp <= 0) this.defeatEnemy(inst, wo);
+                    const to = ip.subtract(p);
+                    to.y = 0;
+                    const d = to.length();
+                    if (d > range) return;
+                    if (d > 0.3) {   // point-blank counts regardless of angle
+                        to.scaleInPlace(1 / d);
+                        if (to.x * dir.x + to.z * dir.z < COS_HALF) return;
                     }
+                    inst.hp -= dmg;
+                    if (inst.hp <= 0) this.defeatEnemy(inst, wo);
                 }
             });
         });
@@ -688,14 +710,18 @@ class PlayMode {
         return null;
     }
 
-    // Called by enemies when they land a hit on the player.
+    // Called by enemies when they land a hit on the player. Death does NOT
+    // respawn immediately: damagePlayer is called from inside EnemyManager's
+    // update loops, and respawn() resets those very arrays -- clearing them
+    // mid-iteration left stale indexes (the e.kind / pr.mesh crashes). The
+    // respawn runs at the top of the next update instead.
     damagePlayer(amount) {
         if (this.hurtCooldown > 0) return;
         this.playerHp -= amount;
         this.hurtCooldown = 15;
         if (this.playerHp <= 0) {
             this.playerHp = 0;
-            this.respawn();
+            this._pendingRespawn = true;
         }
     }
 

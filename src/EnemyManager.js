@@ -212,6 +212,7 @@ class EnemyManager {
         const target = this.pm.player ? this.pm.player.position.add(new BABYLON.Vector3(0, 1, 0)) : null;
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const pr = this.projectiles[i];
+            if (!pr || !pr.mesh) continue;   // array can shrink mid-frame (resets)
             // Enemy shots are stopped by walls/terrain too.
             if (this.pm.projectileBlocked && this.pm.projectileBlocked(pr.mesh.position, pr.vel)) {
                 pr.mesh.dispose();
@@ -253,6 +254,7 @@ class EnemyManager {
 
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const e = this.enemies[i];
+            if (!e) continue;   // array can shrink mid-frame (defeats, resets)
             if (e.kind === 'walker') this.updateWalker(e, p, i);
             else this.updateFlyer(e, p);
         }
@@ -303,9 +305,15 @@ class EnemyManager {
                 e.rangedCd = e.rangedRate;
             }
         } else if (e.meleeCd <= 0) {
-            this.pm.damagePlayer(8);
-            e.meleeCd = e.meleeRate;
-            this.spawnFlash(p.add(new BABYLON.Vector3(0, 1, 0)), e.color, 8);
+            // Walkers swing forward only: the player must be within the
+            // frontal arc of the walker's facing to take the hit.
+            const fwd = { x: Math.sin(m.rotation.y), z: Math.cos(m.rotation.y) };
+            const inv = 1 / (dist || 1);
+            if (dx * inv * fwd.x + dz * inv * fwd.z >= 0.34) {
+                this.pm.damagePlayer(8);
+                e.meleeCd = e.meleeRate;
+                this.spawnFlash(p.add(new BABYLON.Vector3(0, 1, 0)), e.color, 8);
+            }
         }
         if (e.rangedCd > 0) e.rangedCd--;
         if (e.meleeCd > 0) e.meleeCd--;
@@ -348,12 +356,37 @@ class EnemyManager {
         let hits = 0;
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const e = this.enemies[i];
+            if (!e) continue;
             if (BABYLON.Vector3.Distance(e.mesh.position, pos) <= range) {
                 e.hp -= dmg;
                 hits++;
                 if (e.hp <= 0) this.defeat(i);
                 else this.spawnFlash(e.mesh.position.add(new BABYLON.Vector3(0, 1, 0)), new BABYLON.Color3(1, 1, 1), 6);
             }
+        }
+        return hits;
+    }
+
+    // Like damageNear, but only enemies within the frontal arc around `dir`
+    // (a flattened unit vector) are hit: dot(toEnemy, dir) >= cosHalf. Used by
+    // the player's melee so swings only strike outward in front.
+    damageInArc(pos, dir, range, cosHalf, dmg) {
+        let hits = 0;
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const e = this.enemies[i];
+            if (!e) continue;
+            const to = e.mesh.position.subtract(pos);
+            to.y = 0;
+            const d = to.length();
+            if (d > range) continue;
+            if (d > 0.3) {   // point-blank hits count regardless of angle
+                to.scaleInPlace(1 / d);
+                if (to.x * dir.x + to.z * dir.z < cosHalf) continue;
+            }
+            e.hp -= dmg;
+            hits++;
+            if (e.hp <= 0) this.defeat(i);
+            else this.spawnFlash(e.mesh.position.add(new BABYLON.Vector3(0, 1, 0)), new BABYLON.Color3(1, 1, 1), 6);
         }
         return hits;
     }

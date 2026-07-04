@@ -73,13 +73,21 @@ async function main() {
         check('run state armed (count 2, score 5, timer running)',
             before.count === 2 && before.score === 5 && before.timerActive === true, before);
 
-        // --- Die. ---
+        // --- Die MID-COMBAT: live walkers and in-flight projectiles make the
+        // respawn reset happen while the enemy loops have work in hand (the
+        // e.kind / pr.mesh crash regression). ---
         await h.evaluate(() => {
-            const pm = window.app.activeMode;
+            const pm = window.app.activeMode, em = pm.enemyManager;
+            em.spawnWalker(); em.spawnWalker();
+            em.enemies.forEach((rec) => {
+                rec.speed = 0; rec.fade = 0;
+                rec.mesh.position = pm.player.position.add(new BABYLON.Vector3(6, 0.2, 0));
+                em.fireProjectile(rec, pm.player.position.clone());
+            });
             pm.hurtCooldown = 0;
             pm.damagePlayer(99999);
         });
-        await h.waitFrames(6);
+        await h.waitFrames(10);
         const after = await h.evaluate(() => {
             const app = window.app, pm = app.activeMode, ids = window.__ids;
             const get = (n, id) => app.findInstance(n, id);
@@ -105,16 +113,20 @@ async function main() {
         check('the timer re-arms to its start state (off)', after.timerActive === false, after);
         check('collected pickups come back', after.starVisible === true, after);
         check('triggers forget the player (can fire again)', after.trigReset === true, after);
+        const deathCrash = h.pageErrors.filter((e) => /e\.kind|pr\.mesh|TypeError/.test(e));
+        check('dying mid-combat causes no crash (no enemy-loop TypeErrors)',
+            deathCrash.length === 0, { errors: deathCrash.slice(0, 3) });
         await h.screenshot('after-death-reset');
 
         // --- 10% is of the CURRENT pixels (floored) ---
-        const again = await h.evaluate(() => {
+        await h.evaluate(() => {
             const app = window.app, pm = app.activeMode;
             app.pixels = 7;
             pm.hurtCooldown = 0;
             pm.damagePlayer(99999);
-            return { px: app.pixels };
         });
+        await h.waitFrames(8);   // the (deferred) respawn runs next frame
+        const again = await h.evaluate(() => ({ px: window.app.pixels }));
         console.log('\n[3] small balance', again);
         check('a 7-pixel balance loses 0 (floor of 0.7)', again.px === 7, again);
 

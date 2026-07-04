@@ -95,6 +95,32 @@ async function main() {
         check('an expired combo window resets the chain (stage stays 0)',
             expiry.stageAfterSecond === 0, expiry);
 
+        // --- 2b. Melee only hits the frontal arc ---
+        // Two 1 hp blobs at equal range: one in front of the swing direction,
+        // one directly behind. Only the front one may die.
+        const arc = await h.evaluate(() => {
+            const pm = window.app.activeMode;
+            const wo = window.app.findWorldObject('en_blob');
+            wo.instances.filter(Boolean).forEach((i) => wo.disposeInstance(i));
+            const front = wo.createInstance();
+            front.hp = 1;
+            front.position = pm.player.position.add(new BABYLON.Vector3(2.5, 0.6, 0));
+            const behind = wo.createInstance();
+            behind.hp = 1;
+            behind.position = pm.player.position.add(new BABYLON.Vector3(-2.5, 0.6, 0));
+            pm.attackCooldown = 0; pm.comboTimer = 0; pm.comboStage = 0;
+            // Swing aimed at the front blob's side of the player.
+            pm.meleeAttack(pm.player.position.add(new BABYLON.Vector3(3, 0.6, 0)));
+            const frontAlive = !front.defeated;
+            const behindAlive = !behind.defeated;
+            // Clean up whatever survived.
+            wo.instances.filter(Boolean).forEach((i) => wo.disposeInstance(i));
+            return { frontAlive, behindAlive };
+        });
+        console.log('[2b] frontal arc', arc);
+        check('a melee swing hits the enemy in front', arc.frontAlive === false, arc);
+        check('a melee swing does NOT hit the enemy behind', arc.behindAlive === true, arc);
+
         // --- 3. Lock-on acquires the NEAREST enemy and shows the marker ---
         const ids = await h.evaluate(() => {
             const pm = window.app.activeMode, em = pm.enemyManager;

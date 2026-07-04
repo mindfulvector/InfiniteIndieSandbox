@@ -17,14 +17,14 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 ### Combat and character systems
 | Feature | Status | Notes |
 |---|---|---|
-| Melee combat with combo chains | ✅ | 3-hit chain; finisher deals bonus damage (`test-combat-combo.js`) |
+| Melee combat with combo chains | ✅ | 3-hit chain; finisher deals bonus damage; swings only strike a frontal arc (player and walkers alike) (`test-combat-combo.js`) |
 | Aerial juggling, blocking, dodging | ⬜ | |
 | Ranged combat with aimable projectiles | ✅ | Right-click fires at cursor; projectile from hand (`test-ranged-attack.js`) |
 | Lock-on targeting | ✅ | `T` toggles lock-on to nearest enemy; marker + auto-aim (`test-combat-combo.js`) |
 | Character-specific movesets / special attacks / super moves | ⬜ | Single starter avatar today |
 | Avatar animation (locomotion clips + idle) | ✅ | Authored walk/run/jump/strafe clips via the character controller; procedural breathing idle replaces the rig's frozen 2-frame idle range (`test-idle-animation.js`) |
 | Character leveling (to 20) with skill trees | 🟡 | XP from defeating enemies, level 1–20 persisted, +5 max HP/level, +1 melee dmg per 5 levels, HUD badge + XP bar (`test-progression.js`); skill trees planned |
-| Health + respawn | ✅ | HP bar, hurt cooldown, respawn at spawn point |
+| Health + respawn | ✅ | HP bar, hurt cooldown, respawn at spawn point; respawn is deferred to the next frame so dying mid-combat can't crash the enemy loops (`test-death.js`) |
 | Pickups: health, currency, collectibles | ✅ | `pk_health`, `pk_pixels`, `pk_star` placeable objects (`test-pickups.js`) |
 
 ### Vehicles and traversal
