@@ -10,7 +10,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Feature | Status | Notes |
 |---|---|---|
 | Standalone purchasable campaign modules (themed universes) | ✅ | "The Glowlands" gallery Play Set: a 3-mission chain built purely from shipped toys (`test-campaign.js`); priced gallery entries lock behind a one-time pixel purchase on the Share screen (🔒 + price, `purchasedSet` key `playset_<file>`, buy-then-import) (`test-playset-gating.js`) |
-| Action-adventure / puzzle-platformer / arena-brawler campaign types | ⬜ | |
+| Action-adventure / puzzle-platformer / arena-brawler campaign types | 🟡 | Arena-brawler: "Nightfall Crown" premium Play Set (200 px) — a walled boss arena under a living `l_sun` sky: the gate triggers a camera reveal + Q1, phase 2 musters spawner adds, phase 3 cuts to an enrage shot, victory opens the loot vault and pays Q2 + scoreboard (`test-boss-arena.js`); other campaign types planned |
 | Characters locked to campaign, usable in Sandbox | ⬜ | |
 | Mission-based progression (story/side missions, collectibles) | ✅ | Quest toys chain into missions: Glowlands M1 (collect stars) physically opens the vault door, M2 (enter the pocket room) unlocks M3 (win a lap), with escalating pixel rewards and a camera-cut finale (`test-campaign.js`) |
 
@@ -110,7 +110,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Boss arena gallery world (the Glowlands sequel)
-2. Music/SFX toys (wired jingles, ambient loops)
+1. Music/SFX toys (wired jingles, ambient loops)
+2. NPC villagers (wander + talk bubbles + quest hooks)
 3. Online co-op exploration (WebRTC world sync spike)
-4. NPC villagers (wander + talk bubbles + quest hooks)
+4. Water blocks (swim volumes, floating props)

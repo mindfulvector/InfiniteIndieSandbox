@@ -198,8 +198,12 @@ unlocks the next (the vault door literally stays shut until you do), and the
 finale pays out with a camera flourish. Every mission is ordinary wiring, so
 open it in the Wiring view to learn how to build campaigns of your own. The
 Glowlands is a **premium Play Set** — 150 pixels unlocks it forever (earn
-them fighting and questing in the Sandbox). A **★ FEATURED** pick rotates
-daily at the top of the list.
+them fighting and questing in the Sandbox). Its sequel, **Nightfall Crown**
+(200 pixels), is a boss-arena showdown under a living day/night sky: enter
+the arena for a dramatic camera reveal, fight the crowned titan through all
+three of its phases while reinforcements pour in, and depose it to swing
+the loot vault open. A **★ FEATURED** pick rotates daily at the top of the
+list.
 
 ### Play Mode
 In play mode, a default avatar will be dropped into the world at the origin `(0,0,0)`.

@@ -21,6 +21,12 @@
       "name": "The Glowlands",
       "desc": "A three-mission Play Set: light the path, open the vault, win the trial",
       "price": 150
+    },
+    {
+      "file": "nightfall-crown.json",
+      "name": "Nightfall Crown",
+      "desc": "A boss-arena Play Set under a living sky: face the crown, depose it, loot the vault",
+      "price": 200
     }
   ]
 }
