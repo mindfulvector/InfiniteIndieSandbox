@@ -18,7 +18,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Feature | Status | Notes |
 |---|---|---|
 | Melee combat with combo chains | ✅ | 3-hit chain; finisher deals bonus damage; swings only strike a frontal arc (player and walkers alike) (`test-combat-combo.js`) |
-| Aerial juggling, blocking, dodging | ⬜ | |
+| Aerial juggling, blocking, dodging | 🟡 | Hold `G` (pad LB) to block — negates damage from the frontal arc, shield visual; tap `C` (pad Y) to dodge-roll — i-frames + burst move, 40-frame cooldown (`test-blocking.js`); aerial juggling planned |
 | Ranged combat with aimable projectiles | ✅ | Right-click fires at cursor; projectile from hand (`test-ranged-attack.js`) |
 | Lock-on targeting | ✅ | `T` toggles lock-on to nearest enemy; marker + auto-aim (`test-combat-combo.js`) |
 | Character-specific movesets / special attacks / super moves | ⬜ | Single starter avatar today |
@@ -103,12 +103,12 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Feature | Status | Notes |
 |---|---|---|
 | Linux/CI test harness (headless, screenshots, frame sampling) | ✅ | `test/harness.js`, 16+ suites, GitHub Actions CI |
-| Gamepad bindings (attack actions) | 🟡 | Melee/ranged buttons mapped; movement + full abstraction planned |
+| Gamepad bindings (attack actions) | 🟡 | Melee/ranged/dodge (Y) buttons + hold-LB block mapped; movement + full abstraction planned |
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Blocking/dodging in melee combat
-2. Skill tree for spending level-ups
-3. Interiors (rooms, doors, decoration)
-4. Figure packs / Play Set bundles
-5. Path/track creation (races, patrols, moving platforms)
+1. Skill tree for spending level-ups
+2. Interiors (rooms, doors, decoration)
+3. Figure packs / Play Set bundles
+4. Path/track creation (races, patrols, moving platforms)
+5. Aerial juggling (launcher attacks + air combos)

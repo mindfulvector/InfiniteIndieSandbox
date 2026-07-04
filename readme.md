@@ -140,14 +140,20 @@ Keys:
   fires a neon shot toward the cursor
 * Press `T` to **lock on** to the nearest enemy (a marker floats above it);
   ranged shots then track that target until it's defeated or you press `T` again
+* Hold `G` to **block** — a shield raises in front of you and attacks from the
+  front deal no damage (attacks from behind still hurt, so keep facing the threat)
+* Press `C` to **dodge roll** — a quick burst of movement in the direction
+  you're moving (or a back-hop if standing still); anything that hits you
+  mid-roll is ignored entirely. There's a short cooldown between rolls.
 
 **Combos:** land melee swings back-to-back to chain a 3-hit combo — the third
 hit is a finisher that deals triple damage.
 
 Aim the ranged shot with the mouse; a gamepad auto-aims at the locked/nearest enemy.
 
-**Gamepad:** the right trigger / right bumper fires a ranged attack, and the
-left trigger / `X` swings a melee attack (in addition to the movement stick).
+**Gamepad:** the right trigger / right bumper fires a ranged attack, the left
+trigger / `X` swings a melee attack, `Y` dodge rolls, and holding the left
+bumper blocks (in addition to the movement stick).
 
 ### Survival
 

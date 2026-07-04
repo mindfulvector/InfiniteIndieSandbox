@@ -23,6 +23,18 @@ class PlayMode {
         this.lockTarget = null;     // {type:'em', rec} | {type:'inst', inst, wo}
         this.lockMarker = null;
 
+        // Defensive moves. Holding G (pad: LB) blocks -- damage from the
+        // frontal arc is negated while the guard is up. Tapping C (pad: Y)
+        // dodge-rolls: a short burst of movement with invulnerability frames.
+        this.blocking = false;
+        this.blockMesh = null;      // translucent shield shown while guarding
+        this.blockedHits = 0;       // lifetime counters (asserted by tests)
+        this.dodgedHits = 0;
+        this.dodgeCount = 0;
+        this.dodgeFrames = 0;       // frames left of the active roll (i-frames)
+        this.dodgeCooldown = 0;
+        this.dodgeVel = null;       // world-space displacement per roll frame
+
         // Procedural idle: the avatar's authored "idle" range is a frozen
         // 2-frame pose, so when standing still we stop that static clip and
         // breathe the spine/neck ourselves (see updateIdleAndAim).
@@ -57,6 +69,7 @@ class PlayMode {
         this.app.modeName.text = "Exiting PlayMode...";
         this.unbindMouseCombat();
         this.clearLockOn();
+        if (this.blockMesh) { this.blockMesh.dispose(false, true); this.blockMesh = null; }
         this.disposePlayer();
         this.enemyManager.dispose();
         this.pixelBursts.forEach((pb) => pb.mesh && pb.mesh.dispose());
@@ -253,6 +266,7 @@ class PlayMode {
         if (this.attackCooldown > 0) this.attackCooldown--;
         if (this.rangedCooldown > 0) this.rangedCooldown--;
         if (this.comboTimer > 0) this.comboTimer--;
+        if (this.dodgeCooldown > 0) this.dodgeCooldown--;
 
         // Melee: F key (kept for keyboard-only play) or a gamepad melee button.
         if (this.app.keyPressed('F') || this.app.consumePad('meleeAttack')) {
@@ -268,7 +282,13 @@ class PlayMode {
         if (this.app.keyPressed('T')) {
             this.toggleLockOn();
         }
+        // Dodge roll: C key or a gamepad dodge button.
+        if (this.app.keyPressed('C') || this.app.consumePad('dodge')) {
+            this.startDodge();
+        }
         this.updateLockOn();
+        this.updateDodge();
+        this.updateBlock();
     }
 
     // Left-click = melee, right-click = ranged. Called by the pointer observer
@@ -414,6 +434,81 @@ class PlayMode {
                 this.playerProjectiles.splice(i, 1);
             }
         }
+    }
+
+    // ---- defense: blocking + dodging ----------------------------------------
+
+    // True while the block input is held (G key, or LB on a pad).
+    blockInputHeld() {
+        return !!(this.app.keyDown('G') || this.app.padDown('block'));
+    }
+
+    // Hold-to-block: while the guard is up a translucent shield floats in
+    // front of the chest and frontal damage is negated (see damagePlayer).
+    // Rolling drops the guard for the duration of the dodge.
+    updateBlock() {
+        const want = this.dodgeFrames <= 0 && this.blockInputHeld();
+        if (want && !this.blocking) {
+            const shield = BABYLON.MeshBuilder.CreateDisc('blockShield',
+                { radius: 0.85, tessellation: 24 }, this.app.scene);
+            const mat = new BABYLON.StandardMaterial('blockShieldMat', this.app.scene);
+            mat.emissiveColor = new BABYLON.Color3(0.35, 0.8, 1.0);
+            mat.alpha = 0.4;
+            mat.disableLighting = true;
+            mat.backFaceCulling = false;
+            shield.material = mat;
+            shield.isPickable = false;
+            shield.checkCollisions = false;
+            this.blockMesh = shield;
+        } else if (!want && this.blocking && this.blockMesh) {
+            // dispose(false, true): the material is created per guard, so it
+            // goes with the shield (same pattern as the lock-on marker).
+            this.blockMesh.dispose(false, true);
+            this.blockMesh = null;
+        }
+        this.blocking = want;
+        if (this.blocking && this.blockMesh) {
+            const fwd = this.playerForward();
+            this.blockMesh.position = this.player.position
+                .add(new BABYLON.Vector3(0, 1.15, 0)).add(fwd.scale(0.9));
+            this.blockMesh.rotation.y = Math.atan2(fwd.x, fwd.z);
+        }
+    }
+
+    // Tap-to-dodge: rolls in the direction of the held movement keys
+    // (camera-relative, matching how the controller moves the avatar), or
+    // hops backward when standing still. The roll grants invulnerability
+    // frames -- anything that connects mid-roll is ignored entirely.
+    startDodge() {
+        if (!this.player || this.dodgeFrames > 0 || this.dodgeCooldown > 0) return;
+        const a = this.app;
+        const dx = (a.keyDown('D') ? 1 : 0) - (a.keyDown('A') ? 1 : 0);
+        const dz = (a.keyDown('W') ? 1 : 0) - (a.keyDown('S') ? 1 : 0);
+        let dir;
+        if (dx === 0 && dz === 0) {
+            dir = this.playerForward().scale(-1);   // standing still: back-hop
+        } else {
+            const camFwd = this.player.position.subtract(this.app.camera.position);
+            camFwd.y = 0;
+            if (camFwd.lengthSquared() < 0.0001) camFwd.copyFromFloats(0, 0, 1);
+            camFwd.normalize();
+            const camRight = BABYLON.Vector3.Cross(BABYLON.Vector3.Up(), camFwd);
+            dir = camFwd.scale(dz).add(camRight.scale(dx));
+            if (dir.lengthSquared() < 0.0001) dir = this.playerForward().scale(-1);
+            dir.normalize();
+        }
+        this.dodgeFrames = 12;
+        this.dodgeCooldown = 40;
+        this.dodgeVel = dir.scale(0.5);
+        this.dodgeCount++;
+    }
+
+    updateDodge() {
+        if (this.dodgeFrames <= 0) return;
+        this.dodgeFrames--;
+        if (this.dodgeVel) this.player.moveWithCollisions(this.dodgeVel);
+        // A short neon streak every few frames so the roll reads on screen.
+        if (this.dodgeFrames % 4 === 0) this.spawnAttackFx(this.player.position);
     }
 
     // ---- aiming -------------------------------------------------------------
@@ -710,13 +805,42 @@ class PlayMode {
         return null;
     }
 
-    // Called by enemies when they land a hit on the player. Death does NOT
-    // respawn immediately: damagePlayer is called from inside EnemyManager's
-    // update loops, and respawn() resets those very arrays -- clearing them
-    // mid-iteration left stale indexes (the e.kind / pr.mesh crashes). The
-    // respawn runs at the top of the next update instead.
-    damagePlayer(amount) {
+    // Called by enemies when they land a hit on the player. `sourcePos` is
+    // where the attack came from (the attacker or its projectile) so a raised
+    // block can judge front vs. back; omitted sources count as frontal.
+    // Death does NOT respawn immediately: damagePlayer is called from inside
+    // EnemyManager's update loops, and respawn() resets those very arrays --
+    // clearing them mid-iteration left stale indexes (the e.kind / pr.mesh
+    // crashes). The respawn runs at the top of the next update instead.
+    damagePlayer(amount, sourcePos) {
         if (this.hurtCooldown > 0) return;
+        // Dodge i-frames: a roll passes clean through anything that connects.
+        if (this.dodgeFrames > 0) {
+            this.dodgedHits++;
+            return;
+        }
+        // A raised guard stops all damage from the frontal arc (~150 deg).
+        // Hits from behind still land -- a block is a stance, not a bubble.
+        if (this.blocking && this.player) {
+            let frontal = true;
+            if (sourcePos) {
+                const to = sourcePos.subtract(this.player.position);
+                to.y = 0;
+                const d = to.length();
+                if (d > 0.001) {
+                    const f = this.playerForward();
+                    frontal = (to.x * f.x + to.z * f.z) / d >= 0.26;
+                }
+            }
+            if (frontal) {
+                this.blockedHits++;
+                this.hurtCooldown = 6;   // brief guard recovery between blocked hits
+                if (this.blockMesh) {
+                    this.spawnAttackFx(this.blockMesh.position.subtract(new BABYLON.Vector3(0, 1.0, 0)));
+                }
+                return;
+            }
+        }
         this.playerHp -= amount;
         this.hurtCooldown = 15;
         if (this.playerHp <= 0) {
@@ -731,9 +855,13 @@ class PlayMode {
         if (this.player) this.player.position = this.spawnPoint.clone();
         // Death ends any in-progress combo and drops the target lock -- without
         // this, a chain started before dying could carry a free finisher (3x
-        // damage) into the first swing after respawning.
+        // damage) into the first swing after respawning. The dodge state resets
+        // too so a death mid-roll can't leave i-frames or a stale cooldown.
         this.comboStage = 0;
         this.comboTimer = 0;
+        this.dodgeFrames = 0;
+        this.dodgeCooldown = 0;
+        this.dodgeVel = null;
         this.clearLockOn();
         this.enemyManager.reset();
 

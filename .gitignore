@@ -1,0 +1,3 @@
+node_modules/
+test/screenshots/*
+!test/screenshots/.gitkeep

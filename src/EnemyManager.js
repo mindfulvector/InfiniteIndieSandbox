@@ -224,7 +224,7 @@ class EnemyManager {
             pr.mesh.rotation.x += 0.2;
             pr.life--;
             if (target && BABYLON.Vector3.Distance(pr.mesh.position, target) < 1.1) {
-                this.pm.damagePlayer(7);
+                this.pm.damagePlayer(7, pr.mesh.position);
                 pr.mesh.dispose();
                 this.projectiles.splice(i, 1);
             } else if (pr.life <= 0) {
@@ -276,7 +276,7 @@ class EnemyManager {
             m.position.x += dx * inv;
             m.position.z += dz * inv;
         } else if (e.attackCd <= 0) {
-            this.pm.damagePlayer(6);
+            this.pm.damagePlayer(6, m.position);
             e.attackCd = 60;
             this.spawnFlash(p.add(new BABYLON.Vector3(0, 1, 0)), e.color, 8);
         }
@@ -310,7 +310,7 @@ class EnemyManager {
             const fwd = { x: Math.sin(m.rotation.y), z: Math.cos(m.rotation.y) };
             const inv = 1 / (dist || 1);
             if (dx * inv * fwd.x + dz * inv * fwd.z >= 0.34) {
-                this.pm.damagePlayer(8);
+                this.pm.damagePlayer(8, m.position);
                 e.meleeCd = e.meleeRate;
                 this.spawnFlash(p.add(new BABYLON.Vector3(0, 1, 0)), e.color, 8);
             }

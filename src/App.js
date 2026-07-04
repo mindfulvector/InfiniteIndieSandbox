@@ -70,12 +70,16 @@ class App {
         });
 
         // Edge-triggered gamepad action flags, consumed once per press by the
-        // active mode (see consumePad). Combat maps:
+        // active mode (see consumePad), plus level-triggered "held" flags read
+        // via padDown (e.g. hold-to-block). Combat maps:
         //   Right Trigger / Right Bumper / B  -> ranged attack (shoot)
-        //   X / Left Bumper / A               -> melee attack
+        //   X / Left Trigger / A              -> melee attack
+        //   Y                                 -> dodge roll
+        //   Left Bumper (hold)                -> block
         // Buttons arrive as an Xbox360Button enum (Xbox pads) or a raw index
         // (generic pads); we map both to the same action names.
         this.padActions = {};
+        this.padHeld = {};
         this.gamepad = null;
         const gamepadManager = new BABYLON.GamepadManager();
         gamepadManager.onGamepadConnectedObservable.add((gamepad) => {
@@ -83,11 +87,20 @@ class App {
             this.gamepad = gamepad;
             const X = BABYLON.Xbox360Button || {};
             const rangedButtons = new Set([X.RB, X.B, 5 /*RB*/, 1 /*B*/].filter((v) => v !== undefined));
-            const meleeButtons  = new Set([X.X, X.LB, X.A, 2 /*X*/, 4 /*LB*/, 0 /*A*/].filter((v) => v !== undefined));
+            const meleeButtons  = new Set([X.X, X.A, 2 /*X*/, 0 /*A*/].filter((v) => v !== undefined));
+            const dodgeButtons  = new Set([X.Y, 3 /*Y*/].filter((v) => v !== undefined));
+            const blockButtons  = new Set([X.LB, 4 /*LB*/].filter((v) => v !== undefined));
             if(gamepad.onButtonDownObservable) {
                 gamepad.onButtonDownObservable.add((button) => {
                     if(rangedButtons.has(button)) this.padActions.rangedAttack = true;
                     else if(meleeButtons.has(button)) this.padActions.meleeAttack = true;
+                    else if(dodgeButtons.has(button)) this.padActions.dodge = true;
+                    else if(blockButtons.has(button)) this.padHeld.block = true;
+                });
+            }
+            if(gamepad.onButtonUpObservable) {
+                gamepad.onButtonUpObservable.add((button) => {
+                    if(blockButtons.has(button)) this.padHeld.block = false;
                 });
             }
             // Analog triggers on Xbox pads: press past halfway = shoot / melee.
@@ -895,6 +908,8 @@ class App {
                 {k:'Space', label:'Jump ×2 · hold: Glide'},
                 {k:'LMB',   label:'Melee'},
                 {k:'RMB',   label:'Shoot'},
+                {k:'G',     label:'Block'},
+                {k:'C',     label:'Dodge'},
                 {k:'T',     label:'Lock-on'},
                 {k:'Esc',   label:'Menu'},
             ]);
@@ -1998,6 +2013,12 @@ class App {
             return true;
         }
         return false;
+    }
+
+    // Level-triggered read of a held gamepad action (e.g. 'block'): true for
+    // as long as the button is held -- mirrors keyDown().
+    padDown(action) {
+        return !!(this.padHeld && this.padHeld[action]);
     }
 
     keyDown(key) {
