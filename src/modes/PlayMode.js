@@ -243,6 +243,12 @@ class PlayMode {
             // The active gadget hex applies now that the CC exists.
             if (playMode.app.applyGadgetToSession) playMode.app.applyGadgetToSession();
 
+            // A co-op Play Set brings player 2 along automatically.
+            if (playMode.app.coopWorld && !playMode.buddies[0]) {
+                playMode.buddyJoin(0);
+                playMode.app.toasty('Co-op! Player 2 joins — 2nd gamepad drives them.');
+            }
+
             playMode.cc.start();
 
             // Cache the bones used to aim the upper body / fire from the hand, and

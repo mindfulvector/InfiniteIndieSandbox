@@ -3284,7 +3284,9 @@ class App {
         }
         if (!this.world) this.world = new SandboxWorld(this);
         this.world.loadFromData({ objects: payload.objects });
-        this.toasty('World imported!');
+        // Co-op Play Sets flag themselves; PlayMode auto-joins P2 on entry.
+        this.coopWorld = !!payload.coop;
+        this.toasty(payload.coop ? 'Co-op world imported — grab a friend!' : 'World imported!');
         return true;
     }
 
@@ -3367,7 +3369,7 @@ class App {
                 // file name (figure locks key off it). Anything else --
                 // templates, named saves, file imports -- clears it.
                 this.currentWorldFile = ok ? url.split('/').pop() : null;
-                return ok;
+                return ok;   // (coopWorld set inside importWorldData)
             })
             .catch((e) => {
                 console.error('world fetch failed', url, e);

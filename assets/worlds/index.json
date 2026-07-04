@@ -33,6 +33,11 @@
       "name": "The Deepvault",
       "desc": "A co-op dungeon crawl: clear three chambers of foes, depose the boss, loot the vault",
       "price": 250
+    },
+    {
+      "file": "twin-trials.json",
+      "name": "Twin Trials",
+      "desc": "A 2-player Play Set: player 2 joins automatically — stand together to open the vault, clear the arena as a team"
     }
   ]
 }

@@ -15,6 +15,14 @@ class TriggerScript {
             entered: [],
         };
 
+        // A co-op gate: with coop='yes', `entered` only fires when the
+        // player AND at least one live buddy are both inside -- a two-player
+        // pressure plate for split-screen Play Sets.
+        this.paramDefs = [
+            { key: 'coop', label: 'Needs 2 players', type: 'enum', options: ['no', 'yes'], default: 'no' },
+        ];
+        this.noAutoParams = true;
+
         // Output events this object can fire (shown/wired in the wiring view).
         this.outputs = [
             { id: 'entered', label: 'Player Enters' },
@@ -33,6 +41,23 @@ class TriggerScript {
     onPlayReset(mode) {
         this.state.activated = false;
         this.state.entered = [];
+        this._coopIn = false;
+    }
+
+    getParam(key) {
+        if (this.inst.params && this.inst.params[key] != null) return this.inst.params[key];
+        const def = this.paramDefs.find((d) => d.key === key);
+        return def ? def.default : null;
+    }
+
+    // How many party members (player + live buddies) are inside the volume.
+    _partyInside(mode) {
+        let n = 0;
+        if (mode.player && this.inst.intersectsMesh(mode.player, false)) n++;
+        (mode.buddies || []).forEach((b) => {
+            if (b && b.root && this.inst.intersectsMesh(b.root, false)) n++;
+        });
+        return n;
     }
 
     // Incoming message from another object (legacy path, kept for compatibility).
@@ -77,6 +102,19 @@ class TriggerScript {
 
         const player = modeObject && modeObject.player;
         if(!player) return;
+
+        // Co-op gate: edge on "both here" instead of the single player.
+        if(this.getParam('coop') === 'yes') {
+            const bothHere = this._partyInside(modeObject) >= 2;
+            if(bothHere && !this._coopIn) {
+                this._coopIn = true; this.state.activated = true;
+                this.app.fireEvent(this.inst, 'entered');
+            } else if(!bothHere && this._coopIn) {
+                this._coopIn = false; this.state.activated = false;
+                this.app.fireEvent(this.inst, 'exited');
+            }
+            return;
+        }
 
         const key = player.uniqueId != null ? player.uniqueId : 'player';
         // While driving, the VEHICLE trips triggers (the rider's feet sit
