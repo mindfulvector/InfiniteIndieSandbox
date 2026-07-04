@@ -240,6 +240,9 @@ class PlayMode {
             if (playMode.cc.setJumpCount) playMode.cc.setJumpCount(2);
             if (playMode.cc.enableGlide) playMode.cc.enableGlide(true);
 
+            // The active gadget hex applies now that the CC exists.
+            if (playMode.app.applyGadgetToSession) playMode.app.applyGadgetToSession();
+
             playMode.cc.start();
 
             // Cache the bones used to aim the upper body / fire from the hand, and
@@ -2005,6 +2008,15 @@ class PlayMode {
                 return;
             }
         }
+        // Guardian Ward: the first damaging hit each life is absorbed.
+        if (this.gadgetGuardian && this.shieldCharge > 0) {
+            this.shieldCharge = 0;
+            this.hurtCooldown = 30;
+            this.shieldedHits = (this.shieldedHits || 0) + 1;
+            this.app.toasty('Guardian Ward absorbed the hit!');
+            if (this.player) this.spawnAttackFx(this.player.position);
+            return;
+        }
         this.playerHp -= amount;
         this.hurtCooldown = 15;
         if (this.playerHp <= 0) {
@@ -2031,6 +2043,8 @@ class PlayMode {
         });
         this.playerHp = this.playerMaxHp;
         this.hurtCooldown = 60;
+        // Guardian Ward recharges each life.
+        if (this.gadgetGuardian) this.shieldCharge = 1;
         if (this.player) this.player.position = this.spawnPoint.clone();
         // Death ends any in-progress combo and drops the target lock -- without
         // this, a chain started before dying could carry a free finisher (3x
@@ -2129,17 +2143,18 @@ class PlayMode {
             pb.age++;
             pb.mesh.rotation.y += pb.spin;
             pb.mesh.rotation.x += pb.spin * 0.7;
-            if (pb.delay > 0) {
+            if (pb.delay > 0 && !this.gadgetMagnet) {
                 pb.delay--;
                 pb.vel.scaleInPlace(0.92);
                 pb.mesh.position.addInPlace(pb.vel);
             } else {
+                if (this.gadgetMagnet) pb.delay = 0;   // magnet: no scatter
                 const dir = target.subtract(pb.mesh.position);
                 const dist = dir.length();
                 // The collect radius grows the longer a pixel has been chasing, so
                 // one that keeps overshooting (orbiting) is still swept up rather
                 // than circling indefinitely; MAX_LIFE is the absolute backstop.
-                const collect = collectDist + Math.max(0, pb.age - 90) * 0.015;
+                const collect = (this.gadgetMagnet ? 3.5 : collectDist) + Math.max(0, pb.age - 90) * 0.015;
                 if (dist < collect || pb.age >= MAX_LIFE) {
                     pb.mesh.dispose();
                     this.pixelBursts.splice(i, 1);
@@ -2148,7 +2163,8 @@ class PlayMode {
                     continue;
                 }
                 dir.normalize();
-                pb.vel.addInPlace(dir.scale(homeAccel + (3.0 / (dist + 1)) * 0.02));
+                const acc = this.gadgetMagnet ? homeAccel * 2 : homeAccel;
+                pb.vel.addInPlace(dir.scale(acc + (3.0 / (dist + 1)) * 0.02));
                 if (pb.vel.length() > maxSpeed) pb.vel.normalize().scaleInPlace(maxSpeed);
                 pb.mesh.position.addInPlace(pb.vel);
             }

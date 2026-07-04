@@ -305,6 +305,12 @@ choose in its options. The sun fires *Dawn / Noon / Dusk / Midnight* wiring
 events, so you can make monsters spawn only at night or lamps greet the
 dark. Build mode always stays daylit, and every run starts at first light.
 
+**Gadgets:** the Collection's **Discs** screen also sells **gadget hexes** —
+equippable passive perks, one active at a time: a **Pixel Magnet** (dropped
+pixels rush straight to you), **Boost Boots** (jump higher everywhere), and
+a **Guardian Ward** (shrugs off the first hit each life). Buy one and it's
+yours across every character; which one you have active is per save slot.
+
 **Photo mode:** press `P` to freeze the whole world mid-action. The HUD
 slips away, the camera comes off its leash (`WASD` to move, `R`/`F` for
 height, `Shift` to hurry, mouse to orbit), and `Enter` saves a PNG of your

@@ -100,6 +100,18 @@ const HEX_DISCS = [
     { id: 'verdant',   name: 'Verdant Haze',   price: 80, sky: [0.08, 0.2, 0.1],   tint: [0.7, 1.0, 0.7],    desc: 'Toxic-green gloom' },
 ];
 
+// Gadget hexes: equippable PASSIVE PERKS (the gadget half of the hex-disc
+// row -- theme hexes above dress the world; gadget hexes change how you
+// play). One active at a time, bought once into the shared collection,
+// the active choice per progression slot. Applied when a play session
+// starts (see App.applyGadgetToSession + PlayMode hooks).
+const GADGET_HEXES = [
+    { id: 'none',    name: 'No Gadget',    price: 0,   effect: null,      desc: 'No passive perk' },
+    { id: 'magnet',  name: 'Pixel Magnet', price: 90,  effect: 'magnet',  desc: 'Pixels rush straight to you' },
+    { id: 'booster', name: 'Boost Boots',  price: 90,  effect: 'booster', desc: 'Jump noticeably higher' },
+    { id: 'guardian',name: 'Guardian Ward',price: 120, effect: 'guardian',desc: 'Absorb the first hit each life' },
+];
+
 // Packs: bundles of figures and/or premium objects sold at a discount in the
 // shop. A pack has no owned-state of its own -- it counts as owned when every
 // piece of its contents is owned (buying grants whatever is still missing).
@@ -1418,11 +1430,18 @@ class App {
                     app.buyDisc(disc.id);   // buys, or toggles equip if owned
                     app.menu.renderedState = -1;
                 }
-            } else {
+            } else if(menuItem <= DISCS.length + HEX_DISCS.length) {
                 // Rows after the round discs are the hex world themes.
                 const hx = HEX_DISCS[menuItem - DISCS.length - 1];
                 if(hx) {
                     app.buyHexDisc(hx.id);   // buys, or selects if owned
+                    app.menu.renderedState = -1;
+                }
+            } else {
+                // The gadget hexes come last.
+                const g = GADGET_HEXES[menuItem - DISCS.length - HEX_DISCS.length - 1];
+                if(g) {
+                    app.buyGadgetHex(g.id);   // buys, or selects if owned
                     app.menu.renderedState = -1;
                 }
             }
@@ -2170,6 +2189,24 @@ class App {
                     });
                 });
                 this.MenuItem({
+                    type: 'text',
+                    name: 'gadgetHdr',
+                    text: '— GADGETS (HEX) —',
+                    fontSize: 14,
+                    color: '#9fb3c8',
+                });
+                GADGET_HEXES.forEach((g, i) => {
+                    const n = DISCS.length + HEX_DISCS.length + i + 1;
+                    const active = this.activeGadgetHex === g.id;
+                    const status = active ? '◉ ACTIVE' : (this.ownsGadget(g.id) ? 'Owned' : g.price + ' px');
+                    this.MenuItem({
+                        type: 'button',
+                        name: 'btnGadget_' + g.id,
+                        text: n + '. ' + g.name + ' — ' + g.desc + '   [' + status + ']',
+                        handler: () => { app.triggerMenuItem(MENU_DISCS, n); }
+                    });
+                });
+                this.MenuItem({
                     type: 'button',
                     name: 'btnDiscBack',
                     text: '0. Back',
@@ -2830,7 +2867,7 @@ class App {
     _isProgressionKey(k) {
         return k === 'iis_pixels' || k === 'iis_figure' || k === 'iis_sidekick_active' ||
             k === 'iis_sk_food' || k === 'iis_discs_equipped' || k === 'iis_hex_active' ||
-            k === 'iis_companions' ||
+            k === 'iis_companions' || k === 'iis_gadget_active' ||
             /^iis_fig_/.test(k) || /^iis_sk_.+_(level|xp|gear)$/.test(k);
     }
 
@@ -3018,6 +3055,11 @@ class App {
                 parseInt(window.localStorage.getItem('iis_sk_food'), 10) || 0);
             const gearOwned = JSON.parse(window.localStorage.getItem('iis_gear_owned') || '[]');
             this.ownedGear = new Set(Array.isArray(gearOwned) ? gearOwned : []);
+            const gadgetOwned = JSON.parse(window.localStorage.getItem('iis_gadget_owned') || '["none"]');
+            this.ownedGadgets = new Set(Array.isArray(gadgetOwned) ? gadgetOwned : ['none']);
+            this.ownedGadgets.add('none');
+            const ga = window.localStorage.getItem('iis_gadget_active');
+            this.activeGadgetHex = (ga && this.gadgetById(ga) && this.ownedGadgets.has(ga)) ? ga : 'none';
             const comps = JSON.parse(window.localStorage.getItem('iis_companions') || '[]');
             this.hiredCompanions = (Array.isArray(comps) ? comps : [])
                 .filter((id) => this.companionById(id));
@@ -3038,6 +3080,8 @@ class App {
             this.sidekickFood = 0;
             this.ownedGear = new Set();
             this.hiredCompanions = [];
+            this.ownedGadgets = new Set(['none']);
+            this.activeGadgetHex = 'none';
         }
     }
 
@@ -3075,6 +3119,8 @@ class App {
             window.localStorage.setItem('iis_sk_food', String(this.sidekickFood || 0));
             window.localStorage.setItem('iis_gear_owned', JSON.stringify([...(this.ownedGear || [])]));
             window.localStorage.setItem('iis_companions', JSON.stringify(this.hiredCompanions || []));
+            window.localStorage.setItem('iis_gadget_owned', JSON.stringify([...(this.ownedGadgets || ['none'])]));
+            window.localStorage.setItem('iis_gadget_active', this.activeGadgetHex || 'none');
         } catch (e) { /* storage may be unavailable */ }
     }
 
@@ -3505,6 +3551,52 @@ class App {
 
     hexDiscs() { return HEX_DISCS; }
     hexById(id) { return HEX_DISCS.find((d) => d.id === id) || null; }
+
+    // ---- gadget hexes (passive perks) ----
+    gadgetHexes() { return GADGET_HEXES; }
+    gadgetById(id) { return GADGET_HEXES.find((g) => g.id === id) || null; }
+    ownsGadget(id) { return id === 'none' || (this.ownedGadgets && this.ownedGadgets.has(id)); }
+    activeGadgetEffect() {
+        const g = this.gadgetById(this.activeGadgetHex);
+        return g ? g.effect : null;
+    }
+
+    buyGadgetHex(id) {
+        const g = this.gadgetById(id);
+        if (!g) return false;
+        if (this.ownsGadget(id)) return this.selectGadgetHex(id);
+        if (this.pixels < g.price) {
+            this.toasty('Not enough pixels — ' + g.name + ' costs ' + g.price + '.');
+            return false;
+        }
+        this.pixels -= g.price;
+        this.ownedGadgets.add(id);
+        this.toasty('Unlocked ' + g.name + '!');
+        return this.selectGadgetHex(id);
+    }
+
+    selectGadgetHex(id) {
+        if (!this.ownsGadget(id)) return false;
+        this.activeGadgetHex = id;
+        this.applyGadgetToSession();
+        this.saveEconomy();
+        return true;
+    }
+
+    // Apply the active gadget perk to a live play session (and it's called
+    // by PlayMode on session start): magnet + guardian set flags PlayMode
+    // reads; booster raises the CC's jump speed (and the stock-jump baseline
+    // so trampoline restores don't erase it).
+    applyGadgetToSession() {
+        const pm = this.activeMode;
+        if (!pm || pm.constructor.name !== 'PlayMode') return;
+        const effect = this.activeGadgetEffect();
+        pm.gadgetMagnet = (effect === 'magnet');
+        pm._normalJumpSpeed = (effect === 'booster') ? 9 : 6;
+        if (pm.cc) pm.cc.setJumpSpeed(pm._normalJumpSpeed);
+        pm.gadgetGuardian = (effect === 'guardian');
+        pm.shieldCharge = (effect === 'guardian') ? 1 : 0;
+    }
     ownsHexDisc(id) { return !!(this.ownedHex && this.ownedHex.has(id)); }
 
     buyHexDisc(id) {
