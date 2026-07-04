@@ -273,6 +273,8 @@ class BuildMode {
         if (!this.currentInstance) return;
         this.app.showBoundingBoxAll(this.currentInstance, false);
         this.placedInstances.push({ wo: this.currentWorldObject, inst: this.currentInstance });
+        // Linked builders share their edits live.
+        if (this.app.net && !this.app.net.closed) this.app.net.sendAdd(this.currentInstance);
         this.currentInstance = null;
         this.grabbed = false;
         this.app.sound.play('place');
@@ -359,6 +361,8 @@ class BuildMode {
 
     // Dispose an instance and drop it from the undo stack.
     removePlacedInstance(node) {
+        // Linked builders share their deletions live.
+        if (this.app.net && !this.app.net.closed) this.app.net.sendDel(node);
         if (!node) return;
         this.placedInstances = this.placedInstances.filter((p) => p.inst !== node);
         if (node.worldObject) {

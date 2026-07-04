@@ -22,6 +22,7 @@ class NetLink {
         this.log = [];            // received message summaries (tests read this)
         this.sent = 0;            // tf messages sent (throttle assertions)
         this.ghostTarget = null;  // latest remote transform
+        this.remoteIds = {};      // 'wo#remoteId' -> local instance (edit stream)
         this.ghost = null;
         this._sendTimer = 0;
         this.closed = false;
@@ -33,6 +34,28 @@ class NetLink {
             const data = this.app.world.serialize();
             this.transport.send(JSON.stringify({ t: 'world', data: data, name: 'shared' }));
         }
+    }
+
+    // ---- live edit streaming (BuildMode hooks call these) -----------------
+    sendAdd(inst) {
+        if (this.closed || !inst || !inst.worldObject) return;
+        try {
+            this.transport.send(JSON.stringify({
+                t: 'add', wo: inst.worldObject.name, id: inst.worldId,
+                po: { x: inst.position.x, y: inst.position.y, z: inst.position.z },
+                ro: inst.rotationQuaternion || undefined,
+                sc: inst.scaling || undefined,
+                pr: inst.params || undefined,
+            }));
+        } catch (e) { /* channel closing */ }
+    }
+
+    sendDel(inst) {
+        if (this.closed || !inst || !inst.worldObject) return;
+        try {
+            this.transport.send(JSON.stringify({
+                t: 'del', wo: inst.worldObject.name, id: inst.worldId }));
+        } catch (e) { /* channel closing */ }
     }
 
     close() {
@@ -61,6 +84,25 @@ class NetLink {
                      this.app.activeMode.constructor.name !== 'PlayMode')) {
                     this.app.goto_playMode();
                 }
+            }
+        } else if (msg.t === 'add') {
+            // A remote edit: create locally with a FRESH id (both sides mint
+            // ids independently; the map below keys deletions instead).
+            this.log.push({ t: 'add', wo: msg.wo });
+            const wo = this.app.findWorldObject(msg.wo);
+            if (wo) {
+                const inst = wo.createInstance({ wo: msg.wo, po: msg.po,
+                    ro: msg.ro, sc: msg.sc, pr: msg.pr });
+                if (inst) this.remoteIds[msg.wo + '#' + msg.id] = inst;
+            }
+        } else if (msg.t === 'del') {
+            this.log.push({ t: 'del', wo: msg.wo });
+            const key = msg.wo + '#' + msg.id;
+            const inst = this.remoteIds[key];
+            if (inst) {
+                delete this.remoteIds[key];
+                const wo = this.app.findWorldObject(msg.wo);
+                if (wo) wo.disposeInstance(inst);
             }
         } else if (msg.t === 'tf') {
             this.ghostTarget = { p: msg.p, ry: msg.ry };

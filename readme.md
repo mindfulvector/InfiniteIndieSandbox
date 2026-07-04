@@ -335,8 +335,9 @@ invite code* (it lands on the clipboard), sends it to a friend over any
 chat, and the friend picks *join* and pastes it — their answer code goes
 back the same way, the host pastes it, and the link opens. No servers, no
 accounts: just two codes traded. The host's world crosses the link, the
-guest lands right in it, and each player sees the other as a glowing
-ghost walking their world.
+guest lands right in it, each player sees the other as a glowing ghost —
+and **you build together**: anything either of you places or removes
+appears and vanishes on the other side, live.
 
 **Couch co-op — up to four players:** press `B` — or press any button on a
 **second, third, or fourth gamepad** — and a friendly figure (green, orange,

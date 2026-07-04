@@ -119,6 +119,38 @@ async function main() {
             ghost.sent >= 5 && ghost.sent <= Math.ceil(ghost.frames / 6) + 3, ghost);
         await h.screenshot('net-ghost');
 
+        // --- 2b. Live edit streaming across the wire ---
+        const edits = await h.evaluate(() => new Promise((resolve) => {
+            const app = window.app;
+            const before = app.findWorldObject('l_counter').instances.filter(Boolean).length;
+            // Simulate the host's BuildMode placement commit.
+            const placed = app.findWorldObject('l_counter').createInstance();
+            placed.position = new BABYLON.Vector3(5, 4, 5);
+            placed.params.threshold = 7;
+            window.__host.sendAdd(placed);
+            setTimeout(() => {
+                const midway = app.findWorldObject('l_counter').instances.filter(Boolean).length;
+                const remote = window.__guest.remoteIds['l_counter#' + placed.worldId];
+                const remoteOk = remote && remote !== placed &&
+                    Math.abs(remote.position.x - 5) < 0.01 &&
+                    remote.params && remote.params.threshold === 7;
+                window.__host.sendDel(placed);
+                setTimeout(() => {
+                    const after = app.findWorldObject('l_counter').instances.filter(Boolean).length;
+                    resolve({ before, midway, after,
+                        remoteOk: !!remoteOk,
+                        addLogged: window.__guest.log.some((l) => l.t === 'add'),
+                        delLogged: window.__guest.log.some((l) => l.t === 'del'),
+                        mapCleared: !window.__guest.remoteIds['l_counter#' + placed.worldId] });
+                }, 300);
+            }, 300);
+        }));
+        console.log('[2b] edits', edits);
+        check('a placed object crosses the wire (fresh local id, params intact)',
+            edits.remoteOk && edits.midway === edits.before + 2 && edits.addLogged, edits);
+        check('a deletion crosses the wire and clears the remote mapping',
+            edits.after === edits.midway - 1 && edits.delLogged && edits.mapCleared, edits);
+
         // --- 3. Goodbye disposes the ghost ---
         await h.evaluate(() => { window.__host.close(); });
         await h.waitFor(() => !window.app.scene.getMeshByName('netGhost') &&
