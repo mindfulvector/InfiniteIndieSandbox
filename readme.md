@@ -247,6 +247,15 @@ place, and Volt's **Chain Bolt** fires a fan of five shots. Each figure **levels
 independently**: switch figures and you switch to that figure's saved
 level and XP. The HUD badge shows who you're playing and their level.
 
+### Power Discs
+
+The Collection screen also opens your **Power Discs** (`9` from the roster) —
+buyable buff tokens that work with **any** figure: Ember Sigil (+1 melee),
+Aegis Shell (+20 max HP), Swift Coil (faster dodge), Fortune Prism (+25%
+pixels), and Sage Lens (+25% XP). You can equip **two at once**, and two
+different discs stack — pick a pair that fits your build. Discs persist like
+pixels and follow you across figure switches.
+
 ### Pixels & the Shop
 
 Defeated enemies burst into **pixels** — tiny multi-coloured cubes that fly to

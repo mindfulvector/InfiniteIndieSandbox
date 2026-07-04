@@ -12,6 +12,7 @@ const MENU_WIRING = 10;
 const MENU_WORLD_TEMPLATE = 11;
 const MENU_COLLECTION = 12;
 const MENU_SKILLS = 13;
+const MENU_DISCS = 14;
 
 const MAX_LEVEL = 20;   // character level cap
 
@@ -28,6 +29,18 @@ const FIGURES = [
     { id: 'volt',  name: 'Volt',  price: 250, tint: [1.00, 0.95, 0.40], hpBonus: 10, meleeBonus: 0, rangedHaste: 6, desc: 'Faster ranged fire, +10 HP',
       special: 'bolt', specialName: 'Chain Bolt' },
 ];
+
+// Round power discs: passive buff tokens, global across figures (they are
+// separate physical items, like the real toys-to-life discs). Up to two are
+// equipped at once, and two DIFFERENT discs stack -- that's the combine rule.
+const DISCS = [
+    { id: 'ember',   name: 'Ember Sigil',   price: 100, desc: '+1 melee damage' },
+    { id: 'aegis',   name: 'Aegis Shell',   price: 100, desc: '+20 max HP' },
+    { id: 'swift',   name: 'Swift Coil',    price: 120, desc: 'Faster dodge roll' },
+    { id: 'fortune', name: 'Fortune Prism', price: 150, desc: '+25% pixels earned' },
+    { id: 'sage',    name: 'Sage Lens',     price: 150, desc: '+25% XP earned' },
+];
+const DISC_SLOTS = 2;
 
 // Packs: bundles of figures and/or premium objects sold at a discount in the
 // shop. A pack has no owned-state of its own -- it counts as owned when every
@@ -1220,12 +1233,28 @@ class App {
         case MENU_COLLECTION: {
             if(menuItem === 0) {
                 app.menu.state = app.menu.prevState || MENU_MAIN;
+            } else if(menuItem === 9) {
+                app.menu.discsPrevState = app.menu.prevState || MENU_MAIN;
+                app.menu.state = MENU_DISCS;
             } else {
                 const fig = FIGURES[menuItem - 1];
                 if(fig) {
                     if(app.ownsFigure(fig.id)) app.selectFigure(fig.id);
                     else app.buyFigure(fig.id);
                     app.menu.renderedState = -1;   // re-render with new state
+                }
+            }
+            break;
+        }
+        case MENU_DISCS: {
+            if(menuItem === 0) {
+                app.menu.prevState = app.menu.discsPrevState || MENU_MAIN;
+                app.menu.state = MENU_COLLECTION;
+            } else {
+                const disc = DISCS[menuItem - 1];
+                if(disc) {
+                    app.buyDisc(disc.id);   // buys, or toggles equip if owned
+                    app.menu.renderedState = -1;
                 }
             }
             break;
@@ -1708,9 +1737,50 @@ class App {
                 });
                 this.MenuItem({
                     type: 'button',
+                    name: 'btnColDiscs',
+                    text: '9. Power Discs  (' + this.equippedDiscs.length + '/' + DISC_SLOTS + ' equipped)',
+                    handler: () => { app.triggerMenuItem(MENU_COLLECTION, 9); }
+                });
+                this.MenuItem({
+                    type: 'button',
                     name: 'btnColBack',
                     text: '0. Back',
                     handler: () => { app.triggerMenuItem(MENU_COLLECTION, 0); }
+                });
+                break;
+            }
+            case MENU_DISCS: {
+                this.MenuRect();
+                this.MenuItem({
+                    type: 'text',
+                    name: 'discTitle',
+                    text: 'POWER DISCS  ·  ' + this.equippedDiscs.length + '/' + DISC_SLOTS + ' equipped',
+                    fontSize: 22,
+                    accent: true,
+                });
+                this.MenuItem({
+                    type: 'text',
+                    name: 'discBalance',
+                    text: 'Pixels: ' + this.pixels + '   ·   two different discs stack',
+                    fontSize: 15,
+                    color: '#ff9bce',
+                });
+                DISCS.forEach((disc, i) => {
+                    const owned = this.ownsDisc(disc.id);
+                    const eq = this.discEquipped(disc.id);
+                    const status = eq ? '◉ EQUIPPED' : (owned ? 'Owned' : disc.price + ' px');
+                    this.MenuItem({
+                        type: 'button',
+                        name: 'btnDisc_' + disc.id,
+                        text: (i + 1) + '. ' + disc.name + ' — ' + disc.desc + '   [' + status + ']',
+                        handler: () => { app.triggerMenuItem(MENU_DISCS, i + 1); }
+                    });
+                });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnDiscBack',
+                    text: '0. Back',
+                    handler: () => { app.triggerMenuItem(MENU_DISCS, 0); }
                 });
                 break;
             }
@@ -2221,6 +2291,14 @@ class App {
             this.playerXp = Math.max(0,
                 parseInt(window.localStorage.getItem('iis_fig_' + this.activeFigure + '_xp'), 10) || 0);
             this.skillRanks = this.loadSkillRanks(this.activeFigure);
+
+            // Power discs: owned set + equipped list (global, not per figure).
+            const discsOwned = JSON.parse(window.localStorage.getItem('iis_discs_owned') || '[]');
+            this.ownedDiscs = new Set(Array.isArray(discsOwned) ? discsOwned : []);
+            const eq = JSON.parse(window.localStorage.getItem('iis_discs_equipped') || '[]');
+            this.equippedDiscs = (Array.isArray(eq) ? eq : [])
+                .filter((id) => this.discById(id) && this.ownedDiscs.has(id))
+                .slice(0, DISC_SLOTS);
         } catch (e) {
             this.pixels = 0;
             this.purchasedSet = new Set();
@@ -2229,6 +2307,8 @@ class App {
             this.playerLevel = 1;
             this.playerXp = 0;
             this.skillRanks = {};
+            this.ownedDiscs = new Set();
+            this.equippedDiscs = [];
         }
     }
 
@@ -2256,10 +2336,20 @@ class App {
             window.localStorage.setItem('iis_fig_' + this.activeFigure + '_level', String(this.playerLevel));
             window.localStorage.setItem('iis_fig_' + this.activeFigure + '_xp', String(this.playerXp));
             window.localStorage.setItem('iis_fig_' + this.activeFigure + '_skills', JSON.stringify(this.skillRanks || {}));
+            window.localStorage.setItem('iis_discs_owned', JSON.stringify([...(this.ownedDiscs || [])]));
+            window.localStorage.setItem('iis_discs_equipped', JSON.stringify(this.equippedDiscs || []));
         } catch (e) { /* storage may be unavailable */ }
     }
 
     addPixels(n) {
+        // Fortune Prism: +25% pixels earned. Bursts arrive one pixel at a
+        // time, so the bonus accrues fractionally and pays out whole pixels.
+        if (n > 0 && this.discEquipped('fortune')) {
+            this._pixelFrac = (this._pixelFrac || 0) + n * 0.25;
+            const whole = Math.floor(this._pixelFrac);
+            this._pixelFrac -= whole;
+            n += whole;
+        }
         this.pixels = Math.max(0, this.pixels + n);
         this.saveEconomy();
     }
@@ -2275,6 +2365,8 @@ class App {
 
     addXp(n) {
         if (this.playerLevel >= MAX_LEVEL) { this.saveEconomy(); return; }
+        // Sage Lens: +25% XP earned.
+        if (this.discEquipped('sage')) n = Math.round(n * 1.25);
         this.playerXp += n;
         let leveled = false;
         while (this.playerLevel < MAX_LEVEL && this.playerXp >= this.xpToNext(this.playerLevel)) {
@@ -2297,15 +2389,62 @@ class App {
     }
 
     // Stat growth: +5 max HP per level, +1 melee damage every 5 levels, plus
-    // the active figure's own stat lean, plus spent skill ranks.
-    maxHpForLevel() { return 100 + (this.playerLevel - 1) * 5 + this.activeFigureDef().hpBonus + this.skillRank('vitality') * 10; }
-    meleeBonus()    { return Math.floor(this.playerLevel / 5) + this.activeFigureDef().meleeBonus + this.skillRank('power'); }
+    // the active figure's own stat lean, plus spent skill ranks, plus discs.
+    maxHpForLevel() { return 100 + (this.playerLevel - 1) * 5 + this.activeFigureDef().hpBonus + this.skillRank('vitality') * 10 + (this.discEquipped('aegis') ? 20 : 0); }
+    meleeBonus()    { return Math.floor(this.playerLevel / 5) + this.activeFigureDef().meleeBonus + this.skillRank('power') + (this.discEquipped('ember') ? 1 : 0); }
     // Frames between ranged shots (some figures fire faster; Trigger ranks
     // shave 2 frames each). The old floor of 8 never bound (no figure has
     // haste > 10), so lowering it to 6 changes nothing without skills.
     rangedCooldownFrames() { return Math.max(6, 18 - this.activeFigureDef().rangedHaste - this.skillRank('trigger') * 2); }
-    // Frames between dodge rolls (Agility ranks shave 8 each).
-    dodgeCooldownFrames() { return Math.max(15, 40 - this.skillRank('agility') * 8); }
+    // Frames between dodge rolls (Agility ranks and the Swift Coil disc).
+    dodgeCooldownFrames() { return Math.max(15, 40 - this.skillRank('agility') * 8 - (this.discEquipped('swift') ? 8 : 0)); }
+
+    // ---- power discs --------------------------------------------------------
+    // Passive buff tokens, global across figures. Up to DISC_SLOTS equipped;
+    // different discs stack. Buffs apply through the same derived-stat and
+    // economy hooks the figures/skills use.
+
+    discs() { return DISCS; }
+    discById(id) { return DISCS.find((d) => d.id === id) || null; }
+    ownsDisc(id) { return !!(this.ownedDiscs && this.ownedDiscs.has(id)); }
+    discEquipped(id) { return !!(this.equippedDiscs && this.equippedDiscs.indexOf(id) >= 0); }
+
+    // Buy a disc with pixels (auto-equips into a free slot).
+    buyDisc(id) {
+        const disc = this.discById(id);
+        if (!disc) return false;
+        if (this.ownsDisc(id)) return this.toggleDisc(id);
+        if (this.pixels < disc.price) {
+            this.toasty('Not enough pixels — ' + disc.name + ' costs ' + disc.price + '.');
+            return false;
+        }
+        this.pixels -= disc.price;
+        this.ownedDiscs.add(id);
+        this.toasty('Unlocked ' + disc.name + '!');
+        if (this.equippedDiscs.length < DISC_SLOTS) this.equippedDiscs.push(id);
+        this.applySkillsToSession();   // max-HP discs apply live, like skills
+        this.saveEconomy();
+        return true;
+    }
+
+    // Equip/unequip an owned disc. Refuses a third equip (two slots).
+    toggleDisc(id) {
+        if (!this.ownsDisc(id)) return false;
+        const at = this.equippedDiscs.indexOf(id);
+        if (at >= 0) {
+            this.equippedDiscs.splice(at, 1);
+            this.toasty(this.discById(id).name + ' unequipped.');
+        } else if (this.equippedDiscs.length >= DISC_SLOTS) {
+            this.toasty('Both disc slots are full — unequip one first.');
+            return false;
+        } else {
+            this.equippedDiscs.push(id);
+            this.toasty(this.discById(id).name + ' equipped.');
+        }
+        this.applySkillsToSession();
+        this.saveEconomy();
+        return true;
+    }
 
     // ---- skill tree ---------------------------------------------------------
     // One point per level-up. Earned is DERIVED from the level so it can never
