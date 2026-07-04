@@ -238,6 +238,11 @@ and walk into it in play mode to hop in. `W`/`S` (or the left stick) throttle
 with real momentum, `A`/`D` steer — sharper the faster you go — and `Space`
 hops out. Dying parks the kart back where you left it.
 
+**Riding:** the **Strider** (Props) is a friendly beast you saddle the same
+way. It's slower than the kart but turns on the spot, its legs trot as you
+ride, and `Space` makes it **jump** — `C` hops off. Perfect for bounding
+around rough terrain the kart hates.
+
 **Couch co-op — up to four players:** press `B` — or press any button on a
 **second, third, or fourth gamepad** — and a friendly figure (green, orange,
 then violet) drops in beside you; when the party is full, `B` sends everyone

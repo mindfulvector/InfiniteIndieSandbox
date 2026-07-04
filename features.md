@@ -32,7 +32,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 |---|---|---|
 | Drivable ground vehicles (cars, bikes, tanks) | 🟡 | `pr_kart` hover-kart (premium, 60 px): walk-up mount stops the CharacterController, momentum driving on the shared GravityBody (throttle/drag/speed-scaled steering, WASD or left stick), Space dismounts, respawn parks it home, mid-drive saves store the parked spot (`test-vehicles.js`); more vehicle types planned |
 | Flyable aircraft / dogfighting | ⬜ | |
-| Ridable mounts | ⬜ | |
+| Ridable mounts | ✅ | The Strider (`pr_mount`): walk-up saddling on the shared vehicle seat (per-vehicle profiles), slower than the kart but pivots in place, JUMPS on Space, dismounts on `C`, legs trot with speed; mount children are collision-free so the beast can't block its own jump (`test-mounts.js`) |
 | Climbing / jumping / double-jump / gliding / character traversal | 🟡 | Jump, double jump, and hold-to-glide (`test-traversal.js`); slope/step handling via CharacterController; climbing/swinging planned |
 | Grind rails, trampolines, traversal toys | ⬜ | |
 
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Ridable mounts (saddle a patrol blob)
-2. Campaign purchase gating (locked Play Sets in the shop)
-3. Flyable aircraft (glide-kart hybrid)
-4. Online co-op exploration (WebRTC world sync spike)
+1. Campaign purchase gating (locked Play Sets in the shop)
+2. Flyable aircraft (glide-kart hybrid)
+3. Online co-op exploration (WebRTC world sync spike)
+4. Grind rails / trampolines (traversal toys)

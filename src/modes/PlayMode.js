@@ -634,6 +634,22 @@ class PlayMode {
     // GravityBody: throttle accelerates toward a max, drag bleeds it off,
     // steering scales with speed so a parked kart doesn't spin in place.
 
+    // The vehicle profile: scripts customize the shared seat (the mount
+    // jumps and dismounts on C; the kart dismounts on Space). Defaults are
+    // the kart's numbers.
+    _vehicleProfile(inst) {
+        const p = (inst && inst.script && inst.script.vehicleProfile) || {};
+        return {
+            max: p.max != null ? p.max : 10,
+            accel: p.accel != null ? p.accel : 12,
+            turn: p.turn != null ? p.turn : 2.4,
+            seatY: p.seatY != null ? p.seatY : 1.0,
+            canJump: !!p.canJump,
+            turnInPlace: !!p.turnInPlace,
+            hint: p.hint || 'Hop in!  WASD drives · Space hops out',
+        };
+    }
+
     mountKart(inst) {
         if (this.driving || !this.player || !this.cc) return;
         this.driving = inst;
@@ -656,7 +672,7 @@ class PlayMode {
             inst.rotation.y = inst.rotationQuaternion.toEulerAngles().y;
             inst.rotationQuaternion = null;
         }
-        this.app.toasty('Hop in!  WASD drives · Space hops out');
+        this.app.toasty(this._vehicleProfile(inst).hint);
     }
 
     dismountKart() {
@@ -674,12 +690,21 @@ class PlayMode {
     updateDriving() {
         const inst = this.driving;
         if (!inst || !this.player) return;
-        // Space hops out (the controller is stopped, so Space is free here).
-        if (this.app.keyPressed(' ') || this.app.consumePad('jump')) {
+        const prof = this._vehicleProfile(inst);
+        const a = this.app;
+
+        // Kart: Space hops out. Mounts: Space JUMPS, C hops off.
+        if (prof.canJump) {
+            if (a.keyPressed('C')) { this.dismountKart(); return; }
+            if ((a.keyPressed(' ') || a.consumePad('jump')) &&
+                inst._kartBody && inst._kartBody.grounded) {
+                inst._kartBody.vy = 8;
+            }
+        } else if (a.keyPressed(' ') || a.consumePad('jump')) {
             this.dismountKart();
             return;
         }
-        const a = this.app;
+
         const dt = Math.min(0.05, a.scene.getEngine().getDeltaTime() / 1000);
         const pad = a.testPad || a.gamepad;
         const ls = pad && pad.leftStick;
@@ -695,20 +720,23 @@ class PlayMode {
         throttle = Math.max(-1, Math.min(1, throttle));
         steer = Math.max(-1, Math.min(1, steer));
 
-        const MAX = 10, ACCEL = 12, DRAG = 2.2, TURN = 2.4;
+        const DRAG = 2.2;
         let speed = inst._kartSpeed || 0;
-        speed += (throttle * ACCEL - speed * DRAG * (throttle === 0 ? 1.6 : 1)) * dt;
-        speed = Math.max(-MAX * 0.5, Math.min(MAX, speed));
+        speed += (throttle * prof.accel - speed * DRAG * (throttle === 0 ? 1.6 : 1)) * dt;
+        speed = Math.max(-prof.max * 0.5, Math.min(prof.max, speed));
         inst._kartSpeed = speed;
-        // Steering authority grows with speed (no spinning in place).
-        inst.rotation.y += steer * TURN * dt * Math.max(0.25, Math.min(1, Math.abs(speed) / 4)) * Math.sign(speed || 1);
+        // Steering authority grows with speed unless the vehicle can turn in
+        // place (creatures pivot; karts don't).
+        const authority = prof.turnInPlace
+            ? 1 : Math.max(0.25, Math.min(1, Math.abs(speed) / 4)) * Math.sign(speed || 1);
+        inst.rotation.y += steer * prof.turn * dt * authority;
 
         const vx = Math.sin(inst.rotation.y) * speed;
         const vz = Math.cos(inst.rotation.y) * speed;
         inst._kartBody.step(vx, vz);
 
-        // Seat the player on the kart; the camera follows them for free.
-        this.player.position.copyFrom(inst.position.add(new BABYLON.Vector3(0, 1.0, 0)));
+        // Seat the player; the camera follows them for free.
+        this.player.position.copyFrom(inst.position.add(new BABYLON.Vector3(0, prof.seatY, 0)));
         this.player.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(inst.rotation.y, 0, 0);
     }
 

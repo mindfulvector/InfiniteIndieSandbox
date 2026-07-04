@@ -186,6 +186,20 @@ class Manifest {
                   ]
         }, 'KartScript');
 
+        // A ridable mount: walk up to saddle it. Rides slower than the kart
+        // but pivots in place and JUMPS (Space); C hops off. The mleg*
+        // children trot while ridden.
+        app.createWorldObject('pr_mount', {
+            prims: [
+                     {ty: 'box',      s: [1.1, 0.8, 2.0],        p: [0, 0, 0],          col: [0.4, 0.85, 0.6], tex: {id: 'noise'}},
+                     {ty: 'box',      s: [0.55, 0.55, 0.7],      p: [0, 0.55, 1.1],     col: [0.45, 0.9, 0.65], tex: {id: 'noise'}},
+                     {ty: 'cylinder', s: [0.22, 0.9, 0.22, 8, 1], p: [-0.4, -0.8, 0.7],  col: [0.3, 0.7, 0.5], tex: {id: 'noise'}, nm: 'mleg1'},
+                     {ty: 'cylinder', s: [0.22, 0.9, 0.22, 8, 1], p: [0.4, -0.8, 0.7],   col: [0.3, 0.7, 0.5], tex: {id: 'noise'}, nm: 'mleg2'},
+                     {ty: 'cylinder', s: [0.22, 0.9, 0.22, 8, 1], p: [-0.4, -0.8, -0.7], col: [0.3, 0.7, 0.5], tex: {id: 'noise'}, nm: 'mleg3'},
+                     {ty: 'cylinder', s: [0.22, 0.9, 0.22, 8, 1], p: [0.4, -0.8, -0.7],  col: [0.3, 0.7, 0.5], tex: {id: 'noise'}, nm: 'mleg4'},
+                  ]
+        }, 'MountScript');
+
         // A ghost kart: a translucent AI rival that laps a wired path chain
         // (wire its `follow` to the first path node). Intangible pace-setter.
         app.createWorldObject('pr_kart_ghost', {
