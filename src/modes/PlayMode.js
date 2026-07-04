@@ -339,6 +339,7 @@ class PlayMode {
         if (this._bounceRestore > 0 && --this._bounceRestore === 0 && this.cc) {
             this.cc.setJumpSpeed(this._normalJumpSpeed || 6);
         }
+        if (this.app.net) this.app.net.tick(this);
         this.updateBuddies();
         this.updateCompanions();
         this.updateSidekick();

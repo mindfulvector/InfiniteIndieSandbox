@@ -330,6 +330,14 @@ at your side wherever you go, they belong to your **progression slot** (each
 character keeps their own crew), and they come right back whenever you load
 that slot and enter a world. Talk to their recruit spot again to part ways.
 
+**Online co-op (early spike):** the plumbing for internet play is in —
+WebRTC with no server: the host runs `await app.netCreateOffer()` in the
+browser console and sends the code to a friend; the friend runs
+`await app.netAcceptOffer(code)` and sends back the answer; the host
+finishes with `app.netFinish(answer)`. The host's world crosses the link
+and each player sees the other as a glowing ghost. Proper menus for this
+are on the roadmap.
+
 **Couch co-op — up to four players:** press `B` — or press any button on a
 **second, third, or fourth gamepad** — and a friendly figure (green, orange,
 then violet) drops in beside you; when the party is full, `B` sends everyone

@@ -3692,6 +3692,30 @@ class App {
     // nudge resume() on every use and schedule regardless -- scheduling
     // against a suspended context is legal and simply plays once resumed).
 
+    // ---- online co-op (WebRTC, manual signaling; see NetLink.js) -----------
+
+    async netCreateOffer() {
+        const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+        const channel = pc.createDataChannel('iis');
+        NetRtc._wrap(this, pc, channel, true);
+        await pc.setLocalDescription(await pc.createOffer());
+        await NetRtc._gathered(pc);
+        return JSON.stringify(pc.localDescription);
+    }
+
+    async netAcceptOffer(offerStr) {
+        const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+        pc.ondatachannel = (ev) => { NetRtc._wrap(this, pc, ev.channel, false); };
+        await pc.setRemoteDescription(JSON.parse(offerStr));
+        await pc.setLocalDescription(await pc.createAnswer());
+        await NetRtc._gathered(pc);
+        return JSON.stringify(pc.localDescription);
+    }
+
+    async netFinish(answerStr) {
+        await this._netPc.setRemoteDescription(JSON.parse(answerStr));
+    }
+
     audio() {
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return null;

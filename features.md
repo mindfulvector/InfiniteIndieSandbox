@@ -42,7 +42,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Feature | Status | Notes |
 |---|---|---|
 | 2P local split-screen campaigns (4P brawler) | 🟡 | Automatic co-op split-screen: past 26 units the view splits (P1 + HUD left, buddy FollowCamera right), merges under 18 (hysteresis); the fullscreen GUI is layer-masked out of the buddy pane (`test-splitscreen.js`); campaigns/4P planned |
-| Up to 4P Sandbox (local + online) | 🟡 | Local 4P: three buddy slots (green/orange/violet), each on its own gamepad (or `B` to fill), all hunted via `combatTargets`, per-buddy downed cycles, party respawn, and split-screen growing to a 2×2 quadrant grid (`test-fourplayer.js`); online planned |
+| Up to 4P Sandbox (local + online) | 🟡 | Local 4P: three buddy slots (green/orange/violet), each on its own gamepad (or `B` to fill), all hunted via `combatTargets`, per-buddy downed cycles, party respawn, and split-screen growing to a 2×2 quadrant grid (`test-fourplayer.js`); ONLINE SPIKE landed: `NetLink` protocol (world snapshot on connect + ~10Hz transform stream + bye) over manually-signaled WebRTC DataChannels — no server, no deps; remote player renders as a lerped ghost rig; suite exercises a REAL loopback RTC pair (`test-netlink.js`); menu UX + guest input next |
 | Drop-in/drop-out co-op | ✅ | Drop-in buddy: `B` or any second-pad button joins; stick/A/X drive move/jump/melee; enemies hunt the NEAREST player (flyers, walker melee, projectiles all route via `combatTargets`/`damageTarget`), buddy has 60 HP with a downed-then-revive-at-half cycle (out of targeting while down), falls auto-rescue, respawn restores it, and the camera widens to frame both players (`test-coop.js`); full P2 figure avatar planned |
 
 ### Digital figures and collection
