@@ -165,6 +165,15 @@ class Manifest {
                   ]
         }, 'CameraScript');
 
+        // A race controller: wire a start gate, checkpoint triggers, and a
+        // finish line into it; it runs the stopwatch, tracks distinct
+        // checkpoints, and fires finished/record events.
+        app.createWorldObject('l_race', {
+            prims: [
+                     {ty: 'box',       s: [1.2, 1.0, 0.4], p: [0,0,0]},
+                  ]
+        }, 'RaceScript');
+
         // Path building: waypoint nodes chain via wires (node `next` -> next
         // node's `chain`); a moving platform wires its `follow` output to the
         // first node and travels the chain in play mode (loop/pingpong/once).

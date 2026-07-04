@@ -147,6 +147,14 @@ same way and it walks the chain (its settings choose speed and loop vs
 ping-pong). When you get close it stops and watches you; back away and the
 patrol resumes.
 
+**Races:** place a **Race** toy (Logic) and wire trigger volumes into it — one
+as the *Start Gate*, any number as *Checkpoints* (its settings say how many
+the course needs), and one as the *Finish Line*. Running through the start
+arms a stopwatch on the HUD; the finish only counts once every checkpoint has
+been hit (each one counts once, so laps through the same gate don't cheat).
+Finishing fires *Race Finished*, and beating your session best fires *New
+Best Time* — wire those to scoreboards, cameras, or spawners to celebrate.
+
 #### Pickups
 
 The **Pickups** category has placeable collectables that bob and spin in play

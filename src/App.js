@@ -486,6 +486,22 @@ class App {
         this.gui.addControl(scoreText);
         this.hud.scoreText = scoreText;
 
+        // --- Race clock (top-center, under the scoreboard readout) ---
+        const raceText = new BABYLON.GUI.TextBlock("hudRace");
+        raceText.text = "";
+        raceText.color = "#7ef3ff";
+        raceText.fontSize = 20;
+        raceText.fontStyle = "bold";
+        raceText.height = "28px";
+        raceText.width = "360px";
+        raceText.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+        raceText.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+        raceText.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        raceText.top = "92px";
+        raceText.isVisible = false;
+        this.gui.addControl(raceText);
+        this.hud.raceText = raceText;
+
         // --- Wave counter (top-left, below the health bar) ---
         const waveText = new BABYLON.GUI.TextBlock("hudWave");
         waveText.text = "";
