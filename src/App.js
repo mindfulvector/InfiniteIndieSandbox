@@ -17,6 +17,7 @@ const MENU_SHARE = 15;
 const MENU_GEAR = 16;
 const MENU_SLOT = 17;
 const MENU_DIALOG = 18;
+const MENU_NET = 19;
 
 // Hireable companions: recruited through a dialog tree at a pr_recruit,
 // saved with the active PROGRESSION SLOT (iis_companions is a progression
@@ -1291,6 +1292,10 @@ class App {
                 app.menu.prevState = MENU_MAIN;
                 app.menu.state = MENU_SLOT;
                 break;
+            case 8:                                 // Online co-op
+                app.menu.prevState = MENU_MAIN;
+                app.menu.state = MENU_NET;
+                break;
             }
             break;
         case MENU_SHARE:
@@ -1542,6 +1547,21 @@ class App {
             }
             break;
         }
+        case MENU_NET:
+            if(menuItem === 1) {
+                app.netCreateOffer().then((code) => app._netShare(code, 'Invite code'));
+            } else if(menuItem === 2) {
+                app.promptText('Paste your friend\'s ANSWER code:', '', (v) => {
+                    if(v) app.netFinish(v).then(() => app.toasty('Linked! The channel opens in a moment…'));
+                });
+            } else if(menuItem === 3) {
+                app.promptText('Paste the INVITE code:', '', (v) => {
+                    if(v) app.netAcceptOffer(v).then((code) => app._netShare(code, 'Answer code'));
+                });
+            } else if(menuItem === 0) {
+                app.menu.state = app.menu.prevState || MENU_MAIN;
+            }
+            break;
         case MENU_SLOT:
             if(menuItem >= 1 && menuItem <= 3) {
                 app.selectSlot(menuItem);
@@ -1691,6 +1711,12 @@ class App {
                         app.triggerMenuItem(MENU_MAIN, 7);
                     }
                 });
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnNet',
+                    text: '8. Online Co-op' + (this.net && !this.net.closed ? '  ◉ LINKED' : ''),
+                    handler: () => { app.triggerMenuItem(MENU_MAIN, 8); }
+                });
                 break;
             case MENU_DIALOG: {
                 this.MenuRect();
@@ -1713,6 +1739,28 @@ class App {
                         handler: () => { app.triggerMenuItem(MENU_DIALOG, i + 1); }
                     });
                 });
+                break;
+            }
+            case MENU_NET: {
+                this.MenuRect();
+                this.MenuItem({ type: 'text', name: 'netTitle', text: 'ONLINE CO-OP',
+                    fontSize: 24, accent: true });
+                this.MenuItem({ type: 'text', name: 'netStatus',
+                    text: (this.net && !this.net.closed)
+                        ? ('Linked as ' + (this.net.isHost ? 'HOST' : 'GUEST') + ' — your friend appears as a ghost.')
+                        : 'Serverless WebRTC: trade two codes with a friend (chat, email, pigeon).',
+                    fontSize: 13, color: '#ff9bce' });
+                this.MenuItem({ type: 'button', name: 'btnNetHost',
+                    text: '1. Host — create invite code',
+                    handler: () => { app.triggerMenuItem(MENU_NET, 1); } });
+                this.MenuItem({ type: 'button', name: 'btnNetFinish',
+                    text: '2. Host — paste friend\'s answer',
+                    handler: () => { app.triggerMenuItem(MENU_NET, 2); } });
+                this.MenuItem({ type: 'button', name: 'btnNetJoin',
+                    text: '3. Join — paste an invite code',
+                    handler: () => { app.triggerMenuItem(MENU_NET, 3); } });
+                this.MenuItem({ type: 'button', name: 'btnNetBack', text: '0. Back',
+                    handler: () => { app.triggerMenuItem(MENU_NET, 0); } });
                 break;
             }
             case MENU_SLOT: {
@@ -3693,6 +3741,22 @@ class App {
     // against a suspended context is legal and simply plays once resumed).
 
     // ---- online co-op (WebRTC, manual signaling; see NetLink.js) -----------
+
+    // Stash + clipboard a signaling code; the toast tells the player what
+    // to do with it. lastNetCode is the test hook AND the console fallback.
+    _netShare(code, label) {
+        this.lastNetCode = code;
+        const fallback = () => this.toasty(label + ' ready — copy it from the console: app.lastNetCode');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            // writeText REJECTS (async) without permission -- catch the
+            // promise, not just synchronous throws.
+            navigator.clipboard.writeText(code).then(
+                () => this.toasty(label + ' copied to clipboard — send it to your friend!'),
+                fallback);
+        } else {
+            fallback();
+        }
+    }
 
     async netCreateOffer() {
         const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });

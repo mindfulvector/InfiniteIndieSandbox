@@ -47,9 +47,20 @@ class NetLink {
         try { msg = JSON.parse(raw); } catch (e) { return; }
         if (msg.t === 'world') {
             this.log.push({ t: 'world', objects: msg.data.objects.length });
+            // A guest sitting at the fresh main menu has no world yet --
+            // create one to receive into (same as the Load path does).
+            if (this.applyWorld && !this.app.world && typeof SandboxWorld !== 'undefined') {
+                this.app.world = new SandboxWorld(this.app);
+            }
             if (this.applyWorld && this.app.world) {
                 this.app.world.loadFromData(msg.data);
                 this.app.toasty('Joined the shared world!');
+                // The guest lands straight in play mode beside the host.
+                if (this.app.goto_playMode &&
+                    (!this.app.activeMode ||
+                     this.app.activeMode.constructor.name !== 'PlayMode')) {
+                    this.app.goto_playMode();
+                }
             }
         } else if (msg.t === 'tf') {
             this.ghostTarget = { p: msg.p, ry: msg.ry };
