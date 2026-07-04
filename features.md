@@ -46,7 +46,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 ### Digital figures and collection
 | Feature | Status | Notes |
 |---|---|---|
-| Purchasable figure packs / à la carte | 🟡 | Figures purchasable à la carte with pixels (`test-collection.js`); packs/Play Set bundles planned |
+| Purchasable figure packs / à la carte | ✅ | Figures purchasable à la carte with pixels (`test-collection.js`); shop packs bundle figures + premium objects at a discount (Hero Pack, Winter/Neon Play Sets) — flat price grants all missing contents, ownership derived from contents (`test-figure-packs.js`) |
 | Collection screen as roster (select + spawn any owned figure) | ✅ | Collection menu (main + pause): 4 figures with colorways + stat leans; selecting applies live (`test-collection.js`) |
 | Per-figure progress saved to account | ✅ | Level/XP persisted per figure; switching figures swaps progression (`test-collection.js`) |
 | Round power discs (abilities/buffs) | ⬜ | |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Figure packs / Play Set bundles
-2. Path/track creation (races, patrols, moving platforms)
-3. Aerial juggling (launcher attacks + air combos)
-4. Interior cells (enter a door → decorated room scene)
+1. Path/track creation (races, patrols, moving platforms)
+2. Aerial juggling (launcher attacks + air combos)
+3. Interior cells (enter a door → decorated room scene)
+4. Sandbox Hub world (zones/quests/challenges)

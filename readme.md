@@ -206,6 +206,12 @@ you and are added to your pixel count (shown top-right). Spend pixels in the
 still appear and work in a world in play mode, but they're locked in build mode
 (shown with a price in the object bar) until you buy them.
 
+The shop also sells **packs** — bundles of figures and premium objects at a
+discount (the listing shows how much you save): the **Hero Pack** (all three
+premium figures) and themed **Play Sets** that pair a figure with matching
+objects. Buying a pack grants everything in it you don't already own, and a
+pack shows as owned once you have all its contents, however you got them.
+
 ## Contributing
 
 Contributions in the form of source code, content, documentation, and example levels are welcome!

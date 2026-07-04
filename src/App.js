@@ -25,6 +25,21 @@ const FIGURES = [
     { id: 'volt',  name: 'Volt',  price: 250, tint: [1.00, 0.95, 0.40], hpBonus: 10, meleeBonus: 0, rangedHaste: 6, desc: 'Faster ranged fire, +10 HP' },
 ];
 
+// Packs: bundles of figures and/or premium objects sold at a discount in the
+// shop. A pack has no owned-state of its own -- it counts as owned when every
+// piece of its contents is owned (buying grants whatever is still missing).
+const PACKS = [
+    { id: 'hero_pack',    name: 'Hero Pack',       price: 400,
+      figures: ['blaze', 'frost', 'volt'], objects: [],
+      desc: 'All three premium figures' },
+    { id: 'winter_set',   name: 'Winter Play Set', price: 160,
+      figures: ['frost'], objects: ['d_christmas_tree'],
+      desc: 'Frost + the Christmas tree' },
+    { id: 'neon_set',     name: 'Neon Play Set',   price: 260,
+      figures: ['volt'], objects: ['cp_platform_2x2'],
+      desc: 'Volt + the Cyberpunk platform' },
+];
+
 // Skill tree: every level-up grants one skill point. Points EARNED are derived
 // from the level (level - 1), never stored, so they can't desync; only SPENT
 // ranks persist (per figure, like level/XP). Flat ranks, no prerequisites.
@@ -1234,11 +1249,22 @@ class App {
                 app.menu.state = app.menu.prevState || MENU_PAUSE;
             } else {
                 const items = app.premiumObjects();
-                const it = items[menuItem - 1];
-                if(it && !it.owned) {
-                    app.buy(it.name);   // deducts pixels + toasts
-                    if(app.activeMode && app.activeMode.constructor.name === 'BuildMode') {
-                        app.populateObjectBrowser();   // refresh lock overlays
+                if(menuItem <= items.length) {
+                    const it = items[menuItem - 1];
+                    if(it && !it.owned) {
+                        app.buy(it.name);   // deducts pixels + toasts
+                        if(app.activeMode && app.activeMode.constructor.name === 'BuildMode') {
+                            app.populateObjectBrowser();   // refresh lock overlays
+                        }
+                    }
+                } else {
+                    // Items past the objects are packs (numbered after them).
+                    const pack = PACKS[menuItem - items.length - 1];
+                    if(pack && !app.packOwned(pack.id)) {
+                        app.buyPack(pack.id);
+                        if(app.activeMode && app.activeMode.constructor.name === 'BuildMode') {
+                            app.populateObjectBrowser();   // pack may unlock objects
+                        }
                     }
                 }
                 app.menu.renderedState = -1;    // force the shop to re-render
@@ -1527,6 +1553,30 @@ class App {
                         });
                     });
                 }
+
+                // Packs sit BELOW the objects and number after them, so the
+                // object item indices (which tests and muscle memory rely on)
+                // never shift as packs come and go.
+                this.MenuItem({
+                    type: 'text',
+                    name: 'shopPacksHdr',
+                    text: '— PACKS —',
+                    fontSize: 14,
+                    color: '#9fb3c8',
+                });
+                PACKS.forEach((pack, i) => {
+                    const n = shopItems.length + i + 1;
+                    const owned = this.packOwned(pack.id);
+                    const saving = this.packValue(pack.id) - pack.price;
+                    this.MenuItem({
+                        type: 'button',
+                        name: 'btnShopPack_' + pack.id,
+                        text: n + '. ' + pack.name + ' — ' + pack.desc +
+                            (owned ? '   ✓ Owned'
+                                   : '   ' + pack.price + ' px' + (saving > 0 ? ' (save ' + saving + ')' : '')),
+                        handler: () => { app.triggerMenuItem(MENU_SHOP, n); }
+                    });
+                });
 
                 this.MenuItem({
                     type: 'button',
@@ -2404,6 +2454,48 @@ class App {
             }
         });
         return out;
+    }
+
+    // ---- packs (figure bundles / Play Sets) ---------------------------------
+
+    packs() { return PACKS; }
+    packById(id) { return PACKS.find((p) => p.id === id) || null; }
+
+    // A pack is owned when every piece of its contents is owned.
+    packOwned(id) {
+        const pack = this.packById(id);
+        if (!pack) return false;
+        return pack.figures.every((f) => this.ownsFigure(f)) &&
+               pack.objects.every((o) => this.isPurchased(o));
+    }
+
+    // The à-la-carte value of a pack (for showing the saving in the shop).
+    packValue(id) {
+        const pack = this.packById(id);
+        if (!pack) return 0;
+        return pack.figures.reduce((s, f) => s + ((this.figureById(f) || {}).price || 0), 0) +
+               pack.objects.reduce((s, o) => s + this.priceOf(o), 0);
+    }
+
+    // Buy a pack at its flat price: grants every not-yet-owned piece of the
+    // contents. Returns true on success.
+    buyPack(id) {
+        const pack = this.packById(id);
+        if (!pack) return false;
+        if (this.packOwned(id)) {
+            this.toasty('You already own everything in ' + pack.name + '.');
+            return false;
+        }
+        if (this.pixels < pack.price) {
+            this.toasty('Not enough pixels — ' + pack.name + ' costs ' + pack.price + '.');
+            return false;
+        }
+        this.pixels -= pack.price;
+        pack.figures.forEach((f) => this.ownedFigures.add(f));
+        pack.objects.forEach((o) => this.purchasedSet.add(o));
+        this.saveEconomy();
+        this.toasty('Unlocked ' + pack.name + '!');
+        return true;
     }
 
     // Attempt to buy an object with pixels. Returns true on success.
