@@ -66,7 +66,11 @@ async function main() {
         const outsidePos = await h.evaluate(() => {
             const pm = window.app.activeMode, C = window.__C;
             const p0 = { x: pm.player.position.x, z: pm.player.position.z };
-            pm.player.position.copyFrom(C.door.position);   // step into the doorway
+            // Approach like a real player (from one side, on the ground) so the
+            // captured return spot is a genuine standing spot -- entering ON
+            // the door made returnSpot equal doorPos, degenerating the exit
+            // push into a mid-air drop on sloped ground.
+            pm.player.position.copyFrom(C.door.position.add(new BABYLON.Vector3(1.1, 0.2, 0)));
             return p0;
         });
         await h.waitFrames(4);
@@ -98,6 +102,45 @@ async function main() {
         console.log('[3] frozen walker', { before: inside.walkerPos, after: frozen, frozeDist });
         check('outdoor enemies freeze while the player is inside', frozeDist < 0.001, { frozeDist });
 
+        // --- 3b. The player can WALK inside the cell. Regression: the cell
+        // floor used to be isPickable=false, and the CC's ground check is
+        // pickWithRay -- an unpickable floor read as a bottomless pit, so
+        // the CC wiped its walk flags into permanent free-fall and the
+        // player stood frozen in the room (user-reported).
+        const stroll = await h.evaluate(() => new Promise((resolve) => {
+            const pm = window.app.activeMode, cc = pm.cc;
+            const p0 = pm.player.position.clone();
+            // Stroll from the cell CENTER: the walk direction is camera-
+            // relative (unpredictable), and 60 frames from the center can't
+            // reach the exit pad -- an accidental mid-stroll exit would
+            // corrupt every downstream section's state.
+            const o = window.__C.door.script._cellOrigin();
+            pm.player.position.copyFrom(new BABYLON.Vector3(o.x, o.y + 0.5, o.z));
+            const pC = pm.player.position.clone();
+            cc._onKeyDown({ key: 'w' });
+            let n = 0;
+            const tick = () => {
+                n++;
+                if (n === 60) {
+                    cc._onKeyUp({ key: 'w' });
+                    cc.idle();   // clear ALL residual action state: any leftover
+                                 // walk intent would march the player back into
+                                 // the door radius during the yo-yo wait below
+                    const moved = BABYLON.Vector3.Distance(pC, pm.player.position);
+                    const inside = pm.insideCell;
+                    // Park back on the entry spot so the downstream exit/yo-yo
+                    // sections see the exact scripted position they expect.
+                    pm.player.position.copyFrom(p0);
+                    return resolve({ moved, stillInside: inside });
+                }
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        }));
+        console.log('[3b] stroll', stroll);
+        check('the player can walk around inside the cell (pickable floor)',
+            stroll.moved > 0.5 && stroll.stillInside, stroll);
+
         // --- 4. The exit pad teleports back and fires `exited` ---
         await h.evaluate(() => {
             const C = window.__C;
@@ -115,18 +158,31 @@ async function main() {
             };
         });
         console.log('[4] exited', { back, outsidePos });
-        check('the exit pad returns the player outside (near the door)',
-            !back.insideCell && Math.hypot(back.x - outsidePos.x, back.z - outsidePos.z) < 8, { back, outsidePos });
+        const doorDist = await h.evaluate(() => {
+            const pm = window.app.activeMode, C = window.__C;
+            return Math.hypot(pm.player.position.x - C.door.position.x,
+                pm.player.position.z - C.door.position.z);
+        });
+        check('the exit pad returns the player outside, clear of the door',
+            !back.insideCell && doorDist > 1.35 && doorDist < 6, { back, doorDist });
         check('`exited` fired the wired counter', back.exited === 1, back);
 
         // --- 5. No yo-yo: the exit placed us clear of the trigger radius, so
         // even after the cooldown expires the door must NOT swallow us again.
         await h.waitFrames(45);
-        const noBounce = await h.evaluate(() => ({
-            inside: window.app.activeMode.insideCell,
-            distToDoor: BABYLON.Vector3.Distance(
-                window.app.activeMode.player.position, window.__C.door.position),
-        }));
+        const noBounce = await h.evaluate(() => {
+            const pm = window.app.activeMode, C = window.__C;
+            return {
+                inside: pm.insideCell,
+                distToDoor: BABYLON.Vector3.Distance(pm.player.position, C.door.position),
+                p: { x: Math.round(pm.player.position.x * 100) / 100,
+                     y: Math.round(pm.player.position.y * 100) / 100,
+                     z: Math.round(pm.player.position.z * 100) / 100 },
+                walk: pm.cc._act._walk,
+                entered: C.cIn.script.count,
+                freeFall: pm.cc._inFreeFall,
+            };
+        });
         console.log('[5] no yo-yo', noBounce);
         check('the exit placement prevents a bounce back inside (even past the cooldown)',
             noBounce.inside === false && noBounce.distToDoor > 1.3, noBounce);
@@ -135,7 +191,7 @@ async function main() {
         await h.evaluate(() => {
             const pm = window.app.activeMode, C = window.__C;
             C.door.script._cooldown = 0;
-            pm.player.position.copyFrom(C.door.position);   // go back in
+            pm.player.position.copyFrom(C.door.position.add(new BABYLON.Vector3(1.1, 0.2, 0)));   // go back in
         });
         await h.waitFor(() => window.app.activeMode.insideCell === true, null, 20000);
         const died = await h.evaluate(() => {

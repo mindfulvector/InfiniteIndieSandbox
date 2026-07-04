@@ -57,7 +57,11 @@ class CellDoorScript {
         m.emissiveColor = new BABYLON.Color3(color[0] * 0.25, color[1] * 0.25, color[2] * 0.25);
         b.material = m;
         b.checkCollisions = !!collide;
-        b.isPickable = false;
+        // Collidable cell meshes MUST stay pickable: the CharacterController's
+        // ground check is pickWithRay with an isPickable predicate, and an
+        // unpickable floor reads as a bottomless pit -- the CC then wipes its
+        // walk flags into permanent free-fall and the player stands frozen.
+        b.isPickable = !!collide;
         this._cellMeshes.push(b);
         return b;
     }
@@ -172,8 +176,11 @@ class CellDoorScript {
                 if (flat.lengthSquared() < 2.56) {   // within 1.6 of the door
                     const dir = flat.lengthSquared() > 0.0001
                         ? flat.normalize() : new BABYLON.Vector3(0, 0, -1);
+                    // 2x the trigger radius: sloped ground can slide the CC
+                    // a little after landing, and a short slide must never
+                    // carry the player back through the doorway.
                     out = new BABYLON.Vector3(
-                        doorPos.x + dir.x * 2.0, out.y, doorPos.z + dir.z * 2.0);
+                        doorPos.x + dir.x * 2.6, out.y, doorPos.z + dir.z * 2.6);
                 }
                 this._teleport(player, out);
                 this._setInside(mode, false);

@@ -322,16 +322,30 @@ class SandboxWorld {
         }
 
         // --- W: Homestead (room-kit house + sliding door + cell door) ---
+        // Ground first: the west bridge ends at x -14, so the house needs its
+        // own tiles (odd centers continue the bridge seamlessly: spans -14..-24).
+        for(const hx of [-15, -17, -19, -21, -23]) {
+            for(const hz of [2, 0, -2, -4]) tile(hx, 0, hz);
+        }
+        // Geometry facts the offsets below derive from: tile top 0.5;
+        // in_floor (4x0.25x4) at y 0.55 -> top 0.675; walls (h 3) at y 2.0
+        // -> bottom 0.5. The yaw-PI/2 mapping is world z = root.z - local x,
+        // so the rotated door-wall group (local x -0.625..3.375, gap
+        // 0.625..2.125) needs root z 0.375 to span the room's z -3..1 with
+        // the gap at -1.75..-0.25, and the sliding door (local -0.075..1.425)
+        // needs root z -0.325 to fill exactly that gap.
         this._place('in_floor', -20, 0.55, -1);
         this._place('in_wall', -20, 2.0, 1);                                // back wall
-        this._place('in_wall_window', -21.4, 2.0, -3);                      // front, window
+        this._place('in_wall_window', -21.375, 2.0, -3);                    // front, window (left-jamb root: spans x -22..-18)
         this._place('in_wall', -22, 2.0, -1, null, Math.PI / 2);            // west wall
-        this._place('in_wall_door', -18, 2.0, -2.4, null, Math.PI / 2);     // east wall, doorway
-        this._place('pr_door', -18, 2.0, -1.0, null, Math.PI / 2);
-        this._place('d_table', -20.6, 1.0, -0.2);
-        this._place('d_chair', -20.6, 0.85, -1.4);
-        this._place('d_lamp', -21.2, 1.1, 0.4);
-        this._place('d_rug', -19.6, 0.62, -1.2);
+        this._place('in_wall_door', -18, 2.0, 0.375, null, Math.PI / 2);    // east wall, doorway
+        this._place('pr_door', -18, 2.0, -0.325, null, Math.PI / 2);
+        // Furniture stands ON the floor (top 0.675): root y = 0.675 + the
+        // distance from each prim's origin down to its lowest point.
+        this._place('d_table', -20.6, 1.455, -0.2);   // legs reach -0.78
+        this._place('d_chair', -20.6, 1.225, -1.4);   // legs reach -0.55
+        this._place('d_lamp', -21.2, 0.705, 0.4);     // base reaches -0.03
+        this._place('d_rug', -19.6, 0.7, -1.2);       // slab reaches -0.025
         const cellDoor = this._place('pr_door_cell', -21.3, 2.0, -0.2, null, Math.PI / 2);
 
         // --- "Tour the Park" quest: visit the yard, finish the climb, step

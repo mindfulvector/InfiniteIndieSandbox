@@ -134,7 +134,55 @@ async function main() {
         console.log('[5] star climb', { c0: climb.c0, c1 });
         check('collecting a star increments the climb counter', c1 === climb.c0 + 1, { climb, c1 });
 
-        // --- 6. No unexpected page errors ---
+        // --- 6. Homestead geometry (user-reported): ground under the room,
+        // furniture standing ON the floor (not clipped, not floating), and
+        // the sliding door filling the rotated doorway gap.
+        const home = await h.evaluate(() => {
+            const app = window.app;
+            const live = (n) => app.findWorldObject(n).instances.filter(Boolean);
+            const floor = live('in_floor')[0];
+            const floorTop = floor.position.y + 0.125;
+            // Lowest world point of a multi-prim instance via bounding boxes.
+            const lowest = (inst) => {
+                let min = Infinity;
+                [inst].concat(inst.getChildMeshes()).forEach((m) => {
+                    if (m.getBoundingInfo) {
+                        m.computeWorldMatrix(true);
+                        min = Math.min(min, m.getBoundingInfo().boundingBox.minimumWorld.y);
+                    }
+                });
+                return min;
+            };
+            const groundUnder = live('t_tile').some((t) =>
+                Math.abs(t.position.x - floor.position.x) < 3 &&
+                Math.abs(t.position.z - floor.position.z) < 3);
+            const rest = {};
+            ['d_table', 'd_chair', 'd_lamp', 'd_rug'].forEach((n) => {
+                rest[n] = Math.round((lowest(live(n)[0]) - floorTop) * 100) / 100;
+            });
+            // Doorway/door alignment: the rotated wall-door gap (z -1.75..
+            // -0.25 at x -18) vs the sliding door's panel span.
+            const door = live('pr_door').find((d) => Math.abs(d.position.x - -18) < 0.5);
+            const doorKids = door ? door.getChildMeshes() : [];
+            let doorMinZ = Infinity, doorMaxZ = -Infinity;
+            doorKids.concat(door ? [door] : []).forEach((m) => {
+                if (m.getBoundingInfo) {
+                    m.computeWorldMatrix(true);
+                    doorMinZ = Math.min(doorMinZ, m.getBoundingInfo().boundingBox.minimumWorld.z);
+                    doorMaxZ = Math.max(doorMaxZ, m.getBoundingInfo().boundingBox.maximumWorld.z);
+                }
+            });
+            return { groundUnder, rest, doorMinZ: Math.round(doorMinZ * 100) / 100,
+                doorMaxZ: Math.round(doorMaxZ * 100) / 100 };
+        });
+        console.log('[6] homestead', home);
+        check('the homestead has ground beneath it', home.groundUnder, home);
+        check('all furniture stands on the floor (within 5cm)',
+            Object.values(home.rest).every((r) => Math.abs(r) <= 0.05), home);
+        check('the sliding door sits inside the doorway span',
+            home.doorMinZ >= -2.1 && home.doorMaxZ <= 0.1, home);
+
+        // --- 7. No unexpected page errors ---
         const realErrors = h.pageErrors.filter((e) => !h._isExpectedError(e));
         check('no page errors in the hub', realErrors.length === 0, realErrors.slice(0, 3));
 
