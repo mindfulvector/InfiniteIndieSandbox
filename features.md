@@ -69,7 +69,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | Logic toys: cameras | ✅ | `l_camera` — wires cut the view to it for N seconds (player-tracking or fixed shot), `started`/`finished` outputs chain cinematics (`test-camera-toy.js`) |
 | Event wiring between logic toys | ✅ | Overhead 3D wiring view; wires persist in saves (`test-wiring.js`) |
 | Interiors (rooms, doors, decoration) | ✅ | INTERIOR category room kit (`in_wall`, `in_wall_door`, `in_wall_window`, `in_floor` — walls block shots, openings pass), wirable sliding door (`pr_door`), furniture (`d_table/chair/lamp/rug`), multi-prim manifest support (`test-interiors.js`); pocket-interior cell door (`pr_door_cell`: walk in → teleport to a themed room built from raw meshes, exit pad returns, outdoor enemies freeze, entered/exited wiring events, dollhouse camera) (`test-interior-cells.js`) |
-| Path/track creation (races, patrols, moving platforms) | ✅ | `l_pathnode` waypoints chain via wires; `pr_platform_moving` follows the chain dt-based; `en_blob` patrols a wired chain (`test-paths.js`); `l_race` packages start gate + distinct-checkpoint tracking + finish line with a HUD stopwatch, `finished`/`record` outputs and session best (`test-races.js`) |
+| Path/track creation (races, patrols, moving platforms) | ✅ | `l_pathnode` waypoints chain via wires; `pr_platform_moving` follows the chain dt-based; `en_blob` patrols a wired chain (`test-paths.js`); `l_race` packages start gate + distinct-checkpoint tracking + finish line with a HUD stopwatch, `finished`/`record` outputs; best times persist per save slot via `params.bestTime` (`test-races.js`) |
 | AI builder assistants | ⬜ | |
 | Templates / starter worlds | ✅ | New Game picker: Rolling Hills / Flat Plane / Arena / Floating Islands (`test-progression.js`) / Sandbox Hub challenge park (`test-hub.js`) |
 | Unlockable toys through play | ✅ | Pixels earned from enemies buy locked objects in the shop (`test-shop-gating.js`) |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Best-time persistence for races (per save slot)
-2. Gamepad movement + full input abstraction
-3. Hex discs (skies/terrain themes)
-4. Sidekicks (collectible follower that levels)
+1. Gamepad movement + full input abstraction
+2. Hex discs (skies/terrain themes)
+3. Sidekicks (collectible follower that levels)
+4. Upload + share creations (export/import world files)

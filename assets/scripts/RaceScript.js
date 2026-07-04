@@ -10,12 +10,14 @@
 //                 checkpoint has been hit (else it nags and keeps timing)
 //   reset      -- abandon the run
 //
-//   outputs: started / checkpointHit / finished / record (a new session-best
+//   outputs: started / checkpointHit / finished / record (a new best
 //            time -- wire it to celebrate: camera cut, spawner, scoreboard)
 //
 // The stopwatch accumulates real dt (fps-independent, like every mover) and
 // shows top-centre on the HUD while a run is live. The `checkpoints` param
-// says how many the course has.
+// says how many the course has. The best time persists in
+// inst.params.bestTime, which rides the world save ('pr'), so records
+// belong to the course in that save slot -- not just the session.
 class RaceScript {
     constructor(app, wo, inst) {
         this.app = app;
@@ -43,8 +45,19 @@ class RaceScript {
         this._racing = false;
         this._elapsed = 0;
         this._hit = new Set();     // 'wo#id' keys of checkpoint sources hit
-        this._best = null;         // best finish this session (seconds)
+        // Best finish in seconds. Loaded lazily from params.bestTime (the
+        // constructor runs BEFORE createInstance applies saved params, so it
+        // can't be read here) -- see _loadBest.
+        this._best = null;
+        this._bestLoaded = false;
         this._wasPlay = null;
+    }
+
+    _loadBest() {
+        if (this._bestLoaded) return;
+        this._bestLoaded = true;
+        const saved = this.inst.params && this.inst.params.bestTime;
+        if (typeof saved === 'number' && saved > 0) this._best = saved;
     }
 
     getParam(key) {
@@ -72,12 +85,15 @@ class RaceScript {
             }
         } else if (action === 'finish' && this._racing) {
             if (this._hit.size >= this._need()) {
+                this._loadBest();   // in case no play frame ran yet
                 this._racing = false;
                 const t = this._elapsed;
                 this.app.fireEvent(this.inst, 'finished');
                 let msg = 'FINISH!  ' + t.toFixed(2) + 's';
                 if (this._best === null || t < this._best) {
                     this._best = t;
+                    // Persist with the course: params ride the world save.
+                    if (this.inst.params) this.inst.params.bestTime = t;
                     this.app.fireEvent(this.inst, 'record');
                     msg += '  — new best!';
                 }
@@ -116,7 +132,10 @@ class RaceScript {
             }
             return;
         }
-        if (this._wasPlay !== true) this._wasPlay = true;
+        if (this._wasPlay !== true) {
+            this._wasPlay = true;
+            this._loadBest();   // saved params are applied by now
+        }
         if (!this._racing) return;
 
         const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);

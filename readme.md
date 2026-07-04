@@ -160,8 +160,9 @@ as the *Start Gate*, any number as *Checkpoints* (its settings say how many
 the course needs), and one as the *Finish Line*. Running through the start
 arms a stopwatch on the HUD; the finish only counts once every checkpoint has
 been hit (each one counts once, so laps through the same gate don't cheat).
-Finishing fires *Race Finished*, and beating your session best fires *New
-Best Time* — wire those to scoreboards, cameras, or spawners to celebrate.
+Finishing fires *Race Finished*, and beating your best fires *New Best
+Time* — wire those to scoreboards, cameras, or spawners to celebrate. Best
+times are stored with the course, so they persist in your world's save slot.
 
 #### Pickups
 

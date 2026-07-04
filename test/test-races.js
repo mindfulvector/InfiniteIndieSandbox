@@ -12,6 +12,9 @@
  *   - a slower second run finishes but does NOT fire `record`,
  *   - a faster third run fires `record` again,
  *   - respawn mid-race abandons the run and hides the clock,
+ *   - the best time persists in params.bestTime (rides the world save), and
+ *     a freshly-created race instance restored with a saved best honours it:
+ *     slower runs don't record, beating it does,
  *   - no page errors along the way.
  */
 
@@ -157,7 +160,47 @@ async function main() {
         console.log('[6] respawn mid-race', reset);
         check('respawn abandons the run and hides the clock', !reset.racing && !reset.hud, reset);
 
-        // --- 7. No unexpected page errors ---
+        // --- 7. Best times persist per save slot via params.bestTime ---
+        const persisted = await h.evaluate(() => {
+            const app = window.app, R = window.__R;
+            // The live race's best (7.5 from run 3) is in its params, which is
+            // exactly what getAllInstanceData serialises into a world save.
+            const data = app.findWorldObject('l_race').getAllInstanceData()
+                .find((d) => d.id === R.race.worldId);
+            const savedBest = data && data.pr ? data.pr.bestTime : null;
+            // Simulate loading that save: a NEW instance restored with saved
+            // params (createInstance applies pr AFTER the script constructor,
+            // the exact order the lazy _loadBest exists for).
+            const loaded = app.findWorldObject('l_race').createInstance({
+                pr: { checkpoints: 0, bestTime: 7.5 },
+            });
+            loaded.position = R.race.position.add(new BABYLON.Vector3(0, 0, 6));
+            const s = loaded.script;
+            s._wasPlay = true;   // skip transition; exercise the finish-path load
+            // A slower run against the restored best: no record.
+            s.onInput('start', R.gate);
+            s._elapsed = 9.0;
+            s.onInput('finish', R.fin);
+            const slowBest = s._best, slowParams = loaded.params.bestTime;
+            // Beat it: record + params updated.
+            s.onInput('start', R.gate);
+            s._elapsed = 6.0;
+            s.onInput('finish', R.fin);
+            return {
+                savedBest,
+                slowBest, slowParams,
+                fastBest: s._best, fastParams: loaded.params.bestTime,
+            };
+        });
+        console.log('[7] persistence', persisted);
+        check('the live best serialises into the world save (params.bestTime)',
+            persisted.savedBest === 7.5, persisted);
+        check('a restored race honours its saved best (slower run: no record)',
+            persisted.slowBest === 7.5 && persisted.slowParams === 7.5, persisted);
+        check('beating the restored best records and re-persists',
+            persisted.fastBest === 6.0 && persisted.fastParams === 6.0, persisted);
+
+        // --- 8. No unexpected page errors ---
         const realErrors = h.pageErrors.filter((e) => !h._isExpectedError(e));
         check('no page errors during races', realErrors.length === 0, realErrors.slice(0, 3));
 
