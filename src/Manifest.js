@@ -15,18 +15,15 @@ class Manifest {
         app.createWorldObject('t_floor_1x1',    { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_floor_1x1.gltf', anchor: 'below' });
         app.createWorldObject('t_cube_1x1',     { rootUrl: assetsBaseUrl, filename: 'models/terrain/cube_terrains_cube_1x1.gltf', anchor: 'below' });
 
-        // Lightweight primitive terrain tile used to build the default sandbox
-        // grid. Unlike the gltf terrain (whose multi-mesh CLONES crawl under
-        // headless SwiftShader in quantity), this is a single prim: all placed
-        // tiles are instances sharing one material and one grass procedural
-        // texture rendered once, so a full 10x10 grid stays cheap. Players can
-        // also place it as a plain grass building block.
-        app.createWorldObject('t_tile', {
-            anchor: 'below',
-            prims: [
-                     {ty: 'box',       s: [2, 1, 2], p: [0,0,0], tex: {id: 'grass'}},
-                  ]
-        });
+        // Lightweight terrain blocks: boxes wearing the REAL grass (top) and
+        // dirt (sides) textures via one shared atlas material, so they stay
+        // instancable and a full 10x10 grid remains cheap even under software
+        // rendering. t_tile builds the default worlds; the t_block_* sizes are
+        // smaller variations of the large gltf terrain cube for detail work.
+        app.createWorldObject('t_tile',    { anchor: 'below', grassBlock: { s: [2, 1, 2] } });
+        app.createWorldObject('t_block_4', { anchor: 'below', grassBlock: { s: [4, 4, 4] } });
+        app.createWorldObject('t_block_2', { anchor: 'below', grassBlock: { s: [2, 2, 2] } });
+        app.createWorldObject('t_block_1', { anchor: 'below', grassBlock: { s: [1, 1, 1] } });
         
         app.createWorldObject('pr_door', {
             prims: [

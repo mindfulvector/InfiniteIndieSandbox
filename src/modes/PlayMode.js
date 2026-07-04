@@ -338,11 +338,32 @@ class PlayMode {
         this.spawnAttackFx(from);
     }
 
+    // True when a solid mesh blocks the projectile's next step: anything
+    // collidable except enemies (proximity damage handles those) and the
+    // player (enemy shots damage it by proximity too). Keeps every shot --
+    // the player's and the enemies' -- from passing through walls or terrain.
+    projectileBlocked(pos, vel) {
+        const len = vel.length();
+        if (len < 0.0001) return false;
+        const ray = new BABYLON.Ray(pos, vel.scale(1 / len), len + 0.25);
+        const hit = this.app.scene.pickWithRay(ray, (m) =>
+            m.checkCollisions && m.isEnabled() && !m.isEnemy &&
+            m !== this.player &&
+            !(this.player && m.isDescendantOf && m.isDescendantOf(this.player)));
+        return !!(hit && hit.hit);
+    }
+
     updatePlayerProjectiles() {
         if (this.playerProjectiles.length === 0) return;
         const hitRange = 1.5, dmg = 1;
         for (let i = this.playerProjectiles.length - 1; i >= 0; i--) {
             const pr = this.playerProjectiles[i];
+            // Walls and terrain stop shots.
+            if (this.projectileBlocked(pr.mesh.position, pr.vel)) {
+                pr.mesh.dispose();
+                this.playerProjectiles.splice(i, 1);
+                continue;
+            }
             pr.mesh.position.addInPlace(pr.vel);
             pr.mesh.rotation.y += 0.3; pr.mesh.rotation.x += 0.2;
             pr.life--;

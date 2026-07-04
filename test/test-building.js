@@ -157,6 +157,20 @@ async function main() {
         check('a fresh placement preview is ready for the next object',
             s.hasCurrentInstance === true, s);
 
+        // The fresh preview keeps the rotation of what was just placed (we
+        // rotated 45 degrees with 'c' before placing above).
+        const rotKeep = await h.evaluate(() => {
+            const bm = window.app.activeMode;
+            const q = bm.currentInstance.rotationQuaternion;
+            const t = bm.targetRotation;
+            return {
+                hasQ: !!q,
+                matches: !!(q && t && Math.abs(q.x - t.x) < 0.001 && Math.abs(q.y - t.y) < 0.001 &&
+                            Math.abs(q.z - t.z) < 0.001 && Math.abs(q.w - t.w) < 0.001),
+            };
+        });
+        check('the next preview keeps the placed object\'s rotation', rotKeep.hasQ && rotKeep.matches, rotKeep);
+
         // --- 6. Place a second object to prove repeat placement --------------
         await h.holdKey('s', 24);    // move the fresh preview the other way
         await h.holdKey('a', 18);

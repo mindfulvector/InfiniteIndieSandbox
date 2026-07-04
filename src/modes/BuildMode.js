@@ -437,10 +437,16 @@ class BuildMode {
                     //console.log('set scale: '+this.targetScale);
 
                     if(typeof this.targetRotation != 'undefined') {
-                        this.currentInstance.rotationQuaternion = this.targetRotation;
+                        this.currentInstance.rotationQuaternion = this.targetRotation.clone();
                     }
                 } else {
+                    // The fresh preview after placing keeps BOTH the scale and
+                    // the rotation of what was just placed, so a row of rotated
+                    // objects doesn't need re-rotating every time.
                     this.currentInstance.scaling = this.makeBuildableObjectScale(this.targetScale);
+                    if(typeof this.targetRotation != 'undefined') {
+                        this.currentInstance.rotationQuaternion = this.targetRotation.clone();
+                    }
                     //console.log('keep scale: '+this.targetScale);
                 }
 

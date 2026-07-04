@@ -1770,6 +1770,31 @@ class App {
             });
         }
 
+        // Grass/dirt terrain blocks: a box wearing the shared atlas material --
+        // real grass on the top face, real dirt on the sides and bottom.
+        //      { grassBlock: { s: [width, height, depth] } }
+        else if(typeof assetProps.grassBlock != 'undefined') {
+            const s = assetProps.grassBlock.s;
+            // Map the top face (4) to the grass half of the atlas, everything
+            // else to the dirt half.
+            const SIDE = new BABYLON.Vector4(0, 0, 0.5, 1);
+            const TOP = new BABYLON.Vector4(0.5, 0, 1, 1);
+            const faceUV = [];
+            for(let i = 0; i < 6; i++) faceUV.push(i === 4 ? TOP : SIDE);
+            const box = BABYLON.MeshBuilder.CreateBox('grassBlock', {
+                width: s[0], height: s[1], depth: s[2], faceUV: faceUV }, app.scene);
+            box.name += '[' + box.uniqueId + ']';
+            box.isVisible = false;
+            box.material = app.terrainAtlasMaterial();
+            // Invisible template must never collide (see the mesh branch).
+            app.disableCollisionsTree(box);
+            let woNewAsset = new WorldObject(app, objectName, box, false, scriptClass);
+            if(assetProps.anchor) woNewAsset.anchor = assetProps.anchor;
+            this.BuildableObjectList.push(woNewAsset);
+            app.manifestObjectCount++;
+            app.uploadLoadingMessage();
+        }
+
         // Primitive based objects
         else if(typeof assetProps.prims != 'undefined') {
             var object = null;
@@ -1870,7 +1895,14 @@ class App {
                 tex.ampScale = spec.s || 100;
                 break;
             case 'grass':
-                tex = new BABYLON.GrassProceduralTexture('grassTex[' + uid + ']', 512, this.scene);
+                // The REAL grass image (the same albedo the big gltf terrain
+                // cube uses) -- replaces the earlier procedural grass.
+                tex = new BABYLON.Texture('assets/textures/grass3_albedo.png', this.scene);
+                tex.name = 'grassTex[' + uid + ']';
+                break;
+            case 'dirt':
+                tex = new BABYLON.Texture('assets/textures/dirt.png', this.scene);
+                tex.name = 'dirtTex[' + uid + ']';
                 break;
             case 'marble':
                 tex = new BABYLON.MarbleProceduralTexture('marbleTex[' + uid + ']', 512, this.scene);
@@ -1900,6 +1932,39 @@ class App {
             if(spec.v) tex.vScale = spec.v;
         }
         return tex;
+    }
+
+    // One shared material for all grass/dirt terrain blocks: the REAL grass
+    // and dirt images baked side by side into a single atlas (dirt in the left
+    // half, grass in the right half). A single material keeps the blocks
+    // instancable -- Babylon instances don't support MultiMaterial -- so a
+    // full 10x10 terrain stays one draw call per block type.
+    terrainAtlasMaterial() {
+        if(this._terrainAtlasMat) return this._terrainAtlasMat;
+        const mat = new BABYLON.StandardMaterial('terrainBlockMat', this.scene);
+        const dt = new BABYLON.DynamicTexture('grassDirtAtlas', { width: 1024, height: 512 }, this.scene, true);
+        mat.diffuseTexture = dt;
+        mat.specularColor = new BABYLON.Color3(0, 0, 0);
+        const ctx = dt.getContext();
+        // Placeholder tints so blocks aren't black while the images stream in.
+        ctx.fillStyle = '#6b4a2f'; ctx.fillRect(0, 0, 512, 512);
+        ctx.fillStyle = '#4f8a3d'; ctx.fillRect(512, 0, 512, 512);
+        dt.update();
+        let loaded = 0;
+        const dirt = new Image(), grass = new Image();
+        const done = () => {
+            loaded += 1;
+            if(loaded < 2) return;
+            ctx.drawImage(dirt, 0, 0, 512, 512);
+            ctx.drawImage(grass, 512, 0, 512, 512);
+            dt.update();
+        };
+        dirt.onload = done;
+        grass.onload = done;
+        dirt.src = 'assets/textures/dirt.png';
+        grass.src = 'assets/textures/grass3_albedo.png';
+        this._terrainAtlasMat = mat;
+        return mat;
     }
 
     // Create a material with diffuse color `r`,`g`,`b` and with `a` alpha transparency

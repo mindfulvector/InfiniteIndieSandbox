@@ -212,6 +212,12 @@ class EnemyManager {
         const target = this.pm.player ? this.pm.player.position.add(new BABYLON.Vector3(0, 1, 0)) : null;
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const pr = this.projectiles[i];
+            // Enemy shots are stopped by walls/terrain too.
+            if (this.pm.projectileBlocked && this.pm.projectileBlocked(pr.mesh.position, pr.vel)) {
+                pr.mesh.dispose();
+                this.projectiles.splice(i, 1);
+                continue;
+            }
             pr.mesh.position.addInPlace(pr.vel);
             pr.mesh.rotation.y += 0.3;
             pr.mesh.rotation.x += 0.2;

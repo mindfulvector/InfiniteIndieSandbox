@@ -40,7 +40,8 @@ async function main() {
             return out;
         });
         console.log('\n[1] textured templates', texInfo);
-        ['t_tile', 'pr_door', 'en_blob', 'pk_health', 'pk_pixels', 'pk_star'].forEach((n) => {
+        ['t_tile', 't_block_4', 't_block_2', 't_block_1', 'pr_door', 'en_blob',
+         'pk_health', 'pk_pixels', 'pk_star'].forEach((n) => {
             check(`${n} has a textured surface`, texInfo[n] === true, { [n]: texInfo[n] });
         });
         ['l_trigger', 'l_spawner', 'l_counter', 'l_timer', 'l_scoreboard'].forEach((n) => {
@@ -62,8 +63,8 @@ async function main() {
             };
         });
         console.log('\n[2] grass terrain', grass);
-        check('the default terrain uses the grass texture',
-            grass.tiles === 100 && /^grassTex/.test(grass.texName || ''), grass);
+        check('the default terrain uses the real grass/dirt atlas texture',
+            grass.tiles === 100 && grass.texName === 'grassDirtAtlas', grass);
         await h.screenshot('grass-terrain');
 
         // --- 3. The bar shows one category; Down switches and re-filters ---
