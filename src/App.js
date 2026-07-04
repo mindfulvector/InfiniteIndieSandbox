@@ -1747,13 +1747,16 @@ class App {
                     fontSize: 24, accent: true });
                 this.MenuItem({ type: 'text', name: 'netStatus',
                     text: (this.net && !this.net.closed)
-                        ? ('Linked as ' + (this.net.isHost ? 'HOST' : 'GUEST') + ' — your friend appears as a ghost.')
+                        ? ((typeof NetHub !== 'undefined' && this.net instanceof NetHub)
+                            ? ('HOSTING — ' + this.net.links.filter((l) => !l.closed).length +
+                               ' friend(s) linked. Create another code to invite more.')
+                            : ('Linked as ' + (this.net.isHost ? 'HOST' : 'GUEST') + ' — friends appear as named ghosts.'))
                         : (this.net && this.net.dropped)
                             ? 'LINK LOST — trade fresh codes below to reconnect (the host re-sends the world).'
                             : 'Serverless WebRTC: trade two codes with a friend (chat, email, pigeon).',
                     fontSize: 13, color: '#ff9bce' });
                 this.MenuItem({ type: 'button', name: 'btnNetHost',
-                    text: '1. Host — create invite code',
+                    text: '1. Host — create invite code (one per friend)',
                     handler: () => { app.triggerMenuItem(MENU_NET, 1); } });
                 this.MenuItem({ type: 'button', name: 'btnNetFinish',
                     text: '2. Host — paste friend\'s answer',

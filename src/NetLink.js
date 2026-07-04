@@ -186,11 +186,39 @@ class NetLink {
             m.checkCollisions = false;
             m.isPickable = false;
         });
-        this.ghosts[who] = { root, parts, walkPhase: 0 };
+        // A floating name tag in the player's tint (the villager-bubble
+        // technique: per-instance plane + DynamicTexture, billboarded).
+        const tag = BABYLON.MeshBuilder.CreatePlane('netTag_' + who,
+            { width: 1.3, height: 0.4 }, this.app.scene);
+        tag.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+        tag.parent = root;
+        tag.position = new BABYLON.Vector3(0, 2.3, 0);
+        tag.isPickable = false;
+        const tex = new BABYLON.DynamicTexture('netTagTex_' + who,
+            { width: 256, height: 80 }, this.app.scene, false);
+        const mat = new BABYLON.StandardMaterial('netTagMat_' + who, this.app.scene);
+        mat.diffuseTexture = tex;
+        mat.emissiveColor = new BABYLON.Color3(1, 1, 1);
+        mat.disableLighting = true;
+        tex.hasAlpha = true;
+        tag.material = mat;
+        const tint = this._ghostTint(who);
+        const ctx = tex.getContext();
+        ctx.fillStyle = 'rgba(8, 10, 26, 0.8)';
+        ctx.fillRect(0, 0, 256, 80);
+        const hex = (v) => ('0' + Math.round(v * 255).toString(16)).slice(-2);
+        tex.drawText(who === 'host' ? 'HOST' : who.toUpperCase(), null, 54,
+            'bold 40px sans-serif', '#' + hex(tint.r) + hex(tint.g) + hex(tint.b), null);
+        this.ghosts[who] = { root, parts, walkPhase: 0, tagTex: tex, tagMat: mat };
     }
 
     _disposeGhost() {
-        Object.keys(this.ghosts).forEach((k) => this.ghosts[k].root.dispose(false, false));
+        Object.keys(this.ghosts).forEach((k) => {
+            const g = this.ghosts[k];
+            g.root.dispose(false, false);
+            if (g.tagTex) g.tagTex.dispose();   // per-ghost texture, not shared
+            if (g.tagMat) g.tagMat.dispose();
+        });
         this.ghosts = {};
     }
 

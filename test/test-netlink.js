@@ -279,6 +279,23 @@ async function main() {
         check('guest traffic reaches the host AND relays to the other guest',
             star.hostSaw && star.relayedTf && star.relayedAdd, star);
 
+        // --- 3e. Ghost name tags in the player's tint ---
+        const tags = await h.evaluate(() => new Promise((resolve) => {
+            const app = window.app, pm = app.activeMode;
+            const t = { send: () => {}, onMessage: null };
+            const link = new NetLink(app, t, true);
+            link.ghostTargets['g2'] = { p: [1, 1, 1], ry: 0 };
+            link.tick(pm);
+            const tag = app.scene.getMeshByName('netTag_g2');
+            const out = { tag: !!tag, billboard: tag && tag.billboardMode === BABYLON.Mesh.BILLBOARDMODE_ALL };
+            link._disposeGhost();
+            out.gone = !app.scene.getMeshByName('netTag_g2');
+            resolve(out);
+        }));
+        console.log('[3e] tags', tags);
+        check('ghosts wear billboard name tags that dispose with them',
+            tags.tag && tags.billboard && tags.gone, tags);
+
         // --- 4. No unexpected page errors ---
         const realErrors = h.pageErrors.filter((e) => !h._isExpectedError(e));
         check('no page errors during netplay', realErrors.length === 0, realErrors.slice(0, 3));
