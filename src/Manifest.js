@@ -157,6 +157,14 @@ class Manifest {
                      {ty: 'box',       s: [1.0, 0.5, 1.0], p: [0,0,0]},
                   ]
         }, 'TimerScript');
+        // A Boolean logic gate (AND/OR/NOT) combining wired signals -- the
+        // puzzle combinator (see GateScript).
+        app.createWorldObject('l_gate', {
+            prims: [
+                     {ty: 'box',       s: [1.0, 0.5, 1.0], p: [0,0,0],   col: [0.2, 0.5, 0.7]},
+                     {ty: 'box',       s: [0.5, 0.2, 0.5], p: [0, 0.35, 0], col: [0.4, 0.9, 1.0]},
+                  ]
+        }, 'GateScript');
         // A scoreboard: wired events score points, the score shows on the HUD,
         // and hitting the target fires its `reached` output.
         app.createWorldObject('l_scoreboard', {

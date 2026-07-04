@@ -316,6 +316,12 @@ slips away, the camera comes off its leash (`WASD` to move, `R`/`F` for
 height, `Shift` to hurry, mouse to orbit), and `Enter` saves a PNG of your
 shot. Press `P` again to jump back into the fray exactly where it left off.
 
+**Logic gates:** the **Gate** toy (Logic) combines wired signals — set it
+to **AND** (opens only when all its inputs are on, e.g. two pressure
+plates), **OR** (any input), or **NOT** (a switch that inverts). Wire
+triggers, counters, or chests into it and its *Opens*/*Closes* events into
+doors, spawners, or cameras to build real puzzles.
+
 **Floating props:** drop a **Barrel** or **Crate** (Props) onto a pool and
 it bobs on the surface instead of sinking — scatter a few for a river
 crossing or a dockside scene. On dry land they just sit there.
