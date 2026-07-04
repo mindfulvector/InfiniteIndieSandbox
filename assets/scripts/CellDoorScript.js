@@ -66,40 +66,73 @@ class CellDoorScript {
         return b;
     }
 
-    // Build the interior at the cell origin. Walls/floor collide; the exit
-    // pad is a glowing disc just inside the "door" wall.
+    // True when a room already stands at this door's cell origin -- either
+    // built on a previous entry this session, or LOADED from a save that
+    // carries the (possibly player-edited) room.
+    _roomExists() {
+        const o = this._cellOrigin();
+        let found = false;
+        this.app.BuildableObjectList.forEach((wo) => {
+            wo.instances.forEach((i) => {
+                if (i && i !== this.inst &&
+                    BABYLON.Vector3.DistanceSquared(i.position, o) < 144) found = true;
+            });
+        });
+        return found;
+    }
+
+    // A real world-object instance inside the cell (editable, serialized).
+    _placeReal(name, dx, dy, dz, yaw) {
+        const wo = this.app.findWorldObject(name);
+        if (!wo) return null;
+        const o = this._cellOrigin();
+        const inst = wo.createInstance();
+        inst.position = new BABYLON.Vector3(o.x + dx, o.y + dy, o.z + dz);
+        if (yaw) inst.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(yaw, 0, 0);
+        inst.checkCollisions = true;
+        return inst;
+    }
+
+    // The pocket room is REAL world objects now (Disney-Infinity style: the
+    // door leads to a level stored inside this world): furnished once on
+    // first entry from the theme's template, then it's the player's --
+    // editable in build mode like anything else, saved with the world, and
+    // NEVER rebuilt over their edits (_roomExists guards). Only the exit-pad
+    // MECHANISM stays a raw mesh, rebuilt per session and never serialized.
     _buildCell() {
-        if (this._cellMeshes.length) return;
         const o = this._cellOrigin();
         const V = (dx, dy, dz) => new BABYLON.Vector3(o.x + dx, o.y + dy, o.z + dz);
-        const wood = [0.45, 0.30, 0.18], brick = [0.55, 0.28, 0.22], warm = [1.0, 0.85, 0.45];
+        if (!this._cellMeshes.length) {
+            const pad = this._box('cellExitPad', 1.6, 0.12, 1.6, V(0, 0.2, -3.2), [0.35, 0.85, 1.0], false);
+            pad.material.emissiveColor = new BABYLON.Color3(0.30, 0.75, 0.95);
+        }
+        this._exitSpot = V(0, 0.6, -3.2);
+        this._entrySpot = V(0, 0.6, -1.8);   // arrive just in front of the pad
 
-        // No ceiling: the follow camera looks down into the room dollhouse-
-        // style, which reads far better than fighting walls for a viewpoint.
-        this._box('cellFloor', 10, 0.4, 10, V(0, -0.2, 0), wood, true);
-        this._box('cellWallN', 10, 3.4, 0.3, V(0, 1.7, 5), brick, true);
-        this._box('cellWallS', 10, 3.4, 0.3, V(0, 1.7, -5), brick, true);
-        this._box('cellWallE', 0.3, 3.4, 10, V(5, 1.7, 0), brick, true);
-        this._box('cellWallW', 0.3, 3.4, 10, V(-5, 1.7, 0), brick, true);
+        if (this._roomExists()) return;
 
+        // First entry: furnish the 8x8 default room. Floor tops at 0.125;
+        // furniture roots = floor top + each prim's drop to its lowest point
+        // (the homestead lesson: derive heights, never guess them).
+        for (const fx of [-2, 2]) for (const fz of [-2, 2]) this._placeReal('in_floor', fx, 0, fz);
+        for (const wx of [-2, 2]) {
+            this._placeReal('in_wall', wx, 1.5, 4);                 // north
+            this._placeReal('in_wall', wx, 1.5, -4);                // south
+            this._placeReal('in_wall', 4, 1.5, wx, Math.PI / 2);    // east
+            this._placeReal('in_wall', -4, 1.5, wx, Math.PI / 2);   // west
+        }
         if (this.getParam('theme') === 'hall') {
             for (let i = -1; i <= 1; i += 2) {
                 for (let j = -1; j <= 1; j += 2) {
-                    this._box('cellCol', 0.5, 3.4, 0.5, V(i * 2.6, 1.7, j * 2.6), [0.75, 0.72, 0.68], true);
+                    this._placeReal('t_block_2', i * 2.4, 1.125, j * 2.4);
                 }
             }
         } else {
-            this._box('cellTable', 1.8, 0.8, 1.0, V(1.5, 0.4, 1.5), wood, true);
-            this._box('cellChair', 0.5, 1.0, 0.5, V(0.4, 0.5, 1.5), wood, true);
-            this._box('cellRug', 3.0, 0.06, 2.0, V(0, 0.05, -0.5), [0.62, 0.22, 0.28], false);
-            this._box('cellLampGlow', 0.5, 0.5, 0.5, V(-3.8, 2.2, 3.8), warm, false);
+            this._placeReal('d_table', 1.5, 0.905, 1.5);
+            this._placeReal('d_chair', 0.3, 0.675, 1.5);
+            this._placeReal('d_rug', 0, 0.15, -0.5);
+            this._placeReal('d_lamp', -3.2, 0.155, 3.2);
         }
-
-        // Exit pad by the south wall: step on it to leave.
-        const pad = this._box('cellExitPad', 1.6, 0.12, 1.6, V(0, 0.08, -4.0), [0.35, 0.85, 1.0], false);
-        pad.material.emissiveColor = new BABYLON.Color3(0.30, 0.75, 0.95);
-        this._exitSpot = V(0, 0.5, -4.0);
-        this._entrySpot = V(0, 0.5, -2.6);   // arrive just in front of the pad
     }
 
     _disposeCell() {
@@ -135,15 +168,9 @@ class CellDoorScript {
         if (!isPlayMode) {
             if (this._wasPlay !== false) {
                 this._wasPlay = false;
-                // Entering build mode WHILE INSIDE the cell used to strand
-                // the camera 5000 units away staring at the void (the room
-                // is disposed below). Bring the view home to the doorstep.
-                if (this._inside && this.app.camera) {
-                    const back = (this._returnSpot || inst.position).clone();
-                    const delta = back.subtract(this.app.camera.target || back);
-                    if (this.app.camera.target) this.app.camera.target.copyFrom(back);
-                    if (this.app.camera.position) this.app.camera.position.addInPlace(delta);
-                }
+                // The ROOM persists (it's real world objects now) -- build
+                // mode inside the cell is how players redecorate it. Only
+                // the exit-pad mechanism is torn down per session.
                 this._inside = false;
                 this._disposeCell();
             }

@@ -151,7 +151,10 @@ Furnish with the **Decor** category: table, chair, floor lamp, and rug.
 
 For a whole room behind a single door, place a **Cell Door** (Props) — its
 glowing panel is a portal: walk into it in play mode and you're teleported
-into a small decorated interior (its settings pick the theme, a cozy den or a
+into a small decorated interior — and that room is **yours to remodel**:
+it's made of real objects, so enter build mode while inside (or click its
+pieces from anywhere) to redecorate, and your changes save with the world
+and survive every visit (its settings pick the starting theme, a cozy den or a
 columned hall). Step on the glowing exit pad to return to where you entered.
 While you're inside, enemies outside politely freeze. The door fires *Player
 Entered* / *Player Exited* wiring events, so entering a room can start timers,
