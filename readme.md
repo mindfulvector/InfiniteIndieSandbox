@@ -374,7 +374,11 @@ own. Enemies appear only from things you place: drop an `en_blob` enemy, or a
 There are flying polyhedra (melee) and **bipedal walkers** that fall and walk on
 the terrain (using the same gravity as the player) and attack with both melee
 and ranged neon shots. Attack them with `F` before they wear down your health
-bar (top-left); if your health hits zero you respawn.
+bar (top-left); if your health hits zero you respawn. Every figure fights
+differently: each has a signature `V` special AND their own melee combo —
+Volt snaps a quick two-hit chain that fires a free bolt, Blaze pressures
+through four hits, Frost's finisher freezes the crowd, and the Play Set
+heroes bring finishers of their own.
 
 For a real showdown, place a **Boss** (Enemies category): a crowned titan
 with three phases — it stomps, then adds ranged volleys, then flies into a

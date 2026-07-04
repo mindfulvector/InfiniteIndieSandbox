@@ -506,16 +506,21 @@ class PlayMode {
         if (!this.player || this.attackCooldown > 0) return;
         this.attackCooldown = 12;
 
-        // Combo chain: swinging again while the window is open advances the
-        // chain (0 -> 1 -> 2). The third swing is a finisher with bonus damage,
-        // after which the chain restarts.
-        this.comboStage = (this.comboTimer > 0) ? Math.min(this.comboStage + 1, 2) : 0;
-        const finisher = this.comboStage === 2;
+        // Combo chain -- PER FIGURE: chain length, finisher multiplier, and
+        // an optional finisher EFFECT come from the active figure's moveset
+        // (Volt snaps a 2-hit chain ending in a free bolt; Blaze pressures
+        // through 4 hits; Frost's and Warden's finishers chill; Wick's pops
+        // enemies airborne; Scout keeps the classic triple).
+        const combo = (this.app.activeFigureDef && this.app.activeFigureDef().combo)
+            || { hits: 3, mult: 3 };
+        const last = combo.hits - 1;
+        this.comboStage = (this.comboTimer > 0) ? Math.min(this.comboStage + 1, last) : 0;
+        const finisher = this.comboStage === last;
         this.comboTimer = finisher ? 0 : 36;   // frames to land the next swing
         // Base damage plus the character's level bonus (+1 per 5 levels).
         const bonus = this.app.meleeBonus ? this.app.meleeBonus() : 0;
-        const dmg = (finisher ? 3 : 1) + bonus;
-        if (finisher) this.app.toasty('Combo finisher!');
+        const dmg = (finisher ? combo.mult : 1) + bonus;
+        if (finisher) this.app.toasty(combo.comboName ? combo.comboName + '!' : 'Combo finisher!');
 
         const aim = this.resolveAim(aimPoint, 3.4);
         if (aim) this.aimAt(aim);
@@ -532,6 +537,20 @@ class PlayMode {
         dir.normalize();
 
         this.app.sound.play(finisher ? 'melee-finisher' : 'melee-swing');
+
+        // The figure's signature finisher effect rides the final swing.
+        if (finisher && combo.effect) {
+            // Radii cover melee range PLUS the knockback the earlier chain
+            // hits just delivered -- a finisher that misses its own victim
+            // because the combo shoved them away is no finisher at all.
+            if (combo.effect === 'chill') {
+                this.enemyManager.chillNear(p, 7.0, 90);
+            } else if (combo.effect === 'bolt') {
+                this.spawnPlayerBolt(p.add(new BABYLON.Vector3(0, 1.3, 0)), dir.clone());
+            } else if (combo.effect === 'launch') {
+                this.enemyManager.launchInArc(p, dir, 7.0, 0.15, 0, 5);
+            }
+        }
 
         // Auto-spawned TRON enemies.
         let hits = this.enemyManager.damageInArc(p, dir, range, COS_HALF, dmg);

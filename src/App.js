@@ -41,21 +41,21 @@ const MAX_LEVEL = 20;   // character level cap
 // levelled independently (per-figure XP/level persistence).
 const FIGURES = [
     { id: 'scout', name: 'Scout', price: 0,   tint: [1.00, 1.00, 1.00], hpBonus: 0,  meleeBonus: 0, rangedHaste: 0, desc: 'Balanced all-rounder',
-      special: 'shockwave', specialName: 'Shockwave' },
+      special: 'shockwave', specialName: 'Shockwave', combo: { hits: 3, mult: 3, comboName: 'Triple Strike' } },
     { id: 'blaze', name: 'Blaze', price: 150, tint: [1.00, 0.45, 0.35], hpBonus: 0,  meleeBonus: 1, rangedHaste: 0, desc: '+1 melee damage',
-      special: 'flame', specialName: 'Flame Arc' },
+      special: 'flame', specialName: 'Flame Arc', combo: { hits: 4, mult: 2.5, comboName: 'Blazing Rush' } },
     { id: 'frost', name: 'Frost', price: 150, tint: [0.55, 0.75, 1.00], hpBonus: 25, meleeBonus: 0, rangedHaste: 0, desc: '+25 max HP',
-      special: 'nova', specialName: 'Frost Nova' },
+      special: 'nova', specialName: 'Frost Nova', combo: { hits: 3, mult: 2, effect: 'chill', comboName: "Winter's End" } },
     { id: 'volt',  name: 'Volt',  price: 250, tint: [1.00, 0.95, 0.40], hpBonus: 10, meleeBonus: 0, rangedHaste: 6, desc: 'Faster ranged fire, +10 HP',
-      special: 'bolt', specialName: 'Chain Bolt' },
+      special: 'bolt', specialName: 'Chain Bolt', combo: { hits: 2, mult: 2, effect: 'bolt', comboName: 'Static Snap' } },
     // Campaign heroes: not pixel-buyable -- they come WITH their Play Set
     // (buyPlayset grants them into the shared collection) and are the only
     // figures you can SWITCH TO inside that campaign; everywhere else in the
     // Sandbox they play like any other figure.
     { id: 'wick',   name: 'Wick',   price: null, campaign: 'glowlands.json',       tint: [0.55, 1.00, 0.75], hpBonus: 10, meleeBonus: 1, rangedHaste: 0, desc: 'Glowlands hero — +10 HP, +1 melee',
-      special: 'shockwave', specialName: 'Shockwave' },
+      special: 'shockwave', specialName: 'Shockwave', combo: { hits: 4, mult: 2, effect: 'launch', comboName: 'Glow Burst' } },
     { id: 'warden', name: 'Warden', price: null, campaign: 'nightfall-crown.json', tint: [0.75, 0.45, 1.00], hpBonus: 20, meleeBonus: 0, rangedHaste: 2, desc: 'Crown warden — +20 HP, faster shots',
-      special: 'nova', specialName: 'Frost Nova' },
+      special: 'nova', specialName: 'Frost Nova', combo: { hits: 3, mult: 2.5, effect: 'chill', comboName: 'Crown Verdict' } },
 ];
 
 // Round power discs: passive buff tokens, global across figures (they are
