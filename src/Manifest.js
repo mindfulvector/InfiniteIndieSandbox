@@ -270,6 +270,14 @@ class Manifest {
                      {ty: 'box',       s: [0.5, 0.5, 0.5], p: [0,0,0]},
                   ]
         }, 'PathNodeScript');
+
+        // An aerial ring: fires `flown` when the player (or their vehicle)
+        // passes through. Wire rings into l_race for fly-through courses.
+        app.createWorldObject('l_ring', {
+            prims: [
+                     {ty: 'box', s: [0.4, 0.4, 0.4], p: [0, 0, 0]},
+                  ]
+        }, 'RingScript');
         app.createWorldObject('pr_platform_moving', {
             prims: [
                      {ty: 'box',       s: [2, 0.3, 2], p: [0,0,0], tex: {id: 'road'}},

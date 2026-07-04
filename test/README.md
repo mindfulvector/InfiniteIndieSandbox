@@ -27,6 +27,7 @@ with no GPU.
 | `test-enemy-management.js` | TRON enemies auto-spawn, chase the player, are defeatable for pixels, damage the player, and are cleaned up on mode exit. |
 | `test-bipedal-enemy.js` | The bipedal TRON walker uses the shared GravityBody (falls/lands on terrain), walks, does melee + ranged attacks, and drops pixels. |
 | `test-spawner.js` | The spawner object auto-opens a parameters popup, edits/persists its params, and spawns the chosen enemy type at its frequency up to the limit. |
+| `test-rings.js` | Aerial rings: l_ring grows its torus visual, `flown` fires once per pass (hover holds, exit + re-entry re-fires), a ridden kart trips the hoop, and four rings wired start/checkpoint/checkpoint/finish run a complete race on the stock l_race machinery with an early finish refused. |
 | `test-shop-gating.js` | Premium objects are locked in build mode and unlock via the shop for pixels. |
 | `test-wiring.js` | Trigger volumes fire wired output events into a spawner's inputs (directly and on player entry), wires persist through save/load, and the overhead 3D wiring view lifts the camera, shows labelled wires + the guide panel, connects objects by drag (with the event/action chooser), and deletes wires on click. |
 | `test-animation.js` | Samples the game a few frames per second to prove things move over time (not just look right in one frame): a walker closes on the player and swings its legs, pixel cubes fly to the player, and a captured filmstrip's frames actually differ. Also reports whether the player avatar's skeleton is animating. |

@@ -261,6 +261,10 @@ can react to your moves.
 Build speed with `W`, then **hold `Space`** to climb — release it and you
 glide, sinking gently as long as you keep your airspeed. Bank into turns,
 mind your speed (slow too much and you stall), and press `C` to bail out.
+For something to fly *through*, place **Rings** (Logic) in the sky — they
+flash as you pass and fire a *Flown Through* event, so wiring four of them
+into a **Race** controller (start, checkpoints, finish) builds a whole
+aerial time-trial. Rings notice your kart and Sky-Wing too, not just you.
 
 **Couch co-op — up to four players:** press `B` — or press any button on a
 **second, third, or fourth gamepad** — and a friendly figure (green, orange,
