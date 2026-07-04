@@ -19,7 +19,8 @@
     {
       "file": "glowlands.json",
       "name": "The Glowlands",
-      "desc": "A three-mission Play Set: light the path, open the vault, win the trial"
+      "desc": "A three-mission Play Set: light the path, open the vault, win the trial",
+      "price": 150
     }
   ]
 }

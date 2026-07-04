@@ -1270,8 +1270,12 @@ class App {
             } else if(menuItem === 2) {
                 app.importWorldFromPicker();
             } else if(app.gallery && app.orderedGallery()[menuItem - 3]) {
-                // Digits map to the DISPLAYED (featured-first) order.
+                // Digits map to the DISPLAYED (featured-first) order. Priced
+                // Play Sets must be bought first; a successful buy imports
+                // right away (direct importWorldFromUrl callers stay ungated).
                 const entry = app.orderedGallery()[menuItem - 3];
+                app.menu.renderedState = -1;   // re-render lock/unlock state
+                if(!app.buyPlayset(entry)) break;
                 app.importWorldFromUrl('./assets/worlds/' + entry.file).then((ok) => {
                     if(ok) app.goto_buildMode();
                 });
@@ -2044,11 +2048,13 @@ class App {
                     // Featured-first: today's curated pick tops the list.
                     this.orderedGallery().forEach((g, i) => {
                         const n = 3 + i;
+                        const owned = this.playsetOwned(g);
                         this.MenuItem({
                             type: 'button',
                             name: 'btnGallery_' + i,
-                            text: n + '. ' + (i === 0 && this.featuredWorld() === g ? '★ FEATURED · ' : '') +
-                                g.name + ' — ' + g.desc,
+                            text: n + '. ' + (owned ? '' : '🔒 ') +
+                                (i === 0 && this.featuredWorld() === g ? '★ FEATURED · ' : '') +
+                                g.name + ' — ' + (owned ? g.desc : g.price + ' px to unlock'),
                             handler: () => { app.triggerMenuItem(MENU_SHARE, n); }
                         });
                     });
@@ -2844,6 +2850,26 @@ class App {
                 this.gallery = [];
             })
             .finally(() => { this._galleryLoading = false; });
+    }
+
+    // Play Set gating: gallery entries with a `price` must be bought once
+    // (rides the same purchasedSet the shop uses, key 'playset_<file>').
+    playsetOwned(entry) {
+        if (!entry || !entry.price) return true;
+        return !!(this.purchasedSet && this.purchasedSet.has('playset_' + entry.file));
+    }
+
+    buyPlayset(entry) {
+        if (!entry || this.playsetOwned(entry)) return true;
+        if (this.pixels < entry.price) {
+            this.toasty(entry.name + ' is a Play Set — ' + entry.price + ' pixels to unlock.');
+            return false;
+        }
+        this.pixels -= entry.price;
+        this.purchasedSet.add('playset_' + entry.file);
+        this.saveEconomy();
+        this.toasty('Play Set unlocked: ' + entry.name + '!');
+        return true;
     }
 
     // Today's featured world: the curated `featured` rotation advances one

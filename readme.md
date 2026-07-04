@@ -196,8 +196,10 @@ any path chain. There's also **The Glowlands**, a three-mission Play Set:
 light the path, open the vault, win the trial — finishing each mission
 unlocks the next (the vault door literally stays shut until you do), and the
 finale pays out with a camera flourish. Every mission is ordinary wiring, so
-open it in the Wiring view to learn how to build campaigns of your own. A
-**★ FEATURED** pick rotates daily at the top of the list.
+open it in the Wiring view to learn how to build campaigns of your own. The
+Glowlands is a **premium Play Set** — 150 pixels unlocks it forever (earn
+them fighting and questing in the Sandbox). A **★ FEATURED** pick rotates
+daily at the top of the list.
 
 ### Play Mode
 In play mode, a default avatar will be dropped into the world at the origin `(0,0,0)`.

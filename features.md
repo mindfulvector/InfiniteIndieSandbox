@@ -9,7 +9,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 ### Story Campaigns (Play Sets)
 | Feature | Status | Notes |
 |---|---|---|
-| Standalone purchasable campaign modules (themed universes) | 🟡 | "The Glowlands" gallery Play Set: a 3-mission chain built purely from shipped toys (`test-campaign.js`); purchase gating for campaigns planned |
+| Standalone purchasable campaign modules (themed universes) | ✅ | "The Glowlands" gallery Play Set: a 3-mission chain built purely from shipped toys (`test-campaign.js`); priced gallery entries lock behind a one-time pixel purchase on the Share screen (🔒 + price, `purchasedSet` key `playset_<file>`, buy-then-import) (`test-playset-gating.js`) |
 | Action-adventure / puzzle-platformer / arena-brawler campaign types | ⬜ | |
 | Characters locked to campaign, usable in Sandbox | ⬜ | |
 | Mission-based progression (story/side missions, collectibles) | ✅ | Quest toys chain into missions: Glowlands M1 (collect stars) physically opens the vault door, M2 (enter the pocket room) unlocks M3 (win a lap), with escalating pixel rewards and a camera-cut finale (`test-campaign.js`) |
@@ -107,7 +107,7 @@ Every ✅/🟡 item is covered by the harness test suite (`npm test`) unless not
 | In-game economy (pixels) | ✅ | Earn from enemies, spend in shop, persists |
 
 ## Next up (suggested order)
-1. Campaign purchase gating (locked Play Sets in the shop)
-2. Flyable aircraft (glide-kart hybrid)
-3. Online co-op exploration (WebRTC world sync spike)
-4. Grind rails / trampolines (traversal toys)
+1. Flyable aircraft (glide-kart hybrid)
+2. Online co-op exploration (WebRTC world sync spike)
+3. Grind rails / trampolines (traversal toys)
+4. Photo mode (freeze + free camera + screenshot)
