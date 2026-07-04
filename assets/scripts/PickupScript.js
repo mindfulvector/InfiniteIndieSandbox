@@ -51,6 +51,13 @@ class PickupScript {
     // single shared tint would colour every pickup type the same. The manifest
     // colours each pickup's prim via col:[r,g,b] instead.
 
+    // Player death resets the run: collected pickups come back.
+    onPlayReset(mode) {
+        this._collected = false;
+        this._respawnAcc = 0;
+        this.inst.isVisible = true;
+    }
+
     // Apply the pickup's effect to the player/mode. Kept small and explicit.
     applyEffect(mode) {
         const effect = this.getParam('effect');

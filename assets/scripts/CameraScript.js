@@ -62,6 +62,12 @@ class CameraScript {
         }
     }
 
+    // Player death resets the run: any active cut ends and the view returns.
+    onPlayReset(mode) {
+        this._activateRequested = false;
+        if (this._active) this.finish(mode);
+    }
+
     // World point this camera looks at in 'fixed' focus: a spot ahead of its
     // own facing (placement rotation aims the shot).
     fixedLookPoint() {

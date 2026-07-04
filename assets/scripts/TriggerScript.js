@@ -28,6 +28,13 @@ class TriggerScript {
         ];
     }
 
+    // Player death resets the run: forget who was inside so re-entering the
+    // volume after the respawn fires `entered` again.
+    onPlayReset(mode) {
+        this.state.activated = false;
+        this.state.entered = [];
+    }
+
     // Incoming message from another object (legacy path, kept for compatibility).
     message(msg) {
         switch(msg) {

@@ -79,6 +79,9 @@ class CounterScript {
         }
     }
 
+    // Player death resets the run: the count starts over.
+    onPlayReset(mode) { this.count = 0; }
+
     update(isPlayMode, mode) {
         // Fresh count each play session so saved worlds behave deterministically.
         // Only on an observed build->play transition (see constructor note).

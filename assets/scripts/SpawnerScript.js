@@ -36,6 +36,15 @@ class SpawnerScript {
         this._spawnRequested = 0;   // one-shot spawns requested via the 'spawn' input
     }
 
+    // Player death resets the run: the spawner re-arms from its start state.
+    // (The enemies it spawned are cleared separately by EnemyManager.reset.)
+    onPlayReset(mode) {
+        this._acc = 0;
+        this._spawnRequested = 0;
+        this._active = (this.getParam('startActive') !== 'no');
+        this._alive = [];
+    }
+
     // Handle a wired input action fired by another object (e.g. a trigger).
     onInput(action, from) {
         switch(action) {

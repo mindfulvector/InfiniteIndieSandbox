@@ -76,6 +76,9 @@ class ScoreboardScript {
         }
     }
 
+    // Player death resets the run: the score starts over.
+    onPlayReset(mode) { this.score = 0; }
+
     update(isPlayMode, mode) {
         if (isPlayMode && this._wasPlay === false) this.score = 0;
         this._wasPlay = isPlayMode;

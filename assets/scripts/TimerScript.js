@@ -62,6 +62,12 @@ class TimerScript {
         }
     }
 
+    // Player death resets the run: the timer re-arms from its start state.
+    onPlayReset(mode) {
+        this._acc = 0;
+        this._active = (this.getParam('startActive') !== 'no');
+    }
+
     update(isPlayMode, mode) {
         if (!isPlayMode) { this._wasPlay = false; return; }
 

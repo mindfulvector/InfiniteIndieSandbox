@@ -689,7 +689,28 @@ class PlayMode {
         this.comboTimer = 0;
         this.clearLockOn();
         this.enemyManager.reset();
-        this.app.toasty('Overwhelmed! Respawning...');
+
+        // Dying costs 10% of the current pixels...
+        const loss = Math.floor(this.app.pixels * 0.10);
+        if (loss > 0) {
+            this.app.pixels -= loss;
+            this.app.saveEconomy();
+        }
+
+        // ...and resets the gameplay state: every object script that keeps
+        // per-run state (counters, timers, spawners, scoreboards, collected
+        // pickups, an active camera cut) starts the run over.
+        this.app.BuildableObjectList.forEach((wo) => {
+            wo.instances.forEach((inst) => {
+                if (inst && inst.script && typeof inst.script.onPlayReset === 'function') {
+                    try { inst.script.onPlayReset(this); } catch (e) { /* keep respawning */ }
+                }
+            });
+        });
+
+        this.app.toasty(loss > 0
+            ? 'Overwhelmed! Lost ' + loss + ' pixels — the run resets...'
+            : 'Overwhelmed! Respawning...');
     }
 
     defeatEnemy(inst, wo) {
