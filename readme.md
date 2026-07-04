@@ -316,6 +316,12 @@ slips away, the camera comes off its leash (`WASD` to move, `R`/`F` for
 height, `Shift` to hurry, mouse to orbit), and `Enter` saves a PNG of your
 shot. Press `P` again to jump back into the fray exactly where it left off.
 
+**Treasure:** drop a **Chest** (Props) into your world for a pixel payout —
+walk up to it and the lid pops open, spilling coins that fly to you. Set
+its reward (10–100 pixels) in the object parameters, or wire its *Open*
+input to a switch or a cleared room, and its *Opened* event to whatever
+comes next. A great capstone for a dungeon.
+
 **Climbing:** place a **Ladder** (Props) against a ledge and hold `W` at
 its base to climb — you'll rise steadily up the rungs and step off at the
 top; `S` climbs back down. Perfect for reaching platforms without a jump

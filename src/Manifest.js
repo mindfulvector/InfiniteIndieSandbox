@@ -193,6 +193,18 @@ class Manifest {
                   ]
         }, 'KartScript');
 
+        // A treasure chest: walk up (or wire `open`) to pop the lid and
+        // spill a pixel reward; fires `opened` (see ChestScript). The lid is
+        // a named child hinged at the back.
+        app.createWorldObject('pr_chest', {
+            prims: [
+                     {ty: 'box', s: [1.2, 0.7, 0.8],  p: [0, 0, 0],       col: [0.5, 0.32, 0.14], tex: {id: 'wood', s: 60}},
+                     {ty: 'box', s: [1.24, 0.12, 0.84], p: [0, -0.35, 0], col: [0.85, 0.7, 0.25], tex: {id: 'marble'}},
+                     {ty: 'box', s: [1.24, 0.12, 0.84], p: [0, 0.35, 0],  col: [0.85, 0.7, 0.25], tex: {id: 'marble'}},
+                     {ty: 'box', s: [1.2, 0.4, 0.82],  p: [0, 0.55, -0.4], col: [0.55, 0.36, 0.16], tex: {id: 'wood', s: 60}, nm: 'lid'},
+                  ]
+        }, 'ChestScript');
+
         // A climbable ladder: two rails + rungs. Hold W near it to ascend
         // (see PlayMode.updateClimbing); no script needed.
         app.createWorldObject('pr_ladder', {
