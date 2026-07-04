@@ -61,15 +61,21 @@ async function main() {
         const placedCount = await h.instanceCount(OBJ);
         await h.screenshot('before-move');
 
-        // Track the placed instance and simulate hovering it, then grab with Enter.
+        // Track the placed instance and simulate hovering it, then grab with
+        // SPACE -- the same key that places, per the one-thumb flow. The
+        // selection must be re-set each attempt: tapUntil may retry, and a
+        // cursor nudge between tries rebuilds the selection from intersection.
         await h.evaluate(() => {
             const bm = window.app.activeMode;
             window.__moveTarget = bm.placedInstances[0].inst;
             bm.selection = [window.__moveTarget];
         });
         const posBefore = await h.evaluate(centerOf);
-        await h.tapUntil('Enter', () => window.app.activeMode.grabbed &&
-            window.app.activeMode.currentInstance === window.__moveTarget);
+        await h.tapUntil(' ', () => {
+            const bm = window.app.activeMode;
+            if (!bm.grabbed) bm.selection = [window.__moveTarget];
+            return bm.grabbed && bm.currentInstance === window.__moveTarget;
+        });
         await h.waitFrames(4);
         const grabbedInfo = await h.evaluate(() => ({
             grabbed: window.app.activeMode.grabbed,
@@ -77,7 +83,7 @@ async function main() {
             count: 0,
         }));
         console.log('\n[1] grabbed', grabbedInfo, 'posBefore', posBefore);
-        check('Enter grabbed the placed object', grabbedInfo.grabbed && grabbedInfo.isTarget, grabbedInfo);
+        check('Space grabbed the placed object', grabbedInfo.grabbed && grabbedInfo.isTarget, grabbedInfo);
         check('grabbing did not duplicate the object', (await h.instanceCount(OBJ)) === placedCount,
             { placedCount, now: await h.instanceCount(OBJ) });
 

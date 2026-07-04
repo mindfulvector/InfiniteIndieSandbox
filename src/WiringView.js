@@ -92,6 +92,7 @@ class WiringView {
 
         this._cancelDrag();
         this._closeChooser();
+        this._closeInspector();
         this._disposeWireMeshes();
         this.labels.forEach((c) => c.dispose());
         this.labels = [];
@@ -145,9 +146,11 @@ class WiringView {
     // ---- pointer handling --------------------------------------------------
     _onPointerDown(pi) {
         const mesh = pi.pickInfo && pi.pickInfo.pickedMesh;
-        // Clicking a wire deletes it.
+        // Clicking a wire SELECTS it: the inspector shows what it carries
+        // (source, event, target, action) with Delete available inside --
+        // so existing setups can be explored without fear.
         if(mesh && mesh._wire) {
-            this.deleteWire(mesh._wire.src, mesh._wire.wire);
+            this._inspectWire(mesh._wire.src, mesh._wire.wire);
             return;
         }
         const inst = this._instanceFromMesh(mesh);
@@ -198,7 +201,14 @@ class WiringView {
     endWireDrag(targetInst) {
         const src = this.drag && this.drag.src;
         this._cancelDrag();
-        if(!src || !targetInst || targetInst === src) { this._refreshEmphasis(); this._updateHint(); return; }
+        // A tap (down + up on the same object, no drag away) SELECTS it:
+        // the inspector lists its ports and every outgoing wire.
+        if(src && targetInst === src) {
+            this._inspectObject(src);
+            this._refreshEmphasis(); this._updateHint();
+            return;
+        }
+        if(!src || !targetInst) { this._refreshEmphasis(); this._updateHint(); return; }
         const ins = targetInst.script ? (targetInst.script.inputs || []) : [];
         if(ins.length === 0) {
             this.app.toasty(this.app.prettyName(targetInst.worldObject.name) +
@@ -258,6 +268,129 @@ class WiringView {
         this.app.removeWire(src, wire.event, wire.toWo, wire.toId, wire.action);
         this.app.toasty('Wire removed.');
         this.rebuild();
+    }
+
+    // ---- inspector -----------------------------------------------------------
+    // Click-to-explore: tapping an object or a wire opens a right-side card
+    // describing it. A wire's Delete now lives INSIDE its card, so a stray
+    // click can't destroy anything while reading a setup.
+
+    _closeInspector() {
+        if(this._inspector) { this._inspector.dispose(); this._inspector = null; }
+        this._unhighlightWire();
+    }
+
+    // Wire materials are shared per event type, so highlight by THICKENING
+    // this wire's own meshes rather than tinting the material.
+    _highlightWire(wire) {
+        this._unhighlightWire();
+        this._wireGlow = [];
+        this.scene.meshes.forEach((m) => {
+            if(m._wire && m._wire.wire === wire) {
+                this._wireGlow.push({ m: m, s: m.scaling.clone() });
+                m.scaling.y *= 2.4;
+                m.scaling.z *= 2.4;
+            }
+        });
+    }
+
+    _unhighlightWire() {
+        (this._wireGlow || []).forEach((g) => {
+            if(g.m && !g.m.isDisposed()) g.m.scaling.copyFrom(g.s);
+        });
+        this._wireGlow = [];
+    }
+
+    _inspectorPanel(name) {
+        this._closeInspector();
+        const A = BABYLON.GUI.Control;
+        const panel = new BABYLON.GUI.Rectangle(name);
+        panel.width = '285px';
+        panel.height = '60%';
+        panel.cornerRadius = 10;
+        panel.thickness = 1;
+        panel.color = 'rgba(255,220,120,0.6)';
+        panel.background = 'rgba(14,12,6,0.94)';
+        panel.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_RIGHT;
+        panel.verticalAlignment = A.VERTICAL_ALIGNMENT_CENTER;
+        panel.left = '-14px';
+        this.app.gui.addControl(panel);
+        this._inspector = panel;
+        const scroll = new BABYLON.GUI.ScrollViewer(name + 'Scroll');
+        scroll.thickness = 0;
+        scroll.barSize = 8;
+        scroll.barColor = '#ffdc78';
+        panel.addControl(scroll);
+        const stack = new BABYLON.GUI.StackPanel();
+        stack.width = '250px';
+        scroll.addControl(stack);
+        return stack;
+    }
+
+    _inspLine(stack, txt, color, size, cb) {
+        if(cb) {
+            const b = BABYLON.GUI.Button.CreateSimpleButton('inspBtn', txt);
+            b.height = '30px';
+            b.thickness = 0;
+            b.color = color || '#ffdc78';
+            if(b.textBlock) {
+                b.textBlock.fontSize = size || 14;
+                b.textBlock.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+            }
+            b.onPointerUpObservable.add(cb);
+            stack.addControl(b);
+            return b;
+        }
+        const t = new BABYLON.GUI.TextBlock();
+        t.text = txt;
+        t.color = color || '#e8ecff';
+        t.fontSize = size || 14;
+        t.textWrapping = true;
+        t.resizeToFit = true;
+        t.paddingTop = '4px';
+        t.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+        stack.addControl(t);
+        return t;
+    }
+
+    _inspectObject(inst) {
+        const stack = this._inspectorPanel('wireInspector');
+        this._inspLine(stack, this.app.prettyName(inst.worldObject.name) + '  ·  #' + inst.worldId,
+            '#ffdc78', 18);
+        const outs = (inst.script && inst.script.outputs) || [];
+        const ins = (inst.script && inst.script.inputs) || [];
+        this._inspLine(stack, 'EVENTS IT FIRES', '#8fe9ff', 13);
+        if(outs.length) outs.forEach((o) => this._inspLine(stack, '  • ' + o.label));
+        else this._inspLine(stack, '  (none)');
+        this._inspLine(stack, 'ACTIONS IT TAKES', '#8fe9ff', 13);
+        if(ins.length) ins.forEach((i) => this._inspLine(stack, '  • ' + i.label));
+        else this._inspLine(stack, '  (none)');
+        this._inspLine(stack, 'WIRES FROM HERE', '#8fe9ff', 13);
+        const wires = inst.wires || [];
+        if(!wires.length) this._inspLine(stack, '  (none — drag to another object)');
+        wires.forEach((w) => {
+            this._inspLine(stack,
+                '  ' + this._outLabel(inst, w.event) + ' ➜ ' +
+                this.app.prettyName(w.toWo) + ' #' + w.toId,
+                '#ffffff', 13, () => this._inspectWire(inst, w));
+        });
+        this._inspLine(stack, '[ Close ]', '#8fe9ff', 14, () => this._closeInspector());
+    }
+
+    _inspectWire(src, wire) {
+        const dst = this.app.findInstance(wire.toWo, wire.toId);
+        const stack = this._inspectorPanel('wireInspectorWire');
+        this._highlightWire(wire);
+        this._inspLine(stack, 'WIRE', '#ffdc78', 18);
+        this._inspLine(stack, 'From:  ' + this.app.prettyName(src.worldObject.name) + ' #' + src.worldId);
+        this._inspLine(stack, 'Event:  ' + this._outLabel(src, wire.event));
+        this._inspLine(stack, 'To:  ' + this.app.prettyName(wire.toWo) + ' #' + wire.toId);
+        this._inspLine(stack, 'Action:  ' + (dst ? this._inLabel(dst, wire.action) : wire.action));
+        this._inspLine(stack, '[ Delete Wire ]', '#ff8888', 14, () => {
+            this._closeInspector();
+            this.deleteWire(src, wire);
+        });
+        this._inspLine(stack, '[ Close ]', '#8fe9ff', 14, () => this._closeInspector());
     }
 
     // ---- chooser popup ------------------------------------------------------
@@ -353,6 +486,7 @@ class WiringView {
     // ---- rebuild ---------------------------------------------------------
     // Rebuild wire meshes and label text from the current wiring.
     rebuild() {
+        this._closeInspector();   // wire refs go stale across a rebuild
         this._disposeWireMeshes();
         this.nodes.forEach((src) => {
             if(!src.wires) return;

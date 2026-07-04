@@ -46,15 +46,122 @@ class BuildMode {
 
         // Set static UI strings once on mode load
         this.app.modeName.text = "BuildMode";
+
+        // Mouse: TAPPING an object in cursor mode walks the cursor onto it
+        // and selects it (Space then grabs it; Shift+Space opens its
+        // properties). POINTERTAP -- not DOWN -- so camera drags stay drags.
+        this._pointerObs = this.app.scene.onPointerObservable.add((pi) => {
+            if (pi.type !== BABYLON.PointerEventTypes.POINTERTAP) return;
+            if (this.currentInstance) return;   // placement mode keeps its keys
+            const inst = this._instanceFromMesh(pi.pickInfo && pi.pickInfo.pickedMesh);
+            if (inst) this.selectInstance(inst);
+        });
+
+        // The left sidebar object list (see _refreshSidebar).
+        this._sidebar = null;
+        this._sidebarKey = null;
     }
 
     dispose() {
         this.app.modeName.text = "Exiting BuildMode...";
+        if (this._pointerObs) {
+            this.app.scene.onPointerObservable.remove(this._pointerObs);
+            this._pointerObs = null;
+        }
+        if (this._sidebar) { this._sidebar.dispose(); this._sidebar = null; }
         this.disposeCurrentInstance();
         // camFocus lives for the whole mode (not per-instance), so tear it down
         // here rather than in disposeCurrentInstance.
         this.camFocus?.dispose();
         this.camFocus = null;
+    }
+
+    // Walk a picked mesh up to the world-object instance that owns it.
+    _instanceFromMesh(mesh) {
+        let n = mesh;
+        while (n) {
+            if (n.worldObject && n.worldId != null) return n;
+            n = n.parent;
+        }
+        return null;
+    }
+
+    // Left sidebar: every object in the browsed category as a clickable
+    // list, the current selection highlighted. Arrow keys already walk the
+    // same selection, so the list and the keys stay in lockstep; a row
+    // click rides the existing programmatic-selection path. Rebuilt only
+    // when the category/selection actually changes.
+    _refreshSidebar() {
+        const app = this.app;
+        const list = app.BuildableObjectList;
+        if (!list.length || !app.gui || !BABYLON.GUI) return;
+        const sel = this.selectedObjectIndex;
+        const cat = (sel >= 0 && list[sel])
+            ? app.objectCategory(list[sel].name)
+            : (this.browseCat || app.objectCategory(list[0].name));
+        const key = cat + '|' + sel;
+        if (key === this._sidebarKey) return;
+        this._sidebarKey = key;
+        if (this._sidebar) { this._sidebar.dispose(); this._sidebar = null; }
+
+        const panel = new BABYLON.GUI.StackPanel('buildSidebar');
+        panel.width = '200px';
+        panel.isVertical = true;
+        panel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+        panel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+        panel.background = 'rgba(6, 8, 26, 0.78)';
+
+        const title = new BABYLON.GUI.TextBlock('sbTitle', '  ' + cat.toUpperCase());
+        title.height = '30px';
+        title.color = '#7fdcff';
+        title.fontSize = 15;
+        title.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+        panel.addControl(title);
+
+        list.forEach((wo, idx) => {
+            if (app.objectCategory(wo.name) !== cat) return;
+            const owned = app.isPurchased(wo.name);
+            const current = idx === sel;
+            const btn = BABYLON.GUI.Button.CreateSimpleButton('sbRow_' + wo.name,
+                (current ? '▶ ' : '   ') + (owned ? '' : '🔒 ') + app.prettyName(wo.name));
+            btn.height = '26px';
+            btn.thickness = 0;
+            btn.color = current ? '#ffffff' : (owned ? '#b9c4e8' : '#6a7292');
+            btn.background = current ? 'rgba(60, 120, 255, 0.35)' : 'transparent';
+            if (btn.textBlock) {
+                btn.textBlock.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+                btn.textBlock.fontSize = 13;
+            }
+            btn.onPointerUpObservable.add(() => {
+                if (!app.isPurchased(wo.name)) {
+                    app.toasty(app.prettyName(wo.name) + ' is locked — ' +
+                        app.priceOf(wo.name) + ' px in the shop.');
+                    return;
+                }
+                this.selectedObjectIndex = idx;
+                this._selectRequested = true;
+                this._sidebarKey = null;   // force a refresh with the new highlight
+            });
+            panel.addControl(btn);
+        });
+
+        app.gui.addControl(panel);
+        this._sidebar = panel;
+    }
+
+    // Put the cursor on an instance and make it the selection (mouse path;
+    // the WASD cursor rebuilds the selection on its next move as usual).
+    selectInstance(inst) {
+        this.targetPosition = inst.position.clone();
+        if (this.cursor) {
+            this.cursor.position = this.targetPosition.clone();
+            this.cursor.computeWorldMatrix();
+        }
+        if (typeof this.selection != 'undefined') {
+            this.selection.forEach((s) => this.app.showBoundingBoxAll(s, false));
+        }
+        this.selection = [inst];
+        this.app.showBoundingBoxAll(inst, true);
     }
 
     // Commit the current instance into the world: hide its highlight, record it
@@ -353,11 +460,22 @@ class BuildMode {
             this.deleteAction();
         }
 
-        // Enter (in cursor mode, over a highlighted object) grabs it to move it.
-        // Handled here, before the cursor/placement split, because grabbing makes
-        // it the active instance and tears down the cursor.
-        if (!this.currentInstance && this.app.keyPressed('ENTER')) {
-            this.grabSelectedObject();
+        // Space (in cursor mode, over a highlighted object) grabs it to move
+        // it -- the same key that places, so building flows on one thumb.
+        // Shift+Space opens the highlighted object's properties instead.
+        // Enter stays as a legacy grab alias. Handled here, before the
+        // cursor/placement split, because grabbing makes it the active
+        // instance and tears down the cursor. (The !currentInstance guard
+        // comes first: keyPressed consumes, and placement needs its Space.)
+        if (!this.currentInstance &&
+            (this.app.keyPressed(' ') || this.app.keyPressed('ENTER'))) {
+            if (this.app.keyDown('SHIFT')) {
+                if (typeof this.selection != 'undefined' && this.selection.length > 0) {
+                    this.app.openParams(this.selection[0]);
+                }
+            } else {
+                this.grabSelectedObject();
+            }
         }
 
         let placementPosition = false;
@@ -388,12 +506,8 @@ class BuildMode {
                 }
             }
         } else {
-            // Space in cursor mode opens the highlighted object's parameters popup.
-            if(this.app.keyPressed(' ')) {
-                if (typeof this.selection != 'undefined' && this.selection.length > 0) {
-                    this.app.openParams(this.selection[0]);
-                }
-            }
+            // (Cursor-mode Space is handled above: grab, or Shift+Space for
+            // properties.)
 
             // Rotate through color gradient for cursor
             this.cursorMatIndex += 1;
@@ -673,6 +787,7 @@ class BuildMode {
         }
 
         this.updateObjectsInBuildMode();
+        this._refreshSidebar();
 
         // Auto-open the parameters popup for a just-placed configurable object.
         if(this._openParamsAfter) {
