@@ -106,6 +106,18 @@ async function main() {
         check('the sub-level is named on the stack', inside.stackName === 'Vaultlet', inside);
         check('the seeded starter room stands (floors, walls, an exit portal)',
             inside.floors === 4 && inside.walls === 8 && inside.exits === 1, inside);
+        const facingIn = await h.evaluate(() => {
+            const app = window.app, pm = app.activeMode;
+            const exit = app.findWorldObject('pr_door_cell').instances.filter(Boolean)
+                .find((i) => i.params && i.params.mode === 'exit');
+            const away = pm.player.position.subtract(exit.position);
+            away.y = 0; away.normalize();
+            const fwd = pm.playerForward();
+            return { dot: Math.round((fwd.x * away.x + fwd.z * away.z) * 100) / 100 };
+        });
+        console.log('[2b] arrival facing', facingIn);
+        check('the player arrives FACING AWAY from the exit door (no accidental re-entry)',
+            facingIn.dot > 0.6, facingIn);
         await h.screenshot('inside-sub-level');
 
         // --- 3. Edit the room, then exit through the exit portal ---
@@ -134,6 +146,18 @@ async function main() {
                 questSteps: ((quest.params || {}).qdone || []).length,
             };
         });
+        const facingOut = await h.evaluate(() => {
+            const app = window.app, pm = app.activeMode;
+            const door = app.findWorldObject('pr_door_cell').instances.filter(Boolean)
+                .find((i) => !i.params || i.params.mode !== 'exit');
+            const away = pm.player.position.subtract(door.position);
+            away.y = 0; away.normalize();
+            const fwd = pm.playerForward();
+            return { dot: Math.round((fwd.x * away.x + fwd.z * away.z) * 100) / 100 };
+        });
+        console.log('\n[3a] return facing', facingOut);
+        check('the player returns FACING AWAY from the door they came out of',
+            facingOut.dot > 0.6, facingOut);
         console.log('\n[3] back in the parent', back);
         check('exiting restores the parent world (terrain back)', back.tiles === setup.tiles0, back);
         check('the door remembers its sub-level name', back.doorName === 'Vaultlet', back);
