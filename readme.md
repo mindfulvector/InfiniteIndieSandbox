@@ -333,6 +333,11 @@ give them the same color, and the lock stays shut until you've grabbed the
 key — then walking into it opens the way (the key is used up). Wire several
 keys and locks by color for a proper dungeon.
 
+**Wind & updrafts:** drop a **Fan** zone (Logic) and set its direction —
+an **up** fan lifts you up a shaft to a high ledge (no ladder needed), a
+sideways fan blows you across a gap. Wire it on/off from a switch, or
+point one at a hazard for a "don't get blown into the spikes" beat.
+
 **Hazards:** drop a **Hazard** zone (Logic) over lava, spikes, or a pit —
 it hurts the player while they stand in it (a well-timed **Dodge** roll
 gets you through unscathed). Pair it with a **Checkpoint** so a misstep

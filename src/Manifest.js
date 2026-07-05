@@ -140,6 +140,14 @@ class Manifest {
                   ]
         }, 'HazardScript');
 
+        // A wind / updraft zone: pushes the player in a chosen direction while
+        // they stand in it (see FanScript). Tall by default for an updraft shaft.
+        app.createWorldObject('l_fan', {
+            prims: [
+                     {ty: 'box',       s: [2,4,2], p: [0,0,0]},
+                  ]
+        }, 'FanScript');
+
         // A collectible KEY + a locked barrier (see KeyScript / LockScript):
         // grab the matching-color key, then walk into the lock to open it.
         app.createWorldObject('pk_key', {
