@@ -140,6 +140,22 @@ class Manifest {
                   ]
         }, 'HazardScript');
 
+        // A collectible KEY + a locked barrier (see KeyScript / LockScript):
+        // grab the matching-color key, then walk into the lock to open it.
+        app.createWorldObject('pk_key', {
+            prims: [
+                     {ty: 'cylinder', s: [0.5, 0.12, 0.5], p: [0, 0.5, 0], col: [0.95, 0.8, 0.25], tex: {id: 'marble'}},
+                     {ty: 'box',      s: [0.12, 0.9, 0.12], p: [0, 0, 0],  col: [0.95, 0.8, 0.25], tex: {id: 'marble'}},
+                     {ty: 'box',      s: [0.35, 0.12, 0.12], p: [0.15, -0.35, 0], col: [0.95, 0.8, 0.25], tex: {id: 'marble'}},
+                  ]
+        }, 'KeyScript');
+        app.createWorldObject('pr_lock', {
+            prims: [
+                     {ty: 'box', s: [1.5, 3, 0.4], p: [0, 0, 0],   col: [0.4, 0.3, 0.15], tex: {id: 'wood', s: 60}},
+                     {ty: 'cylinder', s: [0.6, 0.5, 0.6], p: [0, 0, 0.25], col: [0.85, 0.7, 0.2], tex: {id: 'marble'}},
+                  ]
+        }, 'LockScript');
+
         // A basic enemy: a red-marble blob that can be attacked in play mode
         // and, when defeated, bursts into collectable pixels.
         app.createWorldObject('en_blob', {

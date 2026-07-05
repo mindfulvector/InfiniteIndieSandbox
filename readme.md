@@ -325,6 +325,11 @@ it rides the surface of any pool so you can cross deep water without
 swimming. `WASD` steers, `Space` hops out. Beach it on dry land and it
 just sits there.
 
+**Keys & locks:** drop a **Key** (Pickups) and a **Lock** barrier (Props),
+give them the same color, and the lock stays shut until you've grabbed the
+key — then walking into it opens the way (the key is used up). Wire several
+keys and locks by color for a proper dungeon.
+
 **Hazards:** drop a **Hazard** zone (Logic) over lava, spikes, or a pit —
 it hurts the player while they stand in it (a well-timed **Dodge** roll
 gets you through unscathed). Pair it with a **Checkpoint** so a misstep
