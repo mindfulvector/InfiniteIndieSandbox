@@ -395,6 +395,10 @@ later one and it takes over. Great for long platformers and dungeons.
 **Power** doubles your damage, **Shield** makes you invincible. Scatter
 them through a tough fight, or wire their *Collected* event to a counter.
 
+**Bomber enemies:** the **Bomber** (Enemies) is a kamikaze — it rushes you
+and blows up in a blast radius, so dodge-roll through it or back off. Best
+countered by popping it at range, where the explosion can't reach you.
+
 **Mender enemies:** the **Mender** (Enemies) is a healer drone — it won't
 attack you, but it keeps the rest of the pack topped up, so a fight can
 drag on forever until you hunt it down first. Take out the healer, then

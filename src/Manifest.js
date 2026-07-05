@@ -260,6 +260,16 @@ class Manifest {
                   ]
         }, 'MenderScript');
 
+        // A kamikaze enemy: charges and explodes in a blast radius -- pop it
+        // at range (see BomberScript). A round core with warning spikes.
+        app.createWorldObject('en_bomber', {
+            prims: [
+                     {ty: 'sphere',   s: [1.1],           p: [0, 0.2, 0],  col: [0.9, 0.3, 0.15], tex: {id: 'marble'}},
+                     {ty: 'box',      s: [0.25, 0.25, 1.4], p: [0, 0.2, 0], col: [1.0, 0.7, 0.1]},
+                     {ty: 'box',      s: [1.4, 0.25, 0.25], p: [0, 0.2, 0], col: [1.0, 0.7, 0.1]},
+                  ]
+        }, 'BomberScript');
+
         app.createWorldObject('en_charger', {
             prims: [
                      {ty: 'box',      s: [1.1, 1.0, 1.4], p: [0, 0, 0],    col: [0.85, 0.5, 0.15], tex: {id: 'marble', w: 2, h: 2}},
