@@ -163,6 +163,14 @@ class Manifest {
                   ]
         }, 'PowerUpScript');
 
+        // A moving hazard: a sweeping blade that oscillates along an axis
+        // -- time your crossing (see SweeperScript). Long + thin by default.
+        app.createWorldObject('l_sweeper', {
+            prims: [
+                     {ty: 'box',       s: [0.6, 3, 3], p: [0,0,0]},
+                  ]
+        }, 'SweeperScript');
+
         app.createWorldObject('l_hazard', {
             prims: [
                      {ty: 'box',       s: [2,1,2], p: [0,0,0]},
