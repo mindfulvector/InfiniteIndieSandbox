@@ -60,8 +60,11 @@ async function main() {
             cnt.params.threshold = 99; cnt.params.autoReset = 'no';
             w.wires = [{ event: 'swept', toWo: 'l_counter', toId: cnt.worldId, action: 'increment' }];
             window.__W = { w, cnt, home: 40 };
-            let minX = 99, maxX = -99;
-            for (let i = 0; i < 200; i++) { w.script.update(true, pm); minX = Math.min(minX, w.position.x); maxX = Math.max(maxX, w.position.x); }
+            // Sample the blade at both swing extremes directly (dt-independent:
+            // a timed loop under load barely advances getDeltaTime's phase).
+            // sin near +/-pi/2 is ~+/-1, so home+/-reach regardless of dt step.
+            w.script._phase = Math.PI / 2;       w.script.update(true, pm); const maxX = w.position.x;
+            w.script._phase = 3 * Math.PI / 2;   w.script.update(true, pm); const minX = w.position.x;
             // The `swept` edge fires on a RISING zero-crossing. Proving it via
             // the timed loop is dt-flaky (a phase step can straddle the sample);
             // force one crossing deterministically instead: _lastSin below zero

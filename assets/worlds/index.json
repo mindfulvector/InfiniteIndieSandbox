@@ -87,6 +87,11 @@
       "file": "warded-hall.json",
       "name": "The Warded Hall",
       "desc": "A priority-target fight: a mender drone keeps a shielder-and-charger line alive, so hunt down the healer to drop the vault ward \u2014 retreat to the regen field when hurt"
+    },
+    {
+      "file": "shiftworks.json",
+      "name": "Shiftworks",
+      "desc": "A shifting-floor traversal gauntlet: ride the conveyors, sprint the crumbling tiles before they drop, time the sweeping blade, then bounce to the star that opens the vault"
     }
   ]
 }
