@@ -659,6 +659,23 @@ class App {
         this.gui.addControl(waveText);
         this.hud.waveText = waveText;
 
+        // --- Defeat-streak indicator (top-left, below the wave counter) ---
+        const streakText = new BABYLON.GUI.TextBlock("hudStreak");
+        streakText.text = "";
+        streakText.color = "#8fd9ff";
+        streakText.fontSize = 15;
+        streakText.fontStyle = "bold";
+        streakText.height = "22px";
+        streakText.width = "260px";
+        streakText.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        streakText.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        streakText.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        streakText.left = "20px";
+        streakText.top = "108px";
+        streakText.isVisible = false;
+        this.gui.addControl(streakText);
+        this.hud.streakText = streakText;
+
         // --- Toast / notification (top-center) ---
         const toast = new BABYLON.GUI.Rectangle("hudToast");
         toast.adaptWidthToChildren = true;
@@ -1155,6 +1172,21 @@ class App {
                 this.hud.healthFill.width = Math.round(frac * 100) + "%";
                 this.hud.healthFill.background = frac > 0.5 ? "#39ff9a" : (frac > 0.25 ? "#ffd23f" : "#ff4a5b");
                 this.hud.waveText.text = "WAVE " + (pm.enemyManager ? pm.enemyManager.wave : 1);
+            }
+        }
+
+        // Defeat-streak indicator: shown while a chain is building (>=2), with
+        // the live pixel multiplier once it kicks in. Colour heats up by tier.
+        if(this.hud.streakText) {
+            const streak = pm ? (pm._streak || 0) : 0;
+            const showStreak = inHud && !!pm && streak >= 2;
+            this.hud.streakText.isVisible = showStreak;
+            if(showStreak) {
+                const mult = pm.streakMult();
+                this.hud.streakText.text = "STREAK ×" + streak +
+                    (mult > 1 ? "   ·   " + mult + "× PIXELS" : "");
+                this.hud.streakText.color = mult >= 3 ? "#ff4a5b" :
+                    (mult >= 2 ? "#ff9a3f" : (mult >= 1.5 ? "#ffd23f" : "#8fd9ff"));
             }
         }
 

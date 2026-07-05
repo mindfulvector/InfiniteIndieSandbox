@@ -393,8 +393,9 @@ later one and it takes over. Great for long platformers and dungeons.
 
 **Defeat streaks:** chain enemy kills without getting hit and your **pixel
 multiplier** climbs (3 in a row = 1.5x, 6 = 2x, 10 = 3x) — dodging and
-blocking keep the chain alive, only a solid hit breaks it. Clean, aggressive
-play pays out.
+blocking keep the chain alive, only a solid hit breaks it — the streak and
+its multiplier read out live on the HUD (top-left). Clean, aggressive play
+pays out.
 
 **Power-ups:** grab a **Power-up** (Pickups) for a few seconds of an edge —
 **Power** doubles your damage, **Shield** makes you invincible. Scatter
