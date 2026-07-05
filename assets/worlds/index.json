@@ -92,6 +92,11 @@
       "file": "shiftworks.json",
       "name": "Shiftworks",
       "desc": "A shifting-floor traversal gauntlet: ride the conveyors, sprint the crumbling tiles before they drop, time the sweeping blade, then bounce to the star that opens the vault"
+    },
+    {
+      "file": "wardens-locks.json",
+      "name": "The Warden's Locks",
+      "desc": "A pressure-plate puzzle vault: weigh down the latch plate to open the first lock, press BOTH plates to trip the counter on the second, then claim the vault"
     }
   ]
 }
