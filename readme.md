@@ -381,6 +381,10 @@ its *Fully Healed* pulse to end a checkpoint, or drop one in a boss arena.
 activate by standing on it — wire it to a door to hold it open only while
 you (or a friend) stay put, or set it to latch and stay down once pressed.
 
+**Rotating platforms:** the **Spinner** (Terrain) is a disc that spins and
+carries you around with it — stand near the rim to swing wide, or near the
+hub to barely move. Wire it on and off, or set its speed and direction.
+
 **Conveyor belts:** the **Conveyor** (Logic) is a moving walkway — stand on
 it and it carries you along its set direction. Chain them into a factory
 floor, use one to feed the player into a hazard, or wire it on and off.
