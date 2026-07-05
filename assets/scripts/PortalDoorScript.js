@@ -24,6 +24,9 @@ class PortalDoorScript {
 
         this.paramDefs = [
             { key: 'mode', label: 'Direction', type: 'enum', options: ['portal', 'exit'], default: 'portal' },
+            { key: 'texture', label: 'Frame', type: 'enum', options: ['brick', 'wood', 'planks', 'marble'], default: 'brick' },
+            { key: 'tint', label: 'Tint', type: 'enum',
+              options: ['none', 'red', 'orange', 'gold', 'green', 'blue', 'purple', 'white'], default: 'none' },
         ];
         this.noAutoParams = true;
         this.eventDefs = [];
@@ -76,6 +79,12 @@ class PortalDoorScript {
 
     update(isPlayMode, mode) {
         const inst = this.inst;
+        // Frame texture + tint settings (the tint also colours the glow
+        // panel). Untouched doors keep their authored per-jamb look.
+        const tex = this.getParam('texture'), tint = this.getParam('tint');
+        if (inst._lookKey !== undefined || tex !== 'brick' || tint !== 'none') {
+            this.app.applyInstanceLook(inst, tex, tint, 'cellglow');
+        }
         if (!isPlayMode) {
             this._wasPlay = false;
             return;

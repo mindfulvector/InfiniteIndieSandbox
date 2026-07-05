@@ -3089,6 +3089,59 @@ class App {
         this.toasty('Progression slot ' + n + ' active.');
     }
 
+    // ---- per-instance looks (texture + tint settings) -----------------------
+    // Named tints offered by objects with a `tint` param.
+    static TINTS = {
+        none:   null,
+        red:    [0.90, 0.32, 0.32],
+        orange: [0.95, 0.60, 0.25],
+        gold:   [1.00, 0.85, 0.35],
+        green:  [0.42, 0.90, 0.45],
+        blue:   [0.42, 0.65, 1.00],
+        purple: [0.70, 0.50, 1.00],
+        white:  [1.00, 1.00, 1.00],
+    };
+
+    // Re-skin one placed instance: a fresh material with the chosen texture
+    // id (see makeProceduralTexture) and tint colour on every solid part.
+    // Children whose name starts with `glowPrefix` (e.g. a portal's panel)
+    // keep their emissive look but take the tint as their glow colour.
+    // Cheap to call every frame: re-applies only when the look key changes.
+    applyInstanceLook(inst, texId, tintName, glowPrefix) {
+        const key = (texId || '') + '|' + (tintName || 'none');
+        if (inst._lookKey === key) return;
+        inst._lookKey = key;
+        const tint = App.TINTS[tintName] || null;
+        let mat = null;
+        const meshes = [inst].concat(inst.getChildMeshes ? inst.getChildMeshes() : []);
+        meshes.forEach((m) => {
+            if (!m.material) return;
+            // Clones prefix child names with the instance name, so match the
+            // glow child anywhere in the name (the DoorScript panel lesson).
+            if (glowPrefix && m.name && m.name.indexOf(glowPrefix) >= 0) {
+                if (tint) {
+                    // The template's glow material is shared: clone before tinting.
+                    const g = m.material.clone('glowMat[' + inst.worldId + ']');
+                    g.emissiveColor = new BABYLON.Color3(tint[0], tint[1], tint[2]);
+                    if (g.diffuseColor) g.diffuseColor = new BABYLON.Color3(
+                        tint[0] * 0.5, tint[1] * 0.5, tint[2] * 0.5);
+                    m.material = g;
+                }
+                return;
+            }
+            if (!mat) {
+                mat = new BABYLON.StandardMaterial('lookMat[' + inst.worldId + '|' + key + ']', this.scene);
+                const tex = this.makeProceduralTexture({ id: texId }, 'look_' + inst.uniqueId);
+                if (tex) mat.diffuseTexture = tex;
+                mat.diffuseColor = tint
+                    ? new BABYLON.Color3(tint[0], tint[1], tint[2])
+                    : new BABYLON.Color3(1, 1, 1);
+                mat.specularColor = new BABYLON.Color3(0, 0, 0);
+            }
+            m.material = mat;
+        });
+    }
+
     // ---- portal doors: nested sub-worlds -----------------------------------
     // A portal door leads to a NAMED sub-level stored INSIDE its parent
     // world's save (Disney-Infinity style: the door's level lives in the

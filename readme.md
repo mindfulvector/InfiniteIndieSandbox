@@ -174,9 +174,15 @@ small starter room. Inside, you're in a **real world of its own** — build,
 wire, save, even place *more portal doors* (levels nest as deep as you like).
 Walk into the sub-level's own exit portal to return to where you entered.
 Sub-levels ride inside the owning world's save and exports, so a shared
-world carries every level behind its doors. The door fires *Player Entered*
-/ *Player Exited* wiring events, so stepping through can start timers, cut
-cameras, or step quests.
+world carries every level behind its doors. You always arrive facing away
+from the door you stepped through, so you can't stumble straight back in.
+The door fires *Player Entered* / *Player Exited* wiring events, so stepping
+through can start timers, cut cameras, or step quests.
+
+Both the sliding **Door** and the **Portal Door** have look **settings**
+(cursor mode + `Shift+Space`): pick a frame **texture** (wood, planks,
+brick, marble) and a **tint** (eight colours) — the portal door's glow
+panel takes the tint too, so you can colour-code your levels' doors.
 
 #### Paths and moving platforms
 

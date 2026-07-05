@@ -215,6 +215,56 @@ async function main() {
         check('death inside the sub-level respawns INSIDE it',
             death.stack === 1 && death.hp > 0 && death.floors === 4, death);
 
+        // --- 7. Door look settings: texture + tint re-skin door instances ---
+        const looks = await h.evaluate(() => {
+            const app = window.app;
+            // Portal door: marble frame, purple tint (glow takes the tint).
+            const portal = app.findWorldObject('pr_door_cell').instances.filter(Boolean)[0];
+            portal.params.texture = 'marble';
+            portal.params.tint = 'purple';
+            // Sliding door: brick texture, red tint.
+            const slide = app.findWorldObject('pr_door').createInstance();
+            slide.position = app.activeMode.player.position.add(new BABYLON.Vector3(3, 1.5, 0));
+            slide.params.texture = 'brick';
+            slide.params.tint = 'red';
+            return { made: true };
+        });
+        await h.waitFrames(8);   // scripts apply looks on their next update
+        const skins = await h.evaluate(() => {
+            const app = window.app;
+            const texUrlOf = (inst) => {
+                const kids = [inst].concat(inst.getChildMeshes ? inst.getChildMeshes() : []);
+                for (const m of kids) {
+                    const mat = m.material;
+                    if (mat && mat.name && mat.name.indexOf('lookMat') === 0) {
+                        return { url: mat.diffuseTexture ? mat.diffuseTexture.url : null,
+                                 r: Math.round(mat.diffuseColor.r * 100) / 100 };
+                    }
+                }
+                return null;
+            };
+            const portal = app.findWorldObject('pr_door_cell').instances.filter(Boolean)[0];
+            const slide = app.findWorldObject('pr_door').instances.filter(Boolean)
+                .find((i) => i.params && i.params.tint === 'red');
+            const glow = [portal].concat(portal.getChildMeshes())
+                .find((m) => m.name && m.name.indexOf('cellglow') >= 0);
+            return {
+                portal: texUrlOf(portal),
+                slide: texUrlOf(slide),
+                glowG: glow && glow.material.emissiveColor
+                    ? Math.round(glow.material.emissiveColor.g * 100) / 100 : null,
+            };
+        });
+        console.log('\n[7] door looks', skins);
+        check('the portal door re-skins to marble with a purple tint',
+            skins.portal && skins.portal.url && skins.portal.url.indexOf('Tile') >= 0 &&
+            skins.portal.r === 0.7, skins);
+        check('the portal glow panel takes the tint colour',
+            skins.glowG === 0.5, skins);
+        check('the sliding door re-skins to brick with a red tint',
+            skins.slide && skins.slide.url && skins.slide.url.indexOf('Bricks') >= 0 &&
+            skins.slide.r === 0.9, skins);
+
         console.log('\n========================================');
         console.log(failures === 0
             ? 'RESULT: PASS — portal doors lead to named, editable sub-levels stored inside the world.'
