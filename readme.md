@@ -72,6 +72,7 @@ To switch between modes, press the `Esc` key then to enter a new mode:
 * Press `Y` to **redo** — re-removes what you just undid; U and Y round-trip a deletion cleanly both ways
 * **Shift-click** several objects to select them as a group, then `Delete` or `F` (duplicate) acts on the whole group at once
 * Grab a shift-click group and **move it as one** — the whole cluster slides together, keeping its shape
+* Press `L` to **stamp a row** — lays a line of copies of the highlighted object marching along +X, each flush against the last, for fast walls and floors
 
 Objects are placed centred under the cursor. Most objects rest their **base** on
 the cursor (a tree sits *on* the surface), while **terrain** tiles snap their

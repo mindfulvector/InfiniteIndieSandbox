@@ -311,11 +311,12 @@ class BuildMode {
     // Build a fresh instance of `node` offset a little, carrying its
     // rotation, scale and params (but NOT wires -- a copy starts unwired).
     // Registered on the placed/undo stacks and shared to linked builders.
-    _copyInstance(node) {
+    _copyInstance(node, offset) {
         const wo = node.worldObject;
         if (!wo) return null;
+        const off = offset || new BABYLON.Vector3(1.5, 0, 1.5);
         const inst = wo.createInstance({
-            po: node.position.add(new BABYLON.Vector3(1.5, 0, 1.5)),
+            po: node.position.add(off),
             ro: node.rotationQuaternion ? node.rotationQuaternion.clone() : null,
             sc: node.scaling ? node.scaling.clone() : null,
             pr: node.params ? JSON.parse(JSON.stringify(node.params)) : {},
@@ -323,6 +324,43 @@ class BuildMode {
         if (!inst) return null;
         inst.checkCollisions = true;
         return inst;
+    }
+
+    // Stamp a ROW: lay down `count` copies of the highlighted object marching
+    // along +X, each stepped by the object's own footprint so blocks/walls
+    // tile flush -- turns a tedious one-at-a-time wall into a single keypress
+    // (L). The row (original + copies) becomes the selection, so it moves or
+    // deletes as one.
+    stampLine(count) {
+        const n = count || 4;
+        if (typeof this.selection == 'undefined' || this.selection.length === 0) {
+            this.app.toasty('Move the cursor over an object first, then L to stamp a row.');
+            return;
+        }
+        const node = this.selection[this.selection.length - 1];
+        const wo = node.worldObject;
+        if (!wo) { this.app.toasty("That object can't be stamped."); return; }
+        if (!this.app.isPurchased(wo.name)) {
+            this.app.toasty('Locked — buy ' + this.app.prettyName(wo.name) +
+                ' (' + this.app.priceOf(wo.name) + ' px) in the shop to stamp it.');
+            return;
+        }
+        const bb = this.computeWorldBBox(node);
+        const stepX = bb && bb.size.x > 0.05 ? bb.size.x : Math.max(1, node.scaling.x * 2);
+        const copies = [];
+        for (let i = 1; i <= n; i++) {
+            const c = this._copyInstance(node, new BABYLON.Vector3(stepX * i, 0, 0));
+            if (c) {
+                this.placedInstances.push({ wo: wo, inst: c });
+                if (this.app.net && !this.app.net.closed) this.app.net.sendAdd(c);
+                copies.push(c);
+            }
+        }
+        this.selection.forEach((s) => this.app.showBoundingBoxAll(s, false));
+        this.selection = [node].concat(copies);
+        this.selection.forEach((s) => this.app.showBoundingBoxAll(s, true));
+        this.app.sound.play('place');
+        this.app.toasty('Stamped a row of ' + this.selection.length + '.');
     }
 
     // Duplicate the highlighted object: build a fresh instance carrying the
@@ -794,6 +832,11 @@ class BuildMode {
         // Y redoes it -- re-removes what U just brought back.
         if (!this.currentInstance && this.app.keyPressed('Y')) {
             this.redoDelete();
+        }
+
+        // L stamps a row of the highlighted object -- fast walls and floors.
+        if (!this.currentInstance && this.app.keyPressed('L')) {
+            this.stampLine();
         }
 
         // Space (in cursor mode, over a highlighted object) grabs it to move
