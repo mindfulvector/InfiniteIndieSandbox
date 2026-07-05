@@ -5,3 +5,4 @@ test/screenshots/*
 # macOS Finder metadata
 .DS_Store
 **/.DS_Store
+test/.timings.json

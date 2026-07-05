@@ -4,7 +4,8 @@
   "private": true,
   "description": "Infinite Indie Sandbox — browser-based 3D sandbox game (Babylon.js)",
   "scripts": {
-    "test": "node test/run-all.js",
+    "test": "node test/run-all.js --core",
+    "test:full": "node test/run-all.js",
     "test:building": "node test/test-building.js",
     "test:browser": "node test/test-object-browser.js"
   },
