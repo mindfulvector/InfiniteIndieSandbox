@@ -145,6 +145,14 @@ const HUD_PANEL_BG     = "rgba(13,20,32,0.82)";
 const HUD_BAR_BG       = "rgba(10,15,24,0.72)";
 
 class App {
+    // The single toy-box chamfer size, in WORLD UNITS, shared by every
+    // chamfered mesh (prim boxes via makeChamferBox AND terrain cubes via
+    // makeChamferAtlasBox). It's an ABSOLUTE trim, not a fraction of the
+    // object, so the bevel looks identical on a 1-unit tile and a 4-unit
+    // block. Edit this ONE number to retune every edge in the game.
+    // (Only auto-shrinks for objects too small to fit it -- see the builders.)
+    static CHAMFER = 0.05;
+
     // The CC0 texture pack (assets/textures/1, Screaming Brain Studios):
     // 25 seamless 128x128 variants per family. These are the variants the
     // game uses, picked by eye -- change a path here to reskin everywhere
@@ -2894,7 +2902,10 @@ class App {
     // computed normal disagrees with the outward direction), so the builder
     // cannot produce inside-out faces.
     makeChamferBox(name, w, h, d) {
-        const c = Math.min(0.06, Math.min(w, Math.min(h, d)) * 0.24);
+        // Fixed world-unit trim (App.CHAMFER), matching the terrain cubes so a
+        // door jamb and a floor tile wear the same edge; only shrink it for a
+        // prim too thin to fit it.
+        const c = Math.min(App.CHAMFER, Math.min(w, Math.min(h, d)) * 0.45);
         if (!(c > 0.004)) {
             return BABYLON.MeshBuilder.CreateBox(name, { width: w, height: h, depth: d }, this.scene);
         }
@@ -2972,7 +2983,9 @@ class App {
     // uMin,vMin,uMax,vMax) instead of the prim's planar tiling.
     makeChamferAtlasBox(name, w, h, d, topUV, sideUV) {
         const minDim = Math.min(w, Math.min(h, d));
-        const c = minDim * 0.05;
+        // Fixed world-unit trim so every terrain cube shows the SAME edge, no
+        // matter its size; only shrink it for a block too small to fit it.
+        const c = Math.min(App.CHAMFER, minDim * 0.45);
         if (!(c > 0.004)) {
             const faceUV = [];
             for (let i = 0; i < 6; i++) faceUV.push(i === 4 ? topUV : sideUV);
