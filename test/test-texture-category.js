@@ -30,9 +30,16 @@ async function main() {
             const texOf = (node) => {
                 const meshes = [node].concat(node.getChildMeshes ? node.getChildMeshes() : []);
                 for (const m of meshes) {
-                    if (m.material && m.material.diffuseTexture) return true;
-                    if (m.material && m.material.subMaterials &&
-                        m.material.subMaterials.some((s) => s && s.diffuseTexture)) return true;
+                    // Standard materials carry diffuseTexture; glTF pack models
+                    // come in as PBR with albedoTexture. A PBR material with a
+                    // BAKED VERTEX-COLOUR albedo (albedoColor set, no texture)
+                    // also counts as textured -- the model author's surface.
+                    const mat = m.material;
+                    if (!mat) continue;
+                    if (mat.diffuseTexture || mat.albedoTexture) return true;
+                    if (mat.albedoColor) return true;
+                    if (mat.subMaterials &&
+                        mat.subMaterials.some((s) => s && (s.diffuseTexture || s.albedoTexture || s.albedoColor))) return true;
                 }
                 return false;
             };
@@ -64,7 +71,7 @@ async function main() {
                 door: urlOf('pr_door'),        // wood
                 wall: urlOf('in_wall'),        // brick
                 floor: urlOf('in_floor'),      // planks
-                blob: urlOf('en_blob'),        // marble
+                lock: urlOf('pr_lock'),        // marble (en_blob is a MODEL now)
             };
         });
         console.log('\n[1b] pack textures', packTex);
@@ -72,7 +79,7 @@ async function main() {
             !!(packTex.door && packTex.door.includes('textures/1/') &&
                packTex.wall && packTex.wall.includes('textures/1/') &&
                packTex.floor && packTex.floor.includes('textures/1/') &&
-               packTex.blob && packTex.blob.includes('textures/1/')), packTex);
+               packTex.lock && packTex.lock.includes('textures/1/')), packTex);
 
         // --- 2. Grass terrain renders in a new sandbox ---
         await h.tapUntil('1', () => window.app.menu.state === 11);

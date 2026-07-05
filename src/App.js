@@ -2626,6 +2626,22 @@ class App {
                             }
                         }
                     }
+                    // collideAll: every part is solid (props whose model node
+                    // names are opaque -- OBJ exports etc.).
+                    if(assetProps.collideAll) {
+                        for(let i = 0; i < childMeshes.length; i++) {
+                            childMeshes[i].checkCollisions = true;
+                        }
+                    }
+                    // Pack models come in their author's units. `scale` bakes a
+                    // uniform factor into the template's DIRECT children (never
+                    // the root: build-mode placement and saved worlds overwrite
+                    // the instance ROOT's scaling, which would clobber it).
+                    if(assetProps.scale) {
+                        object.getChildren().forEach((c) => {
+                            if(c.scaling) c.scaling = c.scaling.scale(assetProps.scale);
+                        });
+                    }
                     for(let i = 0; i < childMeshes.length; i++) {
                         childMeshes[i].isVisible = false;
                     }

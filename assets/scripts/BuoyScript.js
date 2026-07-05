@@ -20,8 +20,23 @@ class BuoyScript {
         if (this.inst._floatHalf != null) return;
         try {
             this.inst.computeWorldMatrix(true);
-            const bb = this.inst.getBoundingInfo().boundingBox;
-            this.inst._floatHalf = (bb.maximumWorld.y - bb.minimumWorld.y) / 2;
+            // Model-based props root at a TransformNode with no bounds of its
+            // own: aggregate the whole hierarchy (root mesh AND children).
+            let min = null, max = null;
+            const meshes = [this.inst].concat(
+                this.inst.getChildMeshes ? this.inst.getChildMeshes() : []);
+            meshes.forEach((m) => {
+                if (!m.getBoundingInfo || !m.getTotalVertices || !m.getTotalVertices()) return;
+                m.computeWorldMatrix(true);
+                const bb = m.getBoundingInfo().boundingBox;
+                if (min == null) { min = bb.minimumWorld.y; max = bb.maximumWorld.y; }
+                else {
+                    min = Math.min(min, bb.minimumWorld.y);
+                    max = Math.max(max, bb.maximumWorld.y);
+                }
+            });
+            this.inst._floatHalf = min != null ? (max - min) / 2 : 0.4;
+            if (!(this.inst._floatHalf > 0)) this.inst._floatHalf = 0.4;
         } catch (e) { this.inst._floatHalf = 0.4; }
     }
 

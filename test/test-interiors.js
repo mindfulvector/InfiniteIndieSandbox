@@ -75,14 +75,17 @@ async function main() {
                 wallDoorKids: wd.length,
                 wallDoorAllVisible: window.__wallDoor.isVisible && wd.every((m) => m.isVisible),
                 wallDoorAllCollide: window.__wallDoor.checkCollisions && wd.every((m) => m.checkCollisions),
-                tableKids: tb.length,
+                // d_table is a pack MODEL now (not 4 leg prims): what matters
+                // is that it clones with real visible geometry and collides.
+                tableSolid: [window.__table].concat(tb).some((m) =>
+                    m.getTotalVertices && m.getTotalVertices() > 0 && m.isVisible && m.checkCollisions),
             };
         });
         console.log('[2] hierarchy', hier);
         check('in_wall_door clones with its 2 child prims', hier.wallDoorKids === 2, hier);
         check('all wall-door prims are visible and collidable',
             hier.wallDoorAllVisible && hier.wallDoorAllCollide, hier);
-        check('d_table clones with its 4 leg children', hier.tableKids === 4, hier);
+        check('d_table clones as solid visible model geometry', hier.tableSolid === true, hier);
         // Child world matrices only settle once a frame renders -- rays fired
         // in the same evaluate as creation would miss the children.
         await h.waitFrames(3);

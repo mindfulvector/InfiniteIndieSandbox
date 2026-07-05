@@ -94,38 +94,11 @@ class Manifest {
         });
 
         // ---- Furniture / decoration (d_*) -----------------------------------
-        app.createWorldObject('d_table', {
-            prims: [
-                     {ty: 'box', s: [1.8, 0.12, 1.0],   p: [0, 0, 0],           tex: {id: 'wood', s: 80}},
-                     {ty: 'box', s: [0.12, 0.72, 0.12], p: [-0.78, -0.42, -0.38], tex: {id: 'wood', s: 80}},
-                     {ty: 'box', s: [0.12, 0.72, 0.12], p: [0.78, -0.42, -0.38],  tex: {id: 'wood', s: 80}},
-                     {ty: 'box', s: [0.12, 0.72, 0.12], p: [-0.78, -0.42, 0.38],  tex: {id: 'wood', s: 80}},
-                     {ty: 'box', s: [0.12, 0.72, 0.12], p: [0.78, -0.42, 0.38],   tex: {id: 'wood', s: 80}},
-                  ]
-        });
-        app.createWorldObject('d_chair', {
-            prims: [
-                     {ty: 'box', s: [0.55, 0.1, 0.55],  p: [0, 0, 0],            tex: {id: 'wood', s: 60}},
-                     {ty: 'box', s: [0.55, 0.7, 0.08],  p: [0, 0.4, -0.235],     tex: {id: 'wood', s: 60}},
-                     {ty: 'box', s: [0.09, 0.5, 0.09],  p: [-0.21, -0.3, -0.21], tex: {id: 'wood', s: 60}},
-                     {ty: 'box', s: [0.09, 0.5, 0.09],  p: [0.21, -0.3, -0.21],  tex: {id: 'wood', s: 60}},
-                     {ty: 'box', s: [0.09, 0.5, 0.09],  p: [-0.21, -0.3, 0.21],  tex: {id: 'wood', s: 60}},
-                     {ty: 'box', s: [0.09, 0.5, 0.09],  p: [0.21, -0.3, 0.21],   tex: {id: 'wood', s: 60}},
-                  ]
-        });
+        app.createWorldObject('d_table', { rootUrl: assetsBaseUrl, filename: 'models/christmas/table.obj', scale: 1, collideAll: true, surface: 'wood' });
+        app.createWorldObject('d_chair', { rootUrl: assetsBaseUrl, filename: 'models/christmas/chair_1.obj', scale: 0.5, collideAll: true, surface: 'wood' });
         // Floor lamp: cylinder base + pole, warm glowing shade on top.
-        app.createWorldObject('d_lamp', {
-            prims: [
-                     {ty: 'cylinder', s: [0.4, 0.06, 0.4, 16, 1],   p: [0, 0, 0],    tex: {id: 'wood', s: 40}},
-                     {ty: 'cylinder', s: [0.07, 1.2, 0.07, 10, 1],  p: [0, 0.63, 0], tex: {id: 'wood', s: 40}},
-                     {ty: 'cylinder', s: [0.55, 0.45, 0.35, 16, 1], p: [0, 1.4, 0],  col: [1.0, 0.9, 0.6], tex: {id: 'cloud'}},
-                  ]
-        });
-        app.createWorldObject('d_rug', {
-            prims: [
-                     {ty: 'box', s: [2.2, 0.05, 1.5], p: [0, 0, 0], col: [0.65, 0.25, 0.3], tex: {id: 'cloud'}},
-                  ]
-        });
+        app.createWorldObject('d_lamp', { rootUrl: assetsBaseUrl, filename: 'models/fantasy/lantern.glb', scale: 1, collideAll: true });
+        app.createWorldObject('d_rug', { rootUrl: assetsBaseUrl, filename: 'models/christmas/carpet.obj', scale: 0.8 });
 
         // A pressure plate: a weight-activated floor button (stand on it to
         // fire pressed; step off to fire released) -- see PlateScript.
@@ -165,13 +138,7 @@ class Manifest {
 
         // A timed combat power-up: 'power' (double damage) or 'shield'
         // (invincible) for a few seconds (see PowerUpScript).
-        app.createWorldObject('pk_powerup', {
-            prims: [
-                     {ty: 'sphere', s: [0.7], p: [0, 0.5, 0], col: [1.0, 0.85, 0.2], tex: {id: 'marble'}},
-                     {ty: 'box',    s: [0.9, 0.2, 0.2], p: [0, 0.5, 0], col: [1.0, 0.5, 0.1], tex: {id: 'marble'}},
-                     {ty: 'box',    s: [0.2, 0.2, 0.9], p: [0, 0.5, 0], col: [1.0, 0.5, 0.1], tex: {id: 'marble'}},
-                  ]
-        }, 'PowerUpScript');
+        app.createWorldObject('pk_powerup', { rootUrl: assetsBaseUrl, filename: 'models/platformer/crateItem.glb', scale: 1.3 }, 'PowerUpScript');
 
         // A moving hazard: a sweeping blade that oscillates along an axis
         // -- time your crossing (see SweeperScript). Long + thin by default.
@@ -233,13 +200,7 @@ class Manifest {
 
         // A collectible KEY + a locked barrier (see KeyScript / LockScript):
         // grab the matching-color key, then walk into the lock to open it.
-        app.createWorldObject('pk_key', {
-            prims: [
-                     {ty: 'cylinder', s: [0.5, 0.12, 0.5], p: [0, 0.5, 0], col: [0.95, 0.8, 0.25], tex: {id: 'marble'}},
-                     {ty: 'box',      s: [0.12, 0.9, 0.12], p: [0, 0, 0],  col: [0.95, 0.8, 0.25], tex: {id: 'marble'}},
-                     {ty: 'box',      s: [0.35, 0.12, 0.12], p: [0.15, -0.35, 0], col: [0.95, 0.8, 0.25], tex: {id: 'marble'}},
-                  ]
-        }, 'KeyScript');
+        app.createWorldObject('pk_key', { rootUrl: assetsBaseUrl, filename: 'models/platformer/key.glb', scale: 1.6 }, 'KeyScript');
         app.createWorldObject('pr_lock', {
             prims: [
                      {ty: 'box', s: [1.5, 3, 0.4], p: [0, 0, 0],   col: [0.4, 0.3, 0.15], tex: {id: 'wood', s: 60}},
@@ -249,11 +210,7 @@ class Manifest {
 
         // A basic enemy: a red-marble blob that can be attacked in play mode
         // and, when defeated, bursts into collectable pixels.
-        app.createWorldObject('en_blob', {
-            prims: [
-                     {ty: 'sphere',    s: [1.2], p: [0,0,0], col: [0.90, 0.16, 0.22], tex: {id: 'marble', w: 2, h: 2}},
-                  ]
-        }, 'EnemyScript');
+        app.createWorldObject('en_blob', { rootUrl: assetsBaseUrl, filename: 'models/cyberpunk/Enemies/Enemy_Flying.gltf', scale: 1.4 }, 'EnemyScript');
 
         // A stationary sentry turret: tracks the player and fires enemy shots
         // on a cadence; attackable + defeatable (see TurretScript). The barrel
@@ -305,13 +262,7 @@ class Manifest {
                   ]
         }, 'ChargerScript');
 
-        app.createWorldObject('en_turret', {
-            prims: [
-                     {ty: 'cylinder', s: [1.1, 0.5, 1.1], p: [0, -0.5, 0],  col: [0.3, 0.32, 0.4], tex: {id: 'marble'}},
-                     {ty: 'box',      s: [0.9, 0.7, 0.9], p: [0, 0.1, 0],   col: [0.55, 0.2, 0.15], tex: {id: 'marble', w: 2, h: 2}},
-                     {ty: 'box',      s: [0.25, 0.25, 1.0], p: [0, 0.2, 0.6], col: [0.9, 0.5, 0.3]},
-                  ]
-        }, 'TurretScript');
+        app.createWorldObject('en_turret', { rootUrl: assetsBaseUrl, filename: 'models/cyberpunk/Enemies/Turret_Gun.gltf', scale: 1.6 }, 'TurretScript');
 
         // A spawner pad: in play mode it spawns enemies of a chosen type at a set
         // frequency up to a limit (all editable via the parameters popup).
@@ -405,30 +356,13 @@ class Manifest {
 
         // Floating props: barrels and crates that bob on water (see
         // BuoyScript + PlayMode.updateFloaters). On dry land they just rest.
-        app.createWorldObject('pr_barrel', {
-            prims: [
-                     {ty: 'cylinder', s: [0.7, 1.0, 0.7], p: [0, 0, 0], col: [0.45, 0.3, 0.16], tex: {id: 'wood', s: 40}},
-                     {ty: 'cylinder', s: [0.74, 0.12, 0.74], p: [0, 0.3, 0],  col: [0.7, 0.55, 0.25], tex: {id: 'marble'}},
-                     {ty: 'cylinder', s: [0.74, 0.12, 0.74], p: [0, -0.3, 0], col: [0.7, 0.55, 0.25], tex: {id: 'marble'}},
-                  ]
-        }, 'BuoyScript');
-        app.createWorldObject('pr_crate', {
-            prims: [
-                     {ty: 'box', s: [0.9, 0.9, 0.9], p: [0, 0, 0], col: [0.55, 0.4, 0.2], tex: {id: 'wood', s: 50}},
-                  ]
-        }, 'BuoyScript');
+        app.createWorldObject('pr_barrel', { rootUrl: assetsBaseUrl, filename: 'models/platformer/barrel.glb', scale: 2.2, collideAll: true, surface: 'wood' }, 'BuoyScript');
+        app.createWorldObject('pr_crate', { rootUrl: assetsBaseUrl, filename: 'models/platformer/crate.glb', scale: 1.8, collideAll: true, surface: 'wood' }, 'BuoyScript');
 
         // A treasure chest: walk up (or wire `open`) to pop the lid and
         // spill a pixel reward; fires `opened` (see ChestScript). The lid is
         // a named child hinged at the back.
-        app.createWorldObject('pr_chest', {
-            prims: [
-                     {ty: 'box', s: [1.2, 0.7, 0.8],  p: [0, 0, 0],       col: [0.5, 0.32, 0.14], tex: {id: 'wood', s: 60}},
-                     {ty: 'box', s: [1.24, 0.12, 0.84], p: [0, -0.35, 0], col: [0.85, 0.7, 0.25], tex: {id: 'marble'}},
-                     {ty: 'box', s: [1.24, 0.12, 0.84], p: [0, 0.35, 0],  col: [0.85, 0.7, 0.25], tex: {id: 'marble'}},
-                     {ty: 'box', s: [1.2, 0.4, 0.82],  p: [0, 0.55, -0.4], col: [0.55, 0.36, 0.16], tex: {id: 'wood', s: 60}, nm: 'lid'},
-                  ]
-        }, 'ChestScript');
+        app.createWorldObject('pr_chest', { rootUrl: assetsBaseUrl, filename: 'models/platformer/chest.glb', scale: 2.2, collideAll: true }, 'ChestScript');
 
         // A climbable ladder: two rails + rungs. Hold W near it to ascend
         // (see PlayMode.updateClimbing); no script needed.
@@ -594,21 +528,9 @@ class Manifest {
         // Pickups: collect by touching in play mode. One script drives all
         // three; texture + tint tell them apart (red marble = health, gold
         // grain = pixels, cosmic starfield sphere = collectible star).
-        app.createWorldObject('pk_health', {
-            prims: [
-                     {ty: 'box',       s: [0.55, 0.55, 0.55], p: [0,0,0], col: [0.95, 0.25, 0.30], tex: {id: 'marble', w: 1, h: 1}},
-                  ]
-        }, 'PickupScript');
-        app.createWorldObject('pk_pixels', {
-            prims: [
-                     {ty: 'box',       s: [0.55, 0.55, 0.55], p: [0,0,0], col: [1.00, 0.78, 0.20], tex: {id: 'wood', s: 60}},
-                  ]
-        }, 'PickupScript');
-        app.createWorldObject('pk_star', {
-            prims: [
-                     {ty: 'sphere',    s: [0.6], p: [0,0,0], tex: {id: 'starfield'}},
-                  ]
-        }, 'PickupScript');
+        app.createWorldObject('pk_health', { rootUrl: assetsBaseUrl, filename: 'models/platformer/heart.glb', scale: 1.6 }, 'PickupScript');
+        app.createWorldObject('pk_pixels', { rootUrl: assetsBaseUrl, filename: 'models/platformer/coinGold.glb', scale: 1.6 }, 'PickupScript');
+        app.createWorldObject('pk_star', { rootUrl: assetsBaseUrl, filename: 'models/platformer/jewel.glb', scale: 1.6 }, 'PickupScript');
 
         new CyberpunkManifest(app, assetsBaseUrl);
         new ChristmasManifest(app, assetsBaseUrl);
