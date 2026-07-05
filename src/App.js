@@ -1339,11 +1339,20 @@ class App {
                 app.downloadWorld();
             } else if(menuItem === 2) {
                 app.importWorldFromPicker();
+            } else if(menuItem === 80) {
+                // Toggle favourite mode (re-render to show the new state).
+                app._galleryFavMode = !app._galleryFavMode;
+                app.menu.renderedState = -1;
             } else if(app.gallery && app.orderedGallery()[menuItem - 3]) {
-                // Digits map to the DISPLAYED (featured-first) order. Priced
-                // Play Sets must be bought first; a successful buy imports
-                // right away (direct importWorldFromUrl callers stay ungated).
+                // Digits map to the DISPLAYED order. In favourite mode a pick
+                // STARS the world instead of loading it (and re-sorts the list).
                 const entry = app.orderedGallery()[menuItem - 3];
+                if(app._galleryFavMode) {
+                    app.toggleFavorite(entry.file);
+                    app.menu.renderedState = -1;
+                    break;
+                }
+                // Priced Play Sets must be bought first; a successful buy imports.
                 app.menu.renderedState = -1;   // re-render lock/unlock state
                 if(!app.buyPlayset(entry)) break;
                 app.importWorldFromUrl('./assets/worlds/' + entry.file).then((ok) => {
@@ -2311,14 +2320,24 @@ class App {
                 } else if(this.gallery.length === 0) {
                     this.MenuItem({ type: 'text', name: 'galleryEmpty', text: 'No gallery worlds found.', fontSize: 14 });
                 } else {
-                    // Featured-first: today's curated pick tops the list.
+                    // A click-only toggle (item 80): in favourite mode, a
+                    // gallery pick stars/unstars that world instead of loading it.
+                    this.MenuItem({
+                        type: 'button',
+                        name: 'btnFavMode',
+                        text: (this._galleryFavMode ? '★ Favourite mode: ON — pick a world to star/unstar'
+                                                    : '☆ Favourite mode: off (tap to star worlds)'),
+                        handler: () => { app.triggerMenuItem(MENU_SHARE, 80); }
+                    });
+                    // Featured-first, then favourites, then the rest.
                     this.orderedGallery().forEach((g, i) => {
                         const n = 3 + i;
                         const owned = this.playsetOwned(g);
+                        const star = this.isFavorite(g.file) ? '★ ' : '';
                         this.MenuItem({
                             type: 'button',
                             name: 'btnGallery_' + i,
-                            text: n + '. ' + (owned ? '' : '🔒 ') +
+                            text: n + '. ' + (owned ? '' : '🔒 ') + star +
                                 (i === 0 && this.featuredWorld() === g ? '★ FEATURED · ' : '') +
                                 g.name + ' — ' + (owned ? g.desc : g.price + ' px to unlock'),
                             handler: () => { app.triggerMenuItem(MENU_SHARE, n); }
@@ -3122,6 +3141,8 @@ class App {
                 parseInt(window.localStorage.getItem('iis_sk_food'), 10) || 0);
             const gearOwned = JSON.parse(window.localStorage.getItem('iis_gear_owned') || '[]');
             this.ownedGear = new Set(Array.isArray(gearOwned) ? gearOwned : []);
+            const favs = JSON.parse(window.localStorage.getItem('iis_fav_worlds') || '[]');
+            this.favoriteWorlds = new Set(Array.isArray(favs) ? favs : []);
             const gadgetOwned = JSON.parse(window.localStorage.getItem('iis_gadget_owned') || '["none"]');
             this.ownedGadgets = new Set(Array.isArray(gadgetOwned) ? gadgetOwned : ['none']);
             this.ownedGadgets.add('none');
@@ -3186,6 +3207,7 @@ class App {
             window.localStorage.setItem('iis_sk_food', String(this.sidekickFood || 0));
             window.localStorage.setItem('iis_gear_owned', JSON.stringify([...(this.ownedGear || [])]));
             window.localStorage.setItem('iis_companions', JSON.stringify(this.hiredCompanions || []));
+            window.localStorage.setItem('iis_fav_worlds', JSON.stringify([...(this.favoriteWorlds || [])]));
             window.localStorage.setItem('iis_gadget_owned', JSON.stringify([...(this.ownedGadgets || ['none'])]));
             window.localStorage.setItem('iis_gadget_active', this.activeGadgetHex || 'none');
         } catch (e) { /* storage may be unavailable */ }
@@ -3419,8 +3441,24 @@ class App {
     orderedGallery(day) {
         if (!this.gallery) return [];
         const feat = this.featuredWorld(day);
-        if (!feat) return this.gallery.slice();
-        return [feat].concat(this.gallery.filter((g) => g !== feat));
+        const favs = this.favoriteWorlds || new Set();
+        // Featured pick first, then favourites (in gallery order), then the
+        // rest -- so the worlds you starred float to the top of the list.
+        const rest = this.gallery.filter((g) => g !== feat);
+        const starred = rest.filter((g) => favs.has(g.file));
+        const others = rest.filter((g) => !favs.has(g.file));
+        return (feat ? [feat] : []).concat(starred, others);
+    }
+
+    isFavorite(file) { return !!(this.favoriteWorlds && this.favoriteWorlds.has(file)); }
+
+    // Star / unstar a gallery world; persists and re-sorts the list.
+    toggleFavorite(file) {
+        if (!this.favoriteWorlds) this.favoriteWorlds = new Set();
+        if (this.favoriteWorlds.has(file)) this.favoriteWorlds.delete(file);
+        else this.favoriteWorlds.add(file);
+        this.saveEconomy();
+        return this.favoriteWorlds.has(file);
     }
 
     // Import a world file straight from a URL. Resolves true on success.

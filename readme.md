@@ -248,7 +248,9 @@ they're yours to play anywhere, like every figure you own. Its sequel, **Nightfa
 (200 pixels), is a boss-arena showdown under a living day/night sky: enter
 the arena for a dramatic camera reveal, fight the crowned titan through all
 three of its phases while reinforcements pour in, and depose it to swing
-the loot vault open. A **★ FEATURED** pick rotates daily at the top of the
+the loot vault open. Tap **Favourite mode** and pick worlds to **star** the ones you love —
+they persist and float to the top of the list next time. A
+**★ FEATURED** pick rotates daily at the top of the
 list. For a longer quest, **The Gauntlet** is a wave-survival arena (clear a horde of walkers while
 dodging two charging brutes and a sentry turret, then loot the vault),
 **Skybreak Run** is a cannon-jump course over the void (fire between
