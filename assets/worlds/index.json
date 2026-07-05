@@ -82,6 +82,11 @@
       "file": "bladeworks.json",
       "name": "Bladeworks",
       "desc": "A skill trial: time the sweeping blades, flank the shielder to open its gate, then dodge the charger to the vault"
+    },
+    {
+      "file": "warded-hall.json",
+      "name": "The Warded Hall",
+      "desc": "A priority-target fight: a mender drone keeps a shielder-and-charger line alive, so hunt down the healer to drop the vault ward \u2014 retreat to the regen field when hurt"
     }
   ]
 }

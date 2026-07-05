@@ -62,7 +62,15 @@ async function main() {
             window.__W = { w, cnt, home: 40 };
             let minX = 99, maxX = -99;
             for (let i = 0; i < 200; i++) { w.script.update(true, pm); minX = Math.min(minX, w.position.x); maxX = Math.max(maxX, w.position.x); }
-            return { minX, maxX, span: maxX - minX, swept: cnt.script.count };
+            // The `swept` edge fires on a RISING zero-crossing. Proving it via
+            // the timed loop is dt-flaky (a phase step can straddle the sample);
+            // force one crossing deterministically instead: _lastSin below zero
+            // and _phase already past zero, so sin is positive next update
+            // regardless of frame dt.
+            const before = cnt.script.count;
+            w.script._lastSin = -0.5; w.script._phase = 0.1;
+            w.script.update(true, pm);
+            return { minX, maxX, span: maxX - minX, swept: cnt.script.count - before };
         });
         console.log('[2] swing', swing);
         check('the sweeper oscillates both ways along its axis, firing swept at centre',

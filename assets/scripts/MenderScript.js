@@ -28,7 +28,8 @@ class MenderScript {
         this.eventDefs = [];
         this.inputs = [];
         this.outputs = [
-            { id: 'mended', label: 'Healed an Ally' },
+            { id: 'mended',   label: 'Healed an Ally' },
+            { id: 'defeated', label: 'Healer Destroyed' },
         ];
 
         this._cool = 0;
@@ -41,6 +42,17 @@ class MenderScript {
         if (this.inst.params && this.inst.params[key] != null) return this.inst.params[key];
         const def = this.paramDefs.find((d) => d.key === key);
         return def ? def.default : null;
+    }
+
+    // Script-owned defeat so we can fire `defeated` for wiring (e.g. "healer
+    // down -> open the vault"), while still dropping loot like a normal enemy.
+    onDefeated(mode) {
+        this.inst.defeated = true;
+        const pos = (this.inst.getAbsolutePosition ? this.inst.getAbsolutePosition() : this.inst.position).clone();
+        if (mode && mode.spawnPixelBurst) mode.spawnPixelBurst(pos, 14);
+        if (this.app.addXp) this.app.addXp(5);
+        this.app.fireEvent(this.inst, 'defeated');
+        this.wo.disposeInstance(this.inst);
     }
 
     onPlayReset(mode) {

@@ -252,7 +252,9 @@ three of its phases while reinforcements pour in, and depose it to swing
 the loot vault open. Tap **Favourite mode** and pick worlds to **star** the ones you love —
 they persist and float to the top of the list next time. A
 **★ FEATURED** pick rotates daily at the top of the
-list. For a longer quest, **Bladeworks** is a skill trial (time the sweeping blades, flank a shielder
+list. For a longer quest, **The Warded Hall** is a priority-target fight (a healer drone keeps the
+enemy line alive — hunt it down to drop the vault ward, and duck into the
+regen field when you're hurt), **Bladeworks** is a skill trial (time the sweeping blades, flank a shielder
 to open its gate, then dodge the charger to the vault), **The Gauntlet** is a
 wave-survival arena (clear a horde of walkers while
 dodging two charging brutes and a sentry turret, then loot the vault),
