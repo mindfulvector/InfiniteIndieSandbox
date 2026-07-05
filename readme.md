@@ -362,6 +362,11 @@ walk into it — its flag raises and it becomes your respawn point, so
 dying sends you back there instead of all the way to the start. Touch a
 later one and it takes over. Great for long platformers and dungeons.
 
+**Charger enemies:** the **Charger** (Enemies) is a dash attacker — it holds
+still until you get close, swells up as a warning, then rushes you in a
+straight line. Time a **Dodge** roll through it, or raise your **Block**
+to the front. Great for keeping players on their toes.
+
 **Breakable blocks:** drop a **Breakable** block (Terrain) as a wall — hit
 it with your attacks to smash it and open the way (or drop a little
 treasure). Set how many hits it takes, and wire its *Broken* event to a

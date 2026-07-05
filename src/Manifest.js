@@ -194,6 +194,15 @@ class Manifest {
         // A stationary sentry turret: tracks the player and fires enemy shots
         // on a cadence; attackable + defeatable (see TurretScript). The barrel
         // points along +z so the yaw-tracked base aims it at the player.
+        // A charging enemy: winds up, then dashes at the player in a straight
+        // line (dodgeable/blockable). See ChargerScript.
+        app.createWorldObject('en_charger', {
+            prims: [
+                     {ty: 'box',      s: [1.1, 1.0, 1.4], p: [0, 0, 0],    col: [0.85, 0.5, 0.15], tex: {id: 'marble', w: 2, h: 2}},
+                     {ty: 'cylinder', s: [0.7, 1.0, 0.05], p: [0, 0, 1.0], col: [0.95, 0.85, 0.2], tex: {id: 'marble'}},
+                  ]
+        }, 'ChargerScript');
+
         app.createWorldObject('en_turret', {
             prims: [
                      {ty: 'cylinder', s: [1.1, 0.5, 1.1], p: [0, -0.5, 0],  col: [0.3, 0.32, 0.4], tex: {id: 'marble'}},
