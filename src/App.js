@@ -2757,10 +2757,11 @@ class App {
             // else to the dirt half.
             const SIDE = new BABYLON.Vector4(0, 0, 0.5, 1);
             const TOP = new BABYLON.Vector4(0.5, 0, 1, 1);
-            const faceUV = [];
-            for(let i = 0; i < 6; i++) faceUV.push(i === 4 ? TOP : SIDE);
-            const box = BABYLON.MeshBuilder.CreateBox('grassBlock', {
-                width: s[0], height: s[1], depth: s[2], faceUV: faceUV }, app.scene);
+            // Chamfered terrain block: trimmed edges/corners so the ground
+            // reads like physical playset tiles, with the grass cap rounding
+            // over the top edges and dirt on the sides (footsteps still read
+            // the flat top's upward normal as grass -- see footstepSurface).
+            const box = app.makeChamferAtlasBox('grassBlock', s[0], s[1], s[2], TOP, SIDE);
             box.name += '[' + box.uniqueId + ']';
             box.isVisible = false;
             box.material = assetProps.grassBlock.theme
@@ -2947,6 +2948,86 @@ class App {
             emit([Vy(-1, sy, sz), Vy(1, sy, sz), Vz(1, sy, sz), Vz(-1, sy, sz)], [0, sy, sz]);
         }));
         // 8 corner facets.
+        S.forEach((sx) => S.forEach((sy) => S.forEach((sz) => {
+            emit([Vx(sx, sy, sz), Vy(sx, sy, sz), Vz(sx, sy, sz)], [sx, sy, sz]);
+        })));
+        const mesh = new BABYLON.Mesh(name, this.scene);
+        const vd = new BABYLON.VertexData();
+        vd.positions = positions;
+        vd.indices = indices;
+        vd.uvs = uvs;
+        const normals = [];
+        BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+        vd.normals = normals;
+        vd.applyToMesh(mesh);
+        return mesh;
+    }
+
+    // A chamfered terrain block that keeps the grass/dirt ATLAS mapping: the
+    // top cap (the +Y face and every bevel/corner that faces even slightly
+    // upward) samples the grass region, everything else samples dirt. Same
+    // self-correcting geometry as makeChamferBox, but the chamfer is a good
+    // deal larger so the terrain reads like trimmed playset tiles, and UVs are
+    // mapped 0..1 across each face into the passed atlas regions (Vector4 =
+    // uMin,vMin,uMax,vMax) instead of the prim's planar tiling.
+    makeChamferAtlasBox(name, w, h, d, topUV, sideUV) {
+        const minDim = Math.min(w, Math.min(h, d));
+        const c = minDim * 0.16;                       // ~5x the prim chamfer
+        if (!(c > 0.004)) {
+            const faceUV = [];
+            for (let i = 0; i < 6; i++) faceUV.push(i === 4 ? topUV : sideUV);
+            return BABYLON.MeshBuilder.CreateBox(name, { width: w, height: h, depth: d, faceUV }, this.scene);
+        }
+        const hx = w / 2, hy = h / 2, hz = d / 2;
+        const Vx = (sx, sy, sz) => [sx * hx, sy * (hy - c), sz * (hz - c)];
+        const Vy = (sx, sy, sz) => [sx * (hx - c), sy * hy, sz * (hz - c)];
+        const Vz = (sx, sy, sz) => [sx * (hx - c), sy * (hy - c), sz * hz];
+        const positions = [], indices = [], uvs = [];
+        // 0..1 coordinate of a point along the given unit axis, across the box.
+        const coord01 = (pt, axis) =>
+            axis[0] ? (pt[0] + hx) / w : axis[1] ? (pt[1] + hy) / h : (pt[2] + hz) / d;
+        const emit = (pts, out) => {   // pts: 3 or 4 [x,y,z]; out: outward dir
+            const base = positions.length / 3;
+            const ax = Math.abs(out[0]), ay = Math.abs(out[1]), az = Math.abs(out[2]);
+            const u = (ax >= ay && ax >= az) ? [0, 0, 1] : [1, 0, 0];
+            const v = (ay >= ax && ay >= az) ? [0, 0, 1] : [0, 1, 0];
+            // Anything with an upward-facing component wears grass; the +Y face,
+            // its four top-edge bevels and four top corners all round the grass
+            // cap over the trimmed edges.
+            const region = out[1] > 0.01 ? topUV : sideUV;
+            const uSpan = region.z - region.x, vSpan = region.w - region.y;
+            pts.forEach((pt) => {
+                positions.push(pt[0], pt[1], pt[2]);
+                uvs.push(region.x + coord01(pt, u) * uSpan,
+                         region.y + coord01(pt, v) * vSpan);
+            });
+            const tri = (a, b, cc) => {
+                const A = pts[a], B = pts[b], C = pts[cc];
+                const n = [(B[1] - A[1]) * (C[2] - A[2]) - (B[2] - A[2]) * (C[1] - A[1]),
+                           (B[2] - A[2]) * (C[0] - A[0]) - (B[0] - A[0]) * (C[2] - A[2]),
+                           (B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0])];
+                const dot = n[0] * out[0] + n[1] * out[1] + n[2] * out[2];
+                if (dot >= 0) indices.push(base + cc, base + b, base + a);
+                else indices.push(base + a, base + b, base + cc);
+            };
+            tri(0, 1, 2);
+            if (pts.length === 4) tri(0, 2, 3);
+        };
+        const S = [-1, 1];
+        S.forEach((s) => {
+            emit([Vx(s, -1, -1), Vx(s, 1, -1), Vx(s, 1, 1), Vx(s, -1, 1)], [s, 0, 0]);
+            emit([Vy(-1, s, -1), Vy(1, s, -1), Vy(1, s, 1), Vy(-1, s, 1)], [0, s, 0]);
+            emit([Vz(-1, -1, s), Vz(1, -1, s), Vz(1, 1, s), Vz(-1, 1, s)], [0, 0, s]);
+        });
+        S.forEach((sx) => S.forEach((sy) => {
+            emit([Vx(sx, sy, -1), Vx(sx, sy, 1), Vy(sx, sy, 1), Vy(sx, sy, -1)], [sx, sy, 0]);
+        }));
+        S.forEach((sx) => S.forEach((sz) => {
+            emit([Vx(sx, -1, sz), Vx(sx, 1, sz), Vz(sx, 1, sz), Vz(sx, -1, sz)], [sx, 0, sz]);
+        }));
+        S.forEach((sy) => S.forEach((sz) => {
+            emit([Vy(-1, sy, sz), Vy(1, sy, sz), Vz(1, sy, sz), Vz(-1, sy, sz)], [0, sy, sz]);
+        }));
         S.forEach((sx) => S.forEach((sy) => S.forEach((sz) => {
             emit([Vx(sx, sy, sz), Vy(sx, sy, sz), Vz(sx, sy, sz)], [sx, sy, sz]);
         })));
