@@ -43,6 +43,11 @@
       "file": "gatekeeper-vault.json",
       "name": "The Gatekeeper's Vault",
       "desc": "A logic-puzzle Play Set: an OR-gate door, an AND-gate that needs the chest AND three stars, then the treasure vault"
+    },
+    {
+      "file": "skyward-steps.json",
+      "name": "Skyward Steps",
+      "desc": "A puzzle-platformer: jump the gaps, ride the trampoline to the sky-ledge, grab the star, and the gate opens the vault"
     }
   ]
 }
