@@ -394,7 +394,9 @@ class App {
             this.scene.render();
             this.update();
 
-            if(this.menu.state == MENU_HUD) {
+            // The in-game text field freezes the world while it's open --
+            // typing WASD must never walk the player or drive build keys.
+            if(this.menu.state == MENU_HUD && !this.textEntryOpen) {
                 if(null != this.activeMode) {
                     this.activeMode.update();
                 }
@@ -1267,6 +1269,9 @@ class App {
 
     // System-wide updates such as starting and existing particular modes
     update() {
+        // While the text field is open it owns the keyboard entirely.
+        if(this.textEntryOpen) return;
+
         if(this.keyPressed('ESCAPE')) {
             if(this.menu.state == MENU_HUD) {
                 if(null != this.activeMode) {
@@ -3160,8 +3165,10 @@ class App {
         window.localStorage.setItem('iis_worlds_migrated', '1');
     }
 
-    // Ask the player for a short text (world names). Tests inject via
-    // app.testPromptValue; browsers fall back to window.prompt.
+    // Ask the player for a short text (world names, sub-level names, builder
+    // requests, co-op codes...). Tests inject via app.testPromptValue;
+    // otherwise the styled in-game text field opens (showTextEntry). The
+    // callback receives the string, or null when cancelled.
     promptText(label, def, cb) {
         if (this.testPromptValue !== undefined) {
             const v = this.testPromptValue;
@@ -3169,9 +3176,108 @@ class App {
             cb(v);
             return;
         }
-        let v = null;
-        try { v = window.prompt(label, def || ''); } catch (e) { v = null; }
-        cb(v);
+        this.showTextEntry(label, def, cb);
+    }
+
+    // ---- in-game text entry ---------------------------------------------------
+    // A reusable modal text field styled like the rest of the HUD. While it
+    // is open the whole game freezes (the render loop skips mode updates and
+    // the CharacterController stops), so typing WASD doesn't walk the player.
+    // Enter confirms, Escape cancels; tests drive app._textEntry directly.
+    showTextEntry(label, def, cb) {
+        if (this._textEntry) { cb(null); return; }   // one modal at a time
+        const A = BABYLON.GUI.Control;
+
+        // Freeze gameplay input for the duration.
+        this.textEntryOpen = true;
+        const pm = this.activeMode;
+        const pausedCC = !!(pm && pm.cc && pm.constructor.name === 'PlayMode');
+        if (pausedCC) pm.cc.stop();
+
+        const blocker = new BABYLON.GUI.Rectangle('textEntryBlocker');
+        blocker.width = 1; blocker.height = 1;
+        blocker.background = 'rgba(4, 6, 16, 0.55)';
+        blocker.thickness = 0;
+        blocker.isPointerBlocker = true;
+        this.gui.addControl(blocker);
+
+        const panel = new BABYLON.GUI.Rectangle('textEntryPanel');
+        panel.width = '440px'; panel.height = '200px';
+        panel.cornerRadius = 12;
+        panel.thickness = 1;
+        panel.color = HUD_ACCENT;
+        panel.background = 'rgba(10, 16, 34, 0.95)';
+        blocker.addControl(panel);
+
+        const stack = new BABYLON.GUI.StackPanel('textEntryStack');
+        stack.width = '400px';
+        panel.addControl(stack);
+
+        const title = new BABYLON.GUI.TextBlock('textEntryLabel', label || 'Enter text:');
+        title.height = '44px';
+        title.color = '#eaf2ff';
+        title.fontSize = 18;
+        title.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        stack.addControl(title);
+
+        const input = new BABYLON.GUI.InputText('textEntryInput', def || '');
+        input.width = '400px'; input.height = '46px';
+        input.maxWidth = '400px';
+        input.color = '#ffffff';
+        input.fontSize = 17;
+        input.background = 'rgba(36, 58, 92, 0.55)';
+        input.focusedBackground = 'rgba(46, 74, 118, 0.75)';
+        input.thickness = 1;
+        input.focusedColor = HUD_ACCENT;
+        stack.addControl(input);
+
+        const row = new BABYLON.GUI.StackPanel('textEntryButtons');
+        row.isVertical = false;
+        row.height = '62px';
+        stack.addControl(row);
+        const mkBtn = (name, text, handler) => {
+            const b = BABYLON.GUI.Button.CreateSimpleButton(name, text);
+            b.width = '150px'; b.height = '42px';
+            b.color = '#eaf2ff'; b.fontSize = 16;
+            b.cornerRadius = 9; b.thickness = 1;
+            b.background = 'rgba(36, 58, 92, 0.55)';
+            b.paddingLeft = '10px'; b.paddingTop = '14px';
+            b.onPointerEnterObservable.add(() => { b.background = HUD_ACCENT; b.color = '#0b1018'; });
+            b.onPointerOutObservable.add(() => { b.background = 'rgba(36, 58, 92, 0.55)'; b.color = '#eaf2ff'; });
+            b.onPointerUpObservable.add(handler);
+            row.addControl(b);
+            return b;
+        };
+
+        const close = (value) => {
+            if (!this._textEntry) return;   // double-fire guard (Enter + click)
+            this._textEntry = null;
+            this.textEntryOpen = false;
+            blocker.dispose();
+            // Stale presses typed into the field must not fire game actions.
+            this.keysPressed = {};
+            if (pausedCC && pm.cc && this.activeMode === pm) pm.cc.start();
+            this.sound.play(value ? 'menu-select' : 'menu-move');
+            cb(value);
+        };
+        const confirm = () => {
+            const v = (input.text || '').trim();
+            close(v.length ? v : null);
+        };
+        mkBtn('textEntryOk', 'OK  (Enter)', confirm);
+        mkBtn('textEntryCancel', 'Cancel  (Esc)', () => close(null));
+
+        // Enter/Escape while typing.
+        if (input.onKeyboardEventProcessedObservable) {
+            input.onKeyboardEventProcessedObservable.add((evt) => {
+                if (evt.key === 'Enter') confirm();
+                else if (evt.key === 'Escape') close(null);
+            });
+        }
+        if (input.focus) input.focus();
+
+        this._textEntry = { blocker: blocker, input: input, confirm: confirm,
+            cancel: () => close(null) };
     }
 
     loadEconomy() {
