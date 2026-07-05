@@ -4,11 +4,13 @@
  * Verifies the Sky-Wing on the vehicle seat's canFly profile:
  *   - pr_wing registers with wings + tail, children collision-free once
  *     scripted (the mount lesson),
- *   - walking up boards it,
- *   - throttle + held Space takes off (climbs well above the runway),
+ *   - walking up boards it (and the rider is hidden while seated),
+ *   - R throttle + held Space takes off (climbs well above the runway),
  *   - releasing Space glides: sink rate capped at -2.5 while airspeed
  *     holds (sampled in-page across frames),
  *   - it banks into a turn while airborne (rotation.z leans),
+ *   - the W/S elevator pitches: S climbs (and the nose pitches up),
+ *     W dives past the glide cap,
  *   - cutting throttle stalls it: speed decays and it settles back to
  *     grounded, leveling out,
  *   - C bails out,
@@ -71,21 +73,26 @@ async function main() {
         await h.waitFor(() => window.app.activeMode.driving === window.__W, null, 20000);
         console.log('[2] boarded');
         check('walking up boards the Sky-Wing', true);
+        const rider = await h.evaluate(() => {
+            const p = window.app.activeMode.player;
+            return [p].concat(p.getChildMeshes()).filter((m) => m.isVisible).length;
+        });
+        check('the seated rider is hidden completely', rider === 0, { visibleMeshes: rider });
 
-        // --- 3. Takeoff: throttle + held Space climbs ---
+        // --- 3. Takeoff: R throttle + held Space climbs ---
         const y0 = await h.evaluate(() => {
-            window.app.keysPressed['W'] = true;
+            window.app.keysPressed['R'] = true;
             window.app.keysPressed[' '] = true;
             return window.__W.position.y;
         });
         await h.waitFor((y0) => window.__W.position.y > y0 + 3, y0, 30000);
         console.log('[3] airborne');
-        check('throttle + held Space takes off (+3 altitude)', true);
+        check('R throttle + held Space takes off (+3 altitude)', true);
         await h.screenshot('sky-wing-airborne');
 
         // --- 4. Glide: release Space, sink rate capped while fast ---
         const glide = await h.evaluate(() => new Promise((resolve) => {
-            window.app.keysPressed[' '] = false;   // keep W: airspeed holds
+            window.app.keysPressed[' '] = false;   // keep R: airspeed holds
             const W = window.__W;
             let n = 0, minVy = 99, stillAir = true;
             const tick = () => {
@@ -100,8 +107,11 @@ async function main() {
             requestAnimationFrame(tick);
         }));
         console.log('[4] glide', glide);
-        check('the glide caps sink rate at -2.5 with airspeed',
-            glide.minVy >= -2.6 && glide.stillAir && glide.speed > 2, glide);
+        // vy is clamped to -2.5 in updateDriving, but the sample reads it
+        // AFTER GravityBody.step subtracts one gravity tick (up to 9.8 *
+        // 0.05 at the dt cap), so the observable floor is -3.0, fps-dependent.
+        check('the glide caps sink rate near -2.5 with airspeed',
+            glide.minVy >= -3.0 && glide.stillAir && glide.speed > 2, glide);
 
         // --- 5. Banking into a turn while airborne ---
         const bank = await h.evaluate(() => new Promise((resolve) => {
@@ -122,8 +132,59 @@ async function main() {
         console.log('[5] bank', bank);
         check('the wing banks into airborne turns', bank.maxLean > 0.15, bank);
 
+        // --- 5b. Elevator: S pulls up, W noses down (R still throttling) ---
+        // Regain some altitude first so the dive has room to develop.
+        await h.evaluate(() => { window.app.keysPressed[' '] = true; });
+        await h.waitFrames(30);
+        await h.evaluate(() => { window.app.keysPressed[' '] = false; });
+        const pullUp = await h.evaluate(() => new Promise((resolve) => {
+            window.app.keysPressed['S'] = true;
+            const W = window.__W;
+            let n = 0, maxVy = -99, minPitch = 99;
+            const tick = () => {
+                n++;
+                maxVy = Math.max(maxVy, W._kartBody.vy);
+                minPitch = Math.min(minPitch, W.rotation.x);
+                if (n >= 40 || (maxVy > 1 && minPitch < -0.1)) {
+                    window.app.keysPressed['S'] = false;
+                    return resolve({ maxVy, minPitch });
+                }
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        }));
+        console.log('[5b] pull up', pullUp);
+        check('S pulls the nose up (climbs, pitch pose leans back)',
+            pullUp.maxVy > 1 && pullUp.minPitch < -0.1, pullUp);
+        const dive = await h.evaluate(() => new Promise((resolve) => {
+            window.app.keysPressed['W'] = true;
+            const W = window.__W;
+            let n = 0, minVy = 99;
+            const tick = () => {
+                n++;
+                minVy = Math.min(minVy, W._kartBody.vy);
+                if (n >= 40 || minVy < -3.5) {
+                    window.app.keysPressed['W'] = false;
+                    return resolve({ minVy });
+                }
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        }));
+        console.log('[5b] dive', dive);
+        // -3.5 sits clear of the glide floor's worst observable value (-3.0);
+        // only the W dive can push vy this far down.
+        check('W noses down past the glide cap (dive)', dive.minVy < -3.5, dive);
+
         // --- 6. Stall + settle: cut throttle, it lands and levels ---
-        await h.evaluate(() => { window.app.keysPressed['W'] = false; });
+        // All the airtime above may have carried the wing past the terrain
+        // edge (the default grid only spans ±9); bring it back over solid
+        // ground at altitude so "grounded" is physically reachable.
+        await h.evaluate(() => {
+            window.__W.position.x = 0;
+            window.__W.position.z = 0;
+        });
+        await h.evaluate(() => { window.app.keysPressed['R'] = false; });
         await h.waitFor(() => window.__W._kartBody.grounded, null, 30000);
         await h.waitFor(() => Math.abs(window.__W.rotation.z) < 0.06, null, 20000);
         console.log('[6] landed + leveled');

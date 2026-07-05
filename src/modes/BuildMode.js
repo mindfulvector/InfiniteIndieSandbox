@@ -683,21 +683,7 @@ class BuildMode {
     // Union world-space bounding box over an instance and all of its sub-meshes.
     // Returns {min,max,center,size} or null if there is no renderable geometry.
     computeWorldBBox(inst) {
-        const nodes = [inst].concat(inst.getChildMeshes ? inst.getChildMeshes() : []);
-        let min = null, max = null;
-        nodes.forEach((m) => {
-            if (m.getBoundingInfo && m.getTotalVertices && m.getTotalVertices() > 0) {
-                m.computeWorldMatrix(true);
-                const bb = m.getBoundingInfo().boundingBox;
-                if (!min) { min = bb.minimumWorld.clone(); max = bb.maximumWorld.clone(); }
-                else {
-                    min = BABYLON.Vector3.Minimize(min, bb.minimumWorld);
-                    max = BABYLON.Vector3.Maximize(max, bb.maximumWorld);
-                }
-            }
-        });
-        if (!min) return null;
-        return { min, max, center: min.add(max).scale(0.5), size: max.subtract(min) };
+        return this.app.computeWorldBBox(inst);   // shared helper (App.js)
     }
 
     // Position an instance so that its footprint is centred on `anchor` (x,z) and

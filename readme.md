@@ -320,10 +320,19 @@ until they land.
 Aim the ranged shot with the mouse; a gamepad auto-aims at the locked/nearest enemy.
 
 **Driving:** buy the **Hover-Kart** in the shop (Props category), place it,
-and walk into it in play mode to hop in. `W`/`S` (or the left stick) throttle
-with real momentum, `A`/`D` steer — sharper the faster you go — and `Space`
-hops out. Dying parks the kart back where you left it. The kart is **armed**:
-hold `F` or left-click to fire its forward guns for drive-by combat.
+and walk into it in play mode to hop in — you disappear into the driver's
+seat (every vehicle hides its rider completely). `W`/`S` (or the left stick)
+throttle with real momentum, `A`/`D` steer — sharper the faster you go —
+**hold `Shift` to BOOST** (a proper speed burst, the on-foot Run key behind
+the wheel), and `Space` hops out. Dying parks the kart back where you left
+it. The kart is **armed**: hold `F` or left-click to fire its forward guns
+for drive-by combat.
+
+**Speeding:** the **Speeder** (Props) is a hover-bike — the fastest, most
+agile ride in the sandbox. It has no guns; it's all about the **boost**:
+hold `Shift` and it screams past everything else on the field. It **leans**
+hard into every turn, and `Space` hops off. Buy it in the shop alongside
+the kart.
 
 **Riding:** the **Strider** (Props) is a friendly beast you saddle the same
 way. It's slower than the kart but turns on the spot, its legs trot as you
@@ -488,9 +497,12 @@ ride. Both fire wiring events (*Bounced*, *Grind Started/Ended*) so courses
 can react to your moves.
 
 **Flying:** the **Sky-Wing** (Props) is a glider you board like any vehicle.
-Build speed with `W`, then **hold `Space`** to climb — release it and you
-glide, sinking gently as long as you keep your airspeed. Bank into turns,
-mind your speed (slow too much and you stall), and press `C` to bail out.
+It flies like a plane: `R` runs the **throttle** up (`V` brakes), and
+`W`/`S` work the **elevator** — `S` pulls the nose up to climb, `W` noses
+down into a dive. **Hold `Space`** for a straight climb, or release
+everything and you glide, sinking gently as long as you keep your airspeed.
+Bank into turns, mind your speed (slow too much and you stall), and press
+`C` to bail out.
 The Sky-Wing has **guns** too (`F`/left-click) — go dogfight the flyers.
 For something to fly *through*, place **Rings** (Logic) in the sky — they
 flash as you pass and fire a *Flown Through* event, so wiring four of them

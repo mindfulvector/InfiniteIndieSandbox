@@ -1,15 +1,14 @@
-// KartScript
-// ----------
-// Makes pr_kart a drivable hover-kart. The script owns the kart's rest pose
-// and the mount handshake; the actual DRIVING lives in PlayMode
-// (mountKart / updateDriving / dismountKart), which is where the player,
-// controller, and camera live.
-//
-// Mounting is walk-up: stand within 1.4 units in play mode and you're in
-// (with a re-mount cooldown after hopping out, the cell-door pattern).
-// The rest pose uses restPos so mid-drive saves store the parked spot, and
-// build mode / play resets park it back.
-class KartScript {
+// SpeederScript
+// -------------
+// Makes pr_speeder the "Speeder", a fast hover-bike on the shared vehicle
+// seat (PlayMode.mountKart/updateDriving). Where the kart is the armed
+// combat cruiser, the Speeder is the pure-speed TRAVERSAL machine: a high
+// base speed, an aggressive Shift BOOST (the fastest thing in the sandbox),
+// nimble steering, and no guns. It LEANS hard into turns -- borrowing the
+// Sky-Wing's banking idiom (reading inst._lastSteer, which the seat records)
+// but on the ground, scaled by speed so a parked bike sits upright. Same
+// walk-up mount handshake and home/restPos parking as the kart.
+class SpeederScript {
     constructor(app, wo, inst) {
         this.app = app;
         this.wo = wo;
@@ -20,30 +19,29 @@ class KartScript {
         this.inputs = [];
         this.outputs = [];
 
-        // The shared seat's kart tuning: fast, speed-scaled steering, Space
-        // dismounts, and a Shift-held BOOST burst (higher ceiling + harder
-        // acceleration -- the on-foot "Shift = Run" idiom behind the wheel).
+        // Fast and nimble, with the sandbox's strongest boost. Unarmed
+        // (the kart owns drive-by combat); Space hops out.
         this.vehicleProfile = {
-            armed: true,
-            max: 12, accel: 14, turn: 2.4, seatY: 1.0,
-            boostMax: 18, boostAccel: 24,
+            armed: false,
+            max: 16, accel: 16, turn: 3.2, seatY: 0.9,
+            boostMax: 26, boostAccel: 34,
             canJump: false, turnInPlace: false,
-            hint: 'Hop in!  WASD drives · Shift boosts · F/LMB guns · Space hops out',
+            hint: 'Ride the Speeder!  WASD drives · Shift BOOSTS · Space hops out',
         };
 
         this._home = null;
+        this._homeYaw = 0;
         this._wasPlay = null;
         inst._mountCooldown = 0;
     }
 
     onPlayReset(mode) {
-        // Death mid-drive: PlayMode dismounts (it broadcasts after its own
-        // respawn bookkeeping); we just park the kart back at home.
         if (mode && mode.driving === this.inst && mode.dismountKart) mode.dismountKart();
         if (this._home) {
             this.inst.position.copyFrom(this._home);
             this.inst.rotationQuaternion = null;
             this.inst.rotation.y = this._homeYaw || 0;
+            this.inst.rotation.z = 0;
         }
         this.inst._kartSpeed = 0;
     }
@@ -57,10 +55,11 @@ class KartScript {
                     inst.position.copyFrom(this._home);
                     inst.rotationQuaternion = null;
                     inst.rotation.y = this._homeYaw || 0;
+                    inst.rotation.z = 0;
                 }
                 inst._kartSpeed = 0;
             }
-            // Build-mode pose is home; restPos keeps saves clean mid-drive.
+            // Build-mode pose is home; restPos keeps saves clean mid-ride.
             this._home = inst.position.clone();
             this._homeYaw = inst.rotation ? inst.rotation.y : 0;
             inst.restPos = this._home;
@@ -76,11 +75,21 @@ class KartScript {
         }
         if (inst._mountCooldown > 0) inst._mountCooldown--;
 
+        // Lean into turns while riding, scaled by speed so a crawling or
+        // parked bike stays upright; level out otherwise. A boosting rider
+        // leans a touch deeper for drama.
+        const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);
+        const riding = mode && mode.driving === inst;
+        const speedFrac = Math.min(1, Math.abs(inst._kartSpeed || 0) / (this.vehicleProfile.max * 0.5));
+        const leanScale = inst._boosting ? 0.5 : 0.4;
+        const targetLean = riding ? -(inst._lastSteer || 0) * leanScale * speedFrac : 0;
+        inst.rotation.z += (targetLean - inst.rotation.z) * Math.min(1, 8 * dt);
+
         // Walk-up mount: hand the player to PlayMode's driving seat.
         const player = mode && mode.player;
         if (player && !mode.driving && inst._mountCooldown <= 0 && mode.mountKart) {
             const d = BABYLON.Vector3.Distance(player.position, inst.position);
-            if (d < 1.4) mode.mountKart(inst);
+            if (d < 1.5) mode.mountKart(inst);
         }
     }
 }

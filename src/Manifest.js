@@ -354,6 +354,21 @@ class Manifest {
                   ]
         }, 'KartScript');
 
+        // A drivable hover-bike: the fastest thing in the sandbox, unarmed,
+        // leans hard into turns and carries the strongest Shift BOOST (see
+        // SpeederScript + the boost branch in PlayMode.updateDriving).
+        app.createWorldObject('pr_speeder', {
+            prims: [
+                     {ty: 'box', s: [0.5, 0.35, 2.3],  p: [0, 0, 0],       col: [0.85, 0.15, 0.3], tex: {id: 'road'}},
+                     {ty: 'box', s: [0.44, 0.42, 0.7], p: [0, 0.18, 0.85], col: [0.9, 0.2, 0.35], tex: {id: 'cloud'}},
+                     {ty: 'box', s: [0.46, 0.26, 0.8], p: [0, 0.2, -0.45], col: [0.6, 0.1, 0.2], tex: {id: 'cloud'}},
+                     {ty: 'box', s: [0.95, 0.08, 0.12], p: [0, 0.4, 0.65], col: [0.2, 0.2, 0.24], tex: {id: 'cloud'}, nm: 'bars'},
+                     {ty: 'box', s: [0.2, 0.28, 1.9],  p: [-0.42, -0.12, 0], col: [0.3, 0.95, 1.0], tex: {id: 'cloud'}},
+                     {ty: 'box', s: [0.2, 0.28, 1.9],  p: [0.42, -0.12, 0],  col: [0.3, 0.95, 1.0], tex: {id: 'cloud'}},
+                     {ty: 'box', s: [0.08, 0.5, 0.5],  p: [0, 0.32, -1.05],  col: [0.9, 0.2, 0.35], tex: {id: 'cloud'}, nm: 'fin'},
+                  ]
+        }, 'SpeederScript');
+
         // Floating props: barrels and crates that bob on water (see
         // BuoyScript + PlayMode.updateFloaters). On dry land they just rest.
         app.createWorldObject('pr_barrel', { rootUrl: assetsBaseUrl, filename: 'models/platformer/barrel.glb', scale: 2.2, collideAll: true, surface: 'wood' }, 'BuoyScript');
@@ -540,5 +555,6 @@ class Manifest {
         app.objectPrices['cp_platform_2x2'] = 40;
         app.objectPrices['d_christmas_tree'] = 25;
         app.objectPrices['pr_kart'] = 60;
+        app.objectPrices['pr_speeder'] = 80;   // premium: the fastest ride
     }
 }

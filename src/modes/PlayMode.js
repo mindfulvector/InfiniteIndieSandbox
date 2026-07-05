@@ -120,6 +120,10 @@ class PlayMode {
         // Auto-spawning TRON enemy system.
         this.enemyManager = new EnemyManager(this.app, this);
 
+        // Build mode lets props hover wherever the grid raised them; play
+        // begins with everything resting on a real surface.
+        this.settlePropsToFloor();
+
         // Set static UI strings once on mode load
         this.app.modeName.text = "PlayMode";
 
@@ -390,6 +394,61 @@ class PlayMode {
 
     renderUI() {
 
+    }
+
+    // ---- pre-play settle -------------------------------------------------------
+
+    // Props have no physics while being built, so the builder can leave a
+    // crate hovering where the grid raised it. Entering play mode drops every
+    // prop/decor instance straight down onto whatever collidable surface lies
+    // beneath it (terrain, architecture, or another prop) -- bottom-up, so a
+    // stack lands on its already-settled support. Water counts as the floor
+    // (boats and buoys rest on the surface; updateFloaters takes over from
+    // there). Exceptions keep their height: grind rails and the ghost kart
+    // are built in the air on purpose, and a prop with nothing at all below
+    // it has no floor to settle to.
+    settlePropsToFloor() {
+        const app = this.app;
+        const KEEP_AIRBORNE = { pr_rail: true, pr_kart_ghost: true };
+        const props = [];
+        (app.BuildableObjectList || []).forEach((wo) => {
+            const cat = wo.name.split('_')[0];
+            if ((cat !== 'pr' && cat !== 'd') || KEEP_AIRBORNE[wo.name]) return;
+            wo.instances.forEach((inst) => {
+                if (!inst) return;
+                const bb = app.computeWorldBBox(inst);
+                if (bb) props.push({ inst: inst, baseY: bb.min.y });
+            });
+        });
+        props.sort((a, b) => a.baseY - b.baseY);
+        props.forEach((p) => {
+            const inst = p.inst;
+            const bb = app.computeWorldBBox(inst);   // fresh: supports may have settled
+            if (!bb) return;
+            const origin = new BABYLON.Vector3(bb.center.x, bb.min.y + 0.25, bb.center.z);
+            const ray = new BABYLON.Ray(origin, BABYLON.Vector3.Down(), 200);
+            const pick = app.scene.pickWithRay(ray, (m) =>
+                m.checkCollisions && m.isEnabled() && m !== inst &&
+                !(m.isDescendantOf && m.isDescendantOf(inst)));
+            let floorY = (pick && pick.hit) ? pick.pickedPoint.y : null;
+            const waterTop = this.waterTopAt(bb.center.x, bb.center.z);
+            if (waterTop != null && (floorY == null || waterTop > floorY)) floorY = waterTop;
+            if (floorY == null) return;
+            const drop = bb.min.y - floorY;
+            if (drop <= 0.01) return;   // already resting (or embedded): leave it
+            inst.position.y -= drop;
+            // Refresh the whole hierarchy's world matrices NOW: the next
+            // prop's settle ray must see this one at its landed position,
+            // not where the last render left it.
+            inst.computeWorldMatrix(true);
+            (inst.getChildMeshes ? inst.getChildMeshes() : [])
+                .forEach((m) => m.computeWorldMatrix(true));
+            // Keep the script rest pose in step, or a save (and the vehicles'
+            // park-back-home reset -- restPos IS their _home) would float the
+            // prop back up to its old height.
+            if (inst.restPos) inst.restPos.y -= drop;
+            if (typeof inst.restY === 'number') inst.restY -= drop;
+        });
     }
 
     // ---- sound: footsteps + traversal -----------------------------------------
@@ -871,6 +930,8 @@ class PlayMode {
             watercraft: !!p.watercraft,
             turnInPlace: !!p.turnInPlace,
             armed: !!p.armed,
+            boostMax: p.boostMax || 0,      // >0 = Shift speed-burst ceiling
+            boostAccel: p.boostAccel || 0,
             hint: p.hint || 'Hop in!  WASD drives · Space hops out',
         };
     }
@@ -885,6 +946,13 @@ class PlayMode {
         // the pair would ratchet skyward.
         this._riderHadCollisions = this.player.checkCollisions;
         this.player.checkCollisions = false;
+        // The rider vanishes into the vehicle entirely. Visibility only
+        // (never setEnabled): the hierarchy's matrices must keep evaluating
+        // for the camera follow and the per-frame seat copy.
+        this._riderVis = [this.player]
+            .concat(this.player.getChildMeshes ? this.player.getChildMeshes() : [])
+            .map((m) => ({ m: m, v: m.isVisible }));
+        this._riderVis.forEach((r) => { r.m.isVisible = false; });
         if (!inst._kartBody) {
             inst._kartBody = new GravityBody(this.app.scene, inst, {
                 ellipsoid: new BABYLON.Vector3(0.9, 0.5, 1.3),
@@ -908,6 +976,12 @@ class PlayMode {
         if (this.player) {
             this.player.checkCollisions = this._riderHadCollisions !== false;
             this.player.position = inst.position.add(new BABYLON.Vector3(1.6, 1.2, 0));
+        }
+        // Step back into view (each part restored to what it was, so meshes
+        // that were deliberately invisible before mounting stay that way).
+        if (this._riderVis) {
+            this._riderVis.forEach((r) => { r.m.isVisible = r.v; });
+            this._riderVis = null;
         }
         if (this.cc) this.cc.start();
     }
@@ -947,9 +1021,20 @@ class PlayMode {
         const dt = Math.min(0.05, a.scene.getEngine().getDeltaTime() / 1000);
         const pad = a.testPad || a.gamepad;
         const ls = pad && pad.leftStick;
-        let throttle = 0, steer = 0;
-        if (a.keyDown('W')) throttle += 1;
-        if (a.keyDown('S')) throttle -= 0.6;
+        let throttle = 0, steer = 0, pitch = 0;
+        if (prof.canFly) {
+            // Aircraft controls: R/V run the throttle so W/S can be the
+            // ELEVATOR -- W noses down, S pulls up. No clash with the
+            // on-foot R launcher / V special: combat is suspended while
+            // driving (see update), so the seat owns the keys.
+            if (a.keyDown('R')) throttle += 1;
+            if (a.keyDown('V')) throttle -= 0.6;
+            if (a.keyDown('W')) pitch -= 1;
+            if (a.keyDown('S')) pitch += 1;
+        } else {
+            if (a.keyDown('W')) throttle += 1;
+            if (a.keyDown('S')) throttle -= 0.6;
+        }
         if (a.keyDown('D')) steer += 1;
         if (a.keyDown('A')) steer -= 1;
         if (ls) {
@@ -958,11 +1043,21 @@ class PlayMode {
         }
         throttle = Math.max(-1, Math.min(1, throttle));
         steer = Math.max(-1, Math.min(1, steer));
+        pitch = Math.max(-1, Math.min(1, pitch));
+        inst._lastPitch = pitch;   // scripts read this (wing pitch pose)
+
+        // Speed burst: vehicles with a boost profile (the kart) sprint
+        // while Shift is held -- higher ceiling AND harder acceleration.
+        // Forward only; there is no reverse boost.
+        const boosting = !!(prof.boostMax && throttle > 0 && a.keyDown('SHIFT'));
+        const maxSpeed = boosting ? prof.boostMax : prof.max;
+        const accel = boosting ? (prof.boostAccel || prof.accel) : prof.accel;
+        inst._boosting = boosting;
 
         const DRAG = 2.2;
         let speed = inst._kartSpeed || 0;
-        speed += (throttle * prof.accel - speed * DRAG * (throttle === 0 ? 1.6 : 1)) * dt;
-        speed = Math.max(-prof.max * 0.5, Math.min(prof.max, speed));
+        speed += (throttle * accel - speed * DRAG * (throttle === 0 ? 1.6 : 1)) * dt;
+        speed = Math.max(-maxSpeed * 0.5, Math.min(maxSpeed, speed));
         inst._kartSpeed = speed;
         // Steering authority grows with speed unless the vehicle can turn in
         // place (creatures pivot; karts don't).
@@ -971,14 +1066,20 @@ class PlayMode {
         inst.rotation.y += steer * prof.turn * dt * authority;
         inst._lastSteer = steer;   // scripts read this (wing banking)
 
-        // Flight: with airspeed, holding Space climbs; without the climb
-        // key the wing GLIDES (sink rate capped) as long as it keeps speed.
-        // Slow below stall speed and gravity is all yours again.
+        // Flight: with airspeed, holding Space climbs; the W/S elevator
+        // pitches -- S pulls up (a slightly gentler climb), W noses down
+        // into a dive past the glide cap. Hands off, the wing GLIDES (sink
+        // rate capped) as long as it keeps speed. Slow below stall speed
+        // and gravity is all yours again.
         if (prof.canFly && inst._kartBody) {
             const airspeed = Math.abs(speed);
             const climbHeld = a.keyDown(' ') || a.padDown('jump');
             if (climbHeld && airspeed > 3) {
                 inst._kartBody.vy = Math.min(inst._kartBody.vy + 30 * dt, 6);
+            } else if (pitch > 0 && airspeed > 3) {
+                inst._kartBody.vy = Math.min(inst._kartBody.vy + pitch * 24 * dt, 5);
+            } else if (pitch < 0 && !inst._kartBody.grounded) {
+                inst._kartBody.vy = Math.max(inst._kartBody.vy + pitch * 24 * dt, -10);
             } else if (!inst._kartBody.grounded && airspeed > 2) {
                 inst._kartBody.vy = Math.max(inst._kartBody.vy, -2.5);
             }

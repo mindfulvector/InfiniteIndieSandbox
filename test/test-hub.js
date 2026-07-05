@@ -157,8 +157,21 @@ async function main() {
                 Math.abs(t.position.x - floor.position.x) < 3 &&
                 Math.abs(t.position.z - floor.position.z) < 3);
             const rest = {};
+            const gap = {};
             ['d_table', 'd_chair', 'd_lamp', 'd_rug'].forEach((n) => {
-                rest[n] = Math.round((lowest(live(n)[0]) - floorTop) * 100) / 100;
+                const inst = live(n)[0];
+                rest[n] = Math.round((lowest(inst) - floorTop) * 100) / 100;
+                // Distance to whatever lies directly beneath (floor OR rug --
+                // the table and chair legitimately stand on the carpet).
+                const bb = app.computeWorldBBox(inst);
+                const ray = new BABYLON.Ray(
+                    new BABYLON.Vector3(bb.center.x, bb.min.y + 0.25, bb.center.z),
+                    BABYLON.Vector3.Down(), 200);
+                const pick = app.scene.pickWithRay(ray, (m) =>
+                    m.checkCollisions && m.isEnabled() && m !== inst &&
+                    !(m.isDescendantOf && m.isDescendantOf(inst)));
+                gap[n] = (pick && pick.hit)
+                    ? Math.round((bb.min.y - pick.pickedPoint.y) * 100) / 100 : null;
             });
             // Doorway/door alignment: the rotated wall-door gap (z -1.75..
             // -0.25 at x -18) vs the sliding door's panel span.
@@ -172,13 +185,20 @@ async function main() {
                     doorMaxZ = Math.max(doorMaxZ, m.getBoundingInfo().boundingBox.maximumWorld.z);
                 }
             });
-            return { groundUnder, rest, doorMinZ: Math.round(doorMinZ * 100) / 100,
+            return { groundUnder, rest, gap, doorMinZ: Math.round(doorMinZ * 100) / 100,
                 doorMaxZ: Math.round(doorMaxZ * 100) / 100 };
         });
         console.log('[6] homestead', home);
         check('the homestead has ground beneath it', home.groundUnder, home);
-        check('all furniture stands on the floor (within 5cm)',
-            Object.values(home.rest).every((r) => Math.abs(r) <= 0.05), home);
+        // The pre-play settle pass drops furniture onto whatever is beneath
+        // it: the lamp and rug land on the floor, the table and chair on the
+        // rug (a real model ~7.5cm thick). So: everything RESTS on its
+        // support (within 5cm, not clipped/floating), and nothing sits more
+        // than one rug-thickness above the floor slab.
+        check('all furniture rests on the surface beneath it (within 5cm)',
+            Object.values(home.gap).every((g) => g !== null && Math.abs(g) <= 0.05), home);
+        check('nothing floats above rug height (within 12cm of the floor)',
+            Object.values(home.rest).every((r) => Math.abs(r) <= 0.12), home);
         check('the sliding door sits inside the doorway span',
             home.doorMinZ >= -2.1 && home.doorMaxZ <= 0.1, home);
 

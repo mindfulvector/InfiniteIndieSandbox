@@ -1,11 +1,13 @@
 // WingScript
 // ----------
 // Makes pr_wing the "Sky-Wing", a flyable glider on the shared vehicle seat
-// (PlayMode.mountKart/updateDriving) via vehicleProfile.canFly: build speed
-// on the runway, HOLD Space to climb once you have airspeed, release to
-// glide (the seat caps the sink rate while you keep speed), slow down to
-// stall and settle. C hops off. The whole wing banks into turns (reading
-// inst._lastSteer, which the seat records) so flight reads alive. Same
+// (PlayMode.mountKart/updateDriving) via vehicleProfile.canFly: throttle up
+// with R (V brakes) on the runway, HOLD Space to climb once you have
+// airspeed, or fly it on the W/S elevator -- S pulls up, W noses into a
+// dive; release everything to glide (the seat caps the sink rate while you
+// keep speed), slow down to stall and settle. C hops off. The whole wing
+// banks into turns and pitches with the elevator (reading inst._lastSteer /
+// inst._lastPitch, which the seat records) so flight reads alive. Same
 // walk-up mount handshake and home/restPos parking as the kart and mount.
 class WingScript {
     constructor(app, wo, inst) {
@@ -25,7 +27,7 @@ class WingScript {
             turn: 2.2,
             seatY: 1.1,
             canFly: true,
-            hint: 'Take the Sky-Wing!  W speed · Space climb · F/LMB guns · C bails',
+            hint: 'Take the Sky-Wing!  R throttle · W/S pitch · Space climb · F/LMB guns · C bails',
         };
 
         this._home = null;
@@ -41,6 +43,7 @@ class WingScript {
             this.inst.position.copyFrom(this._home);
             this.inst.rotationQuaternion = null;
             this.inst.rotation.y = this._homeYaw;
+            this.inst.rotation.x = 0;
             this.inst.rotation.z = 0;
         }
         this.inst._kartSpeed = 0;
@@ -63,6 +66,7 @@ class WingScript {
                     inst.position.copyFrom(this._home);
                     inst.rotationQuaternion = null;
                     inst.rotation.y = this._homeYaw;
+                    inst.rotation.x = 0;
                     inst.rotation.z = 0;
                 }
                 inst._kartSpeed = 0;
@@ -82,12 +86,15 @@ class WingScript {
         }
         if (inst._mountCooldown > 0) inst._mountCooldown--;
 
-        // Bank into turns while airborne; level out on the ground.
+        // Bank into turns and pitch with the elevator while airborne; level
+        // out on the ground.
         const dt = Math.min(0.05, this.app.scene.getEngine().getDeltaTime() / 1000);
         const flying = mode && mode.driving === inst &&
             inst._kartBody && !inst._kartBody.grounded;
         const targetBank = flying ? -(inst._lastSteer || 0) * 0.35 : 0;
         inst.rotation.z += (targetBank - inst.rotation.z) * Math.min(1, 6 * dt);
+        const targetPitch = flying ? -(inst._lastPitch || 0) * 0.3 : 0;
+        inst.rotation.x += (targetPitch - inst.rotation.x) * Math.min(1, 6 * dt);
 
         // Walk-up mount, the kart handshake.
         const player = mode && mode.player;

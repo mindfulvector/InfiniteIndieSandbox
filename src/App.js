@@ -174,6 +174,17 @@ class App {
         };
         this.loadedScripts = [];
 
+        // Backend link watchdog. The game is served by a local HTTP server
+        // (run.sh: `php -S localhost:7001`); if that process dies the page
+        // keeps running from memory but every later fetch (models, textures,
+        // sounds, gallery worlds) silently fails. Ping the server on a
+        // cadence and surface an explicit banner instead. Progress is safe
+        // either way -- saves live in localStorage, not on the server.
+        this.serverConnected = true;
+        this._heartbeatFails = 0;    // consecutive failed pings; 2 = down
+        this._heartbeatBusy = false;
+        this._heartbeatTimer = setInterval(() => this._pingServer(), 4000);
+
         // Economy: "pixels" are the currency dropped by defeated enemies and
         // spent in the shop to unlock objects for building.
         this.pixels = 0;
@@ -752,6 +763,31 @@ class App {
         this.hud.loading = loading;
         this.loadingText = loadingText;
 
+        // --- Server-link warning (top-center, below the toast slot) ---
+        // Persistent, unlike a toast: it stays up for as long as the local
+        // game server is unreachable (see _pingServer / updateHUD).
+        const serverWarn = new BABYLON.GUI.Rectangle("hudServerWarn");
+        serverWarn.adaptWidthToChildren = true;
+        serverWarn.height = "34px";
+        serverWarn.cornerRadius = 17;
+        serverWarn.thickness = 1;
+        serverWarn.color = "#ff4a5b";
+        serverWarn.background = "rgba(46,10,16,0.92)";
+        serverWarn.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_CENTER;
+        serverWarn.verticalAlignment = A.VERTICAL_ALIGNMENT_TOP;
+        serverWarn.top = "64px";
+        serverWarn.isVisible = false;
+        this.gui.addControl(serverWarn);
+        const serverWarnText = new BABYLON.GUI.TextBlock("hudServerWarnText");
+        serverWarnText.resizeToFit = true;
+        serverWarnText.color = "#ffd7dc";
+        serverWarnText.fontSize = 14;
+        serverWarnText.paddingLeft = "18px";
+        serverWarnText.paddingRight = "18px";
+        serverWarnText.text = "⚠  GAME SERVER DISCONNECTED — progress is safe; restart run.sh to reconnect";
+        serverWarn.addControl(serverWarnText);
+        this.hud.serverWarn = serverWarn;
+
         // Build-mode object browser (bottom bar with runtime thumbnails).
         this.buildObjectBrowser();
     }
@@ -1165,6 +1201,10 @@ class App {
         this.hud.badge.isVisible = inHud && !!mode;
         this.hud.hintsBar.isVisible = inHud && !!mode;
 
+        // Server-link warning: shown over menus AND gameplay while the local
+        // game server is unreachable.
+        if(this.hud.serverWarn) this.hud.serverWarn.isVisible = !this.serverConnected;
+
         // Pixel counter is shown whenever we're in a gameplay mode.
         if(this.hud.pixelPill) {
             this.hud.pixelPill.isVisible = inHud && !!mode;
@@ -1285,6 +1325,41 @@ class App {
             if(this.manifestObjectFailed > 0) {
                 this.toasty(this.manifestObjectFailed + ' asset(s) could not be loaded.');
             }
+        }
+    }
+
+    // One heartbeat: HEAD the page we were served from, bypassing the HTTP
+    // cache so a dead server can't answer from disk. The connected flag only
+    // drops after two consecutive failures (one slow or aborted request must
+    // not cry wolf) and recovers on the first success. Tests call this
+    // directly instead of waiting out the interval.
+    _pingServer() {
+        if(this._heartbeatBusy) return Promise.resolve();
+        this._heartbeatBusy = true;
+        return fetch('./index.html', {
+            method: 'HEAD',
+            cache: 'no-store',
+            signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout)
+                ? AbortSignal.timeout(3000) : undefined,
+        })
+            .then((r) => this._serverPingResult(r.ok))
+            .catch(() => this._serverPingResult(false))
+            .finally(() => { this._heartbeatBusy = false; });
+    }
+
+    _serverPingResult(ok) {
+        if(ok) {
+            this._heartbeatFails = 0;
+            if(!this.serverConnected) {
+                this.serverConnected = true;
+                this.toasty('Game server reconnected.');
+            }
+            return;
+        }
+        this._heartbeatFails++;
+        if(this._heartbeatFails >= 2 && this.serverConnected) {
+            this.serverConnected = false;
+            this.toasty('Game server disconnected!');
         }
     }
 
@@ -4541,6 +4616,27 @@ class App {
         this.menu.prevState = MENU_PAUSE;
         this.menu.state = MENU_WIRING;
         this.wiring.enter();
+    }
+
+    // World-space bounding box of an instance including all of its child
+    // meshes: {min, max, center, size}, or null for empty geometry. Build
+    // mode anchors grabs with it; play mode settles props with it.
+    computeWorldBBox(inst) {
+        const nodes = [inst].concat(inst.getChildMeshes ? inst.getChildMeshes() : []);
+        let min = null, max = null;
+        nodes.forEach((m) => {
+            if (m.getBoundingInfo && m.getTotalVertices && m.getTotalVertices() > 0) {
+                m.computeWorldMatrix(true);
+                const bb = m.getBoundingInfo().boundingBox;
+                if (!min) { min = bb.minimumWorld.clone(); max = bb.maximumWorld.clone(); }
+                else {
+                    min = BABYLON.Vector3.Minimize(min, bb.minimumWorld);
+                    max = BABYLON.Vector3.Maximize(max, bb.maximumWorld);
+                }
+            }
+        });
+        if (!min) return null;
+        return { min, max, center: min.add(max).scale(0.5), size: max.subtract(min) };
     }
 
     showAll(node) {
