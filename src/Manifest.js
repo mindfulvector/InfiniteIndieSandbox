@@ -179,6 +179,15 @@ class Manifest {
 
         // A wind / updraft zone: pushes the player in a chosen direction while
         // they stand in it (see FanScript). Tall by default for an updraft shaft.
+        // A moving walkway: a solid belt that carries riders along a
+        // compass direction (see ConveyorScript). Base + a top stripe.
+        app.createWorldObject('l_conveyor', {
+            prims: [
+                     {ty: 'box', s: [4, 0.4, 2],   p: [0, 0, 0],     col: [0.3, 0.32, 0.38], tex: {id: 'marble', w: 4, h: 2}},
+                     {ty: 'box', s: [3.6, 0.1, 0.5], p: [0, 0.22, 0], col: [0.95, 0.8, 0.2]},
+                  ]
+        }, 'ConveyorScript');
+
         app.createWorldObject('l_fan', {
             prims: [
                      {ty: 'box',       s: [2,4,2], p: [0,0,0]},

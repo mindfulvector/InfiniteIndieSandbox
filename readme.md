@@ -354,6 +354,10 @@ an **up** fan lifts you up a shaft to a high ledge (no ladder needed), a
 sideways fan blows you across a gap. Wire it on/off from a switch, or
 point one at a hazard for a "don't get blown into the spikes" beat.
 
+**Conveyor belts:** the **Conveyor** (Logic) is a moving walkway — stand on
+it and it carries you along its set direction. Chain them into a factory
+floor, use one to feed the player into a hazard, or wire it on and off.
+
 **Moving hazards:** the **Sweeper** (Logic) is a blade that swings back and
 forth — time your run across, or a **Dodge** roll slips through it. Set its
 axis, throw, speed and damage; wire its *Swept* pulse to sync other traps.
