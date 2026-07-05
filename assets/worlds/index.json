@@ -53,6 +53,11 @@
       "file": "tidewater-run.json",
       "name": "Tidewater Run",
       "desc": "A boat voyage: cast off, sail the lake through three ring gates past bobbing barrels, and loot the treasure island"
+    },
+    {
+      "file": "aether-ruins.json",
+      "name": "Aether Ruins",
+      "desc": "A three-stage adventure: destroy the sentry and clear the wave, teleport to the key-star, and loot the vault — checkpoints between"
     }
   ]
 }
