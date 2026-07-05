@@ -261,6 +261,9 @@ class PlayMode {
 
             // Cache the bones used to aim the upper body / fire from the hand, and
             // wire up mouse combat now that the avatar exists.
+            // The avatar is a shadow caster too -- the player's own shadow
+            // under their feet sells the toy-on-a-table look most of all.
+            playMode.app.registerShadowCaster(playMode.player);
             playMode.cacheAimBones();
             playMode.bindMouseCombat();
 

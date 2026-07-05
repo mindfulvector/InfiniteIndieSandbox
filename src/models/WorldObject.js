@@ -86,6 +86,10 @@ class WorldObject {
         // ground. Enable it on the instance root here; scripts that must not
         // collide (triggers, pickups) already disable it every frame.
         inst.checkCollisions = true;
+
+        // Toy-box lighting: every placed object casts + receives the
+        // sun's soft cascaded shadow (see App.registerShadowCaster).
+        this.app.registerShadowCaster(inst);
         
         // Store reference to the engine object for use in scripts, etc.
         inst.worldObject = this;

@@ -150,7 +150,7 @@ class App {
     // game uses, picked by eye -- change a path here to reskin everywhere
     // that texture id appears.
     static PACK_TEX = {
-        wood:   'assets/textures/1/128x128/Wood/Wood_13-128x128.png',    // warm toy-like grain
+        wood:   'assets/textures/1/128x128/Wood/Wood_02-128x128.png',    // walnut furniture grain (13 read neon-orange under the warm sun)
         planks: 'assets/textures/1/128x128/Wood/Wood_18-128x128.png',    // weathered floorboards
         brick:  'assets/textures/1/128x128/Bricks/Bricks_22-128x128.png',// classic red brick
         marble: 'assets/textures/1/128x128/Tile/Tile_05-128x128.png',    // cream marble tile
@@ -319,7 +319,55 @@ class App {
         this.camera.attachControl(canvas, true);
         */
 
-        var light1 = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(1, 1, 0), this.scene);
+        // Toy-box lighting (the Disney-Infinity read): ONE warm directional
+        // sun that casts soft blurred shadows, plus a dim cool sky fill so
+        // shadowed faces stay readable. The old single hemispheric light lit
+        // everything evenly -- which is exactly what made objects look like
+        // video-game geometry instead of physical toys on a table.
+        var light1 = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0.2, 1, 0.1), this.scene);
+        light1.intensity = 0.45;
+        light1.diffuse = new BABYLON.Color3(0.75, 0.82, 0.95);      // cool sky fill
+        light1.groundColor = new BABYLON.Color3(0.35, 0.30, 0.25);  // warm bounce
+        this.sun = new BABYLON.DirectionalLight("sun",
+            new BABYLON.Vector3(-0.55, -0.62, 0.42).normalize(), this.scene);
+        this.sun.position = new BABYLON.Vector3(40, 80, -30);
+        this.sun.intensity = 1.15;
+        this.sun.diffuse = new BABYLON.Color3(1.0, 0.96, 0.88);     // warm sunlight
+        try {
+            // Cascaded Shadow Maps, not a plain ShadowGenerator. A single
+            // directional light over our large terrain (10x10 tiles) has to
+            // fit its whole shadow frustum around the ground via
+            // autoUpdateExtends -- which spreads a 1024 map so thin that an
+            // individual prop casts almost nothing (and PCF then rejects it at
+            // the frustum's far plane). CSM slices the camera frustum into
+            // cascades so near objects get full resolution; this is the
+            // documented answer for directional + big-world shadows.
+            if (BABYLON.CascadedShadowGenerator && this.engine.webGLVersion >= 2) {
+                const csm = new BABYLON.CascadedShadowGenerator(1024, this.sun);
+                csm.numCascades = 4;
+                csm.lambda = 0.9;                 // bias cascades toward the camera
+                csm.stabilizeCascades = true;     // no shadow crawl as the camera moves
+                csm.shadowMaxZ = 80;              // covers the visible playfield
+                csm.usePercentageCloserFiltering = true;
+                csm.filteringQuality = BABYLON.ShadowGenerator.QUALITY_MEDIUM;
+                csm.bias = 0.008;
+                csm.normalBias = 0.02;
+                csm.forceBackFacesOnly = true;
+                csm.setDarkness(0.30);
+                this.shadows = csm;
+            } else {
+                // WebGL1 fallback: classic generator with Poisson softening.
+                const sg = new BABYLON.ShadowGenerator(1024, this.sun);
+                sg.usePoissonSampling = true;
+                sg.bias = 0.012;
+                sg.setDarkness(0.30);
+                sg.forceBackFacesOnly = true;
+                this.sun.autoUpdateExtends = true;
+                this.shadows = sg;
+            }
+        } catch (e) {
+            this.shadows = null;    // no shadow support: the sun still shapes faces
+        }
         //this.defaultSphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 1 }, this.scene);
 
         //var box2 = BABYLON.Mesh.CreateBox("box2", 2, this.scene);
@@ -375,12 +423,15 @@ class App {
         // option set that keeps the cheap scene optimizations but never touches
         // hardware scaling or texture size, so the UI stays crisp and correctly
         // proportioned.
+        // NOTE: no ShadowsOptimization / RenderTargetsOptimization here. The
+        // single-sun soft shadow is the core of the toy-box look, and those
+        // two silently killed it (scene.shadowsEnabled=false + frozen shadow
+        // map) on any machine under the target FPS -- which is exactly the
+        // machine class this optimizer runs for.
         const optOptions = new BABYLON.SceneOptimizerOptions(30, 2000);
-        optOptions.addOptimization(new BABYLON.ShadowsOptimization(0));
         optOptions.addOptimization(new BABYLON.LensFlaresOptimization(0));
         optOptions.addOptimization(new BABYLON.PostProcessesOptimization(1));
         optOptions.addOptimization(new BABYLON.ParticlesOptimization(1));
-        optOptions.addOptimization(new BABYLON.RenderTargetsOptimization(1));
         optOptions.addOptimization(new BABYLON.MergeMeshesOptimization(2));
         BABYLON.SceneOptimizer.OptimizeAsync(this.scene, optOptions,
         function() {
@@ -2565,6 +2616,24 @@ class App {
         // Mesh based objects
         if(typeof assetProps.rootUrl != 'undefined' && typeof assetProps.filename != 'undefined') {
             BABYLON.SceneLoader.ImportMeshAsync("", assetProps.rootUrl, assetProps.filename, this.scene).then((result) => {
+                // Blender's OBJ exporter writes MTL colours in LINEAR space but
+                // StandardMaterial.diffuseColor is gamma -- unconverted, every
+                // OBJ prop renders ~3x too dark (the christmas furniture came
+                // out nearly black). Convert once per material, and replace the
+                // exporter's hot Ks 0.5 with the prims' toy-plastic specular.
+                if (/\.obj$/i.test(assetProps.filename)) {
+                    const fixed = new Set();
+                    result.meshes.forEach((m) => {
+                        const mat = m.material;
+                        if (!mat || fixed.has(mat)) return;
+                        fixed.add(mat);
+                        if (mat.diffuseColor && mat.diffuseColor.toGammaSpace) {
+                            mat.diffuseColor = mat.diffuseColor.toGammaSpace();
+                        }
+                        mat.specularColor = new BABYLON.Color3(0.12, 0.12, 0.12);
+                        mat.specularPower = 48;
+                    });
+                }
                 if(typeof assetProps.colliderMeshes != 'undefined') {
                     for(let i = 0; i < result.meshes.length; i++){
                         if(-1 != assetProps.colliderMeshes.indexOf(result.meshes[i].name)) {
@@ -2588,6 +2657,14 @@ class App {
                 if(result.meshes.length == 1) {
                     object = parent;
                     var nestedMeshes = false;
+                    // Single-mesh templates (flat OBJ exports like the christmas
+                    // table/carpet) were the ONLY branch that never hid the
+                    // template, leaving a phantom copy visible at the world
+                    // origin in every world. Scale baked into the mesh here is
+                    // picked up by instances (InstancedMesh copies the source's
+                    // transform) and becomes BuildMode's initialScale baseline.
+                    if(assetProps.scale) object.scaling = object.scaling.scale(assetProps.scale);
+                    object.isVisible = false;
                 } else if(result.meshes.length == 2 && parent.name == '__root__') {
                     // If so, remove the root node and just save the child mesh so we can easily
                     // have instances instead of needing deep clones and cluttering up the scene
@@ -2596,6 +2673,10 @@ class App {
                     var nestedMeshes = false;
                     object.setParent(null);                     // Removes parent while preserving rotation, scale, position, etc.
                     parent.dispose();                           // Get rid of the __root__ node
+                    // Manifest `scale` only ever applied on the multi-part path,
+                    // so single-mesh glTFs (heart/coin/star/key pickups) ignored
+                    // their calibrated sizes and rendered at raw pack scale.
+                    if(assetProps.scale) object.scaling = object.scaling.scale(assetProps.scale);
                     object.isVisible = false;
                 } else {
                     // Multi-part model. If the loader handed us a single __root__
@@ -2710,10 +2791,8 @@ class App {
 
                 switch(p.ty) {
                 case 'box':
-                    prim = BABYLON.MeshBuilder.CreateBox('prim.box', { 
-                        width: p.s[0], 
-                        height: p.s[1], 
-                        depth: p.s[2]}, app.scene);
+                    // Chamfered like a molded toy part (see makeChamferBox).
+                    prim = app.makeChamferBox('prim.box', p.s[0], p.s[1], p.s[2]);
                     break;
                 case 'sphere':
                     prim = BABYLON.MeshBuilder.CreateSphere('prim.sphere', {
@@ -2746,6 +2825,9 @@ class App {
                     if(typeof p.col != 'undefined') {
                         var colMat = new BABYLON.StandardMaterial('colMat['+prim.uniqueId+']', app.scene);
                         colMat.diffuseColor = new BABYLON.Color3(p.col[0], p.col[1], p.col[2]);
+                        // Toy plastic: a soft satin sheen, never a hard glare.
+                        colMat.specularColor = new BABYLON.Color3(0.12, 0.12, 0.12);
+                        colMat.specularPower = 48;
                         colMat.emissiveColor = new BABYLON.Color3(p.col[0]*0.35, p.col[1]*0.35, p.col[2]*0.35);
                         prim.material = colMat;
                     }
@@ -2760,6 +2842,8 @@ class App {
                                 ? prim.material
                                 : new BABYLON.StandardMaterial(p.tex.id + 'Mat[' + prim.uniqueId + ']', app.scene);
                             mat.diffuseTexture = tex;
+                            mat.specularColor = new BABYLON.Color3(0.10, 0.10, 0.10);
+                            mat.specularPower = 48;
                             if(typeof p.col != 'undefined') {
                                 mat.emissiveColor = new BABYLON.Color3(p.col[0]*0.12, p.col[1]*0.12, p.col[2]*0.12);
                             }
@@ -2799,6 +2883,83 @@ class App {
         } else {
             console.error('error in createWorldObject: cannot understand the assetProps:', assetProps);
         }
+    }
+
+    // A box with CHAMFERED edges and corners -- the single strongest
+    // "molded plastic toy" cue for code-generated shapes. Real geometry (a
+    // 45-degree bevel ring plus corner facets), not a shader trick, so the
+    // sun catches every edge. Vertices are duplicated per facet for flat
+    // shading; winding is self-correcting (each facet flips itself if its
+    // computed normal disagrees with the outward direction), so the builder
+    // cannot produce inside-out faces.
+    makeChamferBox(name, w, h, d) {
+        const c = Math.min(0.06, Math.min(w, Math.min(h, d)) * 0.24);
+        if (!(c > 0.004)) {
+            return BABYLON.MeshBuilder.CreateBox(name, { width: w, height: h, depth: d }, this.scene);
+        }
+        const hx = w / 2, hy = h / 2, hz = d / 2;
+        const Vx = (sx, sy, sz) => [sx * hx, sy * (hy - c), sz * (hz - c)];
+        const Vy = (sx, sy, sz) => [sx * (hx - c), sy * hy, sz * (hz - c)];
+        const Vz = (sx, sy, sz) => [sx * (hx - c), sy * (hy - c), sz * hz];
+        const positions = [], indices = [], uvs = [];
+        const emit = (pts, out) => {   // pts: 3 or 4 [x,y,z]; out: outward dir
+            const base = positions.length / 3;
+            // Planar UVs from the two axes least aligned with `out`.
+            const ax = Math.abs(out[0]), ay = Math.abs(out[1]), az = Math.abs(out[2]);
+            const u = (ax >= ay && ax >= az) ? [0, 0, 1] : [1, 0, 0];
+            const v = (ay >= ax && ay >= az) ? [0, 0, 1] : [0, 1, 0];
+            pts.forEach((pt) => {
+                positions.push(pt[0], pt[1], pt[2]);
+                uvs.push(0.5 + (pt[0] * u[0] + pt[1] * u[1] + pt[2] * u[2]) / (w + h + d) * 1.5,
+                         0.5 + (pt[0] * v[0] + pt[1] * v[1] + pt[2] * v[2]) / (w + h + d) * 1.5);
+            });
+            const tri = (a, b, cc) => {
+                const A = pts[a], B = pts[b], C = pts[cc];
+                const n = [(B[1] - A[1]) * (C[2] - A[2]) - (B[2] - A[2]) * (C[1] - A[1]),
+                           (B[2] - A[2]) * (C[0] - A[0]) - (B[0] - A[0]) * (C[2] - A[2]),
+                           (B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0])];
+                // Babylon's ComputeNormals derives the facet normal from the
+                // OPPOSITE cross-product order, so wind each triangle so that
+                // (B-A)x(C-A) points INTO the box -- then Babylon's normals
+                // (and its front-face culling) come out facing outward.
+                const dot = n[0] * out[0] + n[1] * out[1] + n[2] * out[2];
+                if (dot >= 0) indices.push(base + cc, base + b, base + a);
+                else indices.push(base + a, base + b, base + cc);
+            };
+            tri(0, 1, 2);
+            if (pts.length === 4) tri(0, 2, 3);
+        };
+        const S = [-1, 1];
+        // 6 faces.
+        S.forEach((s) => {
+            emit([Vx(s, -1, -1), Vx(s, 1, -1), Vx(s, 1, 1), Vx(s, -1, 1)], [s, 0, 0]);
+            emit([Vy(-1, s, -1), Vy(1, s, -1), Vy(1, s, 1), Vy(-1, s, 1)], [0, s, 0]);
+            emit([Vz(-1, -1, s), Vz(1, -1, s), Vz(1, 1, s), Vz(-1, 1, s)], [0, 0, s]);
+        });
+        // 12 edge bevels.
+        S.forEach((sx) => S.forEach((sy) => {
+            emit([Vx(sx, sy, -1), Vx(sx, sy, 1), Vy(sx, sy, 1), Vy(sx, sy, -1)], [sx, sy, 0]);
+        }));
+        S.forEach((sx) => S.forEach((sz) => {
+            emit([Vx(sx, -1, sz), Vx(sx, 1, sz), Vz(sx, 1, sz), Vz(sx, -1, sz)], [sx, 0, sz]);
+        }));
+        S.forEach((sy) => S.forEach((sz) => {
+            emit([Vy(-1, sy, sz), Vy(1, sy, sz), Vz(1, sy, sz), Vz(-1, sy, sz)], [0, sy, sz]);
+        }));
+        // 8 corner facets.
+        S.forEach((sx) => S.forEach((sy) => S.forEach((sz) => {
+            emit([Vx(sx, sy, sz), Vy(sx, sy, sz), Vz(sx, sy, sz)], [sx, sy, sz]);
+        })));
+        const mesh = new BABYLON.Mesh(name, this.scene);
+        const vd = new BABYLON.VertexData();
+        vd.positions = positions;
+        vd.indices = indices;
+        vd.uvs = uvs;
+        const normals = [];
+        BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+        vd.normals = normals;
+        vd.applyToMesh(mesh);
+        return mesh;
     }
 
     // Build a procedural texture from a prim tex spec ({id, ...tuning}).
@@ -3135,6 +3296,23 @@ class App {
         window.localStorage.setItem('iis_active_slot', String(n));
         this.loadEconomy();
         this.toasty('Progression slot ' + n + ' active.');
+    }
+
+    // Every placed thing both casts the sun's shadow and receives others' --
+    // grounding objects on the terrain is most of the "physical toy" effect.
+    // Called for each new instance (and the player avatar).
+    registerShadowCaster(node) {
+        if (!this.shadows || !node) return;
+        try {
+            this.shadows.addShadowCaster(node, true);
+            const meshes = [node].concat(node.getChildMeshes ? node.getChildMeshes() : []);
+            meshes.forEach((m) => {
+                // InstancedMesh only proxies receiveShadows from its source
+                // mesh -- assigning on the instance is a silent no-op.
+                const t = m.sourceMesh || m;
+                if ('receiveShadows' in t) t.receiveShadows = true;
+            });
+        } catch (e) { /* a node type without shadow support is fine */ }
     }
 
     // ---- per-instance looks (texture + tint settings) -----------------------
