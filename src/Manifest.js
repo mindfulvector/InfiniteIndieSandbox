@@ -126,6 +126,15 @@ class Manifest {
                   ]
         });
 
+        // A pressure plate: a weight-activated floor button (stand on it to
+        // fire pressed; step off to fire released) -- see PlateScript.
+        app.createWorldObject('l_plate', {
+            prims: [
+                     {ty: 'box',      s: [2, 0.3, 2],   p: [0, 0, 0],    col: [0.45, 0.42, 0.5], tex: {id: 'marble', w: 2, h: 2}},
+                     {ty: 'cylinder', s: [1.5, 0.12, 1.5], p: [0, 0.16, 0], col: [0.85, 0.75, 0.3]},
+                  ]
+        }, 'PlateScript');
+
         app.createWorldObject('l_trigger', {
             prims: [
                      {ty: 'box',       s: [1,1,1], p: [0,0,0]},
