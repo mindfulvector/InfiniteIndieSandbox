@@ -364,6 +364,10 @@ walk into it — its flag raises and it becomes your respawn point, so
 dying sends you back there instead of all the way to the start. Touch a
 later one and it takes over. Great for long platformers and dungeons.
 
+**Power-ups:** grab a **Power-up** (Pickups) for a few seconds of an edge —
+**Power** doubles your damage, **Shield** makes you invincible. Scatter
+them through a tough fight, or wire their *Collected* event to a counter.
+
 **Charger enemies:** the **Charger** (Enemies) is a dash attacker — it holds
 still until you get close, swells up as a warning, then rushes you in a
 straight line. Time a **Dodge** roll through it, or raise your **Block**

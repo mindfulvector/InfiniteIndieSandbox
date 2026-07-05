@@ -153,6 +153,16 @@ class Manifest {
                   ]
         }, 'CannonScript');
 
+        // A timed combat power-up: 'power' (double damage) or 'shield'
+        // (invincible) for a few seconds (see PowerUpScript).
+        app.createWorldObject('pk_powerup', {
+            prims: [
+                     {ty: 'sphere', s: [0.7], p: [0, 0.5, 0], col: [1.0, 0.85, 0.2], tex: {id: 'marble'}},
+                     {ty: 'box',    s: [0.9, 0.2, 0.2], p: [0, 0.5, 0], col: [1.0, 0.5, 0.1], tex: {id: 'marble'}},
+                     {ty: 'box',    s: [0.2, 0.2, 0.9], p: [0, 0.5, 0], col: [1.0, 0.5, 0.1], tex: {id: 'marble'}},
+                  ]
+        }, 'PowerUpScript');
+
         app.createWorldObject('l_hazard', {
             prims: [
                      {ty: 'box',       s: [2,1,2], p: [0,0,0]},

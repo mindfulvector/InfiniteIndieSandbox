@@ -459,6 +459,10 @@ class PlayMode {
         if (!this.player) return;
         if (this.attackCooldown > 0) this.attackCooldown--;
         if (this.rangedCooldown > 0) this.rangedCooldown--;
+        if (this._powerTimer > 0 && --this._powerTimer <= 0) {
+            this._powerKind = null;
+            this.app.toasty('Power-up faded.');
+        }
         if (this.comboTimer > 0) this.comboTimer--;
         if (this.dodgeCooldown > 0) this.dodgeCooldown--;
         if (this.launcherCooldown > 0) this.launcherCooldown--;
@@ -530,7 +534,7 @@ class PlayMode {
         this.comboTimer = finisher ? 0 : 36;   // frames to land the next swing
         // Base damage plus the character's level bonus (+1 per 5 levels).
         const bonus = this.app.meleeBonus ? this.app.meleeBonus() : 0;
-        const dmg = (finisher ? combo.mult : 1) + bonus;
+        const dmg = ((finisher ? combo.mult : 1) + bonus) * this.powerMultiplier();
         if (finisher) this.app.toasty(combo.comboName ? combo.comboName + '!' : 'Combo finisher!');
 
         const aim = this.resolveAim(aimPoint, 3.4);
@@ -774,7 +778,7 @@ class PlayMode {
 
     updatePlayerProjectiles() {
         if (this.playerProjectiles.length === 0) return;
-        const hitRange = 1.5, dmg = 1;
+        const hitRange = 1.5, dmg = 1 * this.powerMultiplier();
         for (let i = this.playerProjectiles.length - 1; i >= 0; i--) {
             const pr = this.playerProjectiles[i];
             // Walls and terrain stop shots.
@@ -2129,8 +2133,25 @@ class PlayMode {
     // EnemyManager's update loops, and respawn() resets those very arrays --
     // clearing them mid-iteration left stale indexes (the e.kind / pr.mesh
     // crashes). The respawn runs at the top of the next update instead.
+    // A Power power-up doubles outgoing melee/bolt damage while its timer
+    // runs; a Shield power-up (handled in damagePlayer) negates incoming hits.
+    powerMultiplier() {
+        return (this._powerKind === 'power' && this._powerTimer > 0) ? 2 : 1;
+    }
+
+    // Grant a timed combat buff from a pk_powerup pickup.
+    grantPowerUp(kind, frames) {
+        this._powerKind = kind;
+        this._powerTimer = frames || 300;
+    }
+
     damagePlayer(amount, sourcePos) {
         if (this.hurtCooldown > 0) return;
+        // Shield power-up: invulnerable while it lasts.
+        if (this._powerKind === 'shield' && this._powerTimer > 0) {
+            this.shieldedHits = (this.shieldedHits || 0) + 1;
+            return;
+        }
         // Dodge i-frames: a roll passes clean through anything that connects.
         if (this.dodgeFrames > 0) {
             this.dodgedHits++;
@@ -2195,6 +2216,7 @@ class PlayMode {
         this.hurtCooldown = 60;
         // Guardian Ward recharges each life.
         if (this.gadgetGuardian) this.shieldCharge = 1;
+        this._powerKind = null; this._powerTimer = 0;
         if (this.player) this.player.position = this.spawnPoint.clone();
         // Death ends any in-progress combo and drops the target lock -- without
         // this, a chain started before dying could carry a free finisher (3x
