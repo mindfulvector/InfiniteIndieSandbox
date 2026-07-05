@@ -1181,8 +1181,9 @@ class BuildMode {
             if(gridSize > 1.0) gridSize = 1.0;
 
             // `targetPosition` is the anchor: the ground point the object's base
-            // should rest on. Snap it horizontally to the grid when the player
-            // isn't actively dragging the object.
+            // should rest on. Snap it to the grid on ALL THREE axes (including
+            // height, so raise/lower via R/V settles on grid multiples too)
+            // when the player isn't actively dragging the object.
             // (Snap mode suspends the grid pull entirely: a flush vertex
             // snap often lands off-grid, and the idle lerp below would
             // quietly drag it back onto grid multiples.)
@@ -1190,7 +1191,7 @@ class BuildMode {
             if (!moved && !snapNow) {
                 const snapped = new BABYLON.Vector3(
                     Math.round((anchor.x + Number.EPSILON) / gridSize) * gridSize,
-                    anchor.y,
+                    Math.round((anchor.y + Number.EPSILON) / gridSize) * gridSize,
                     Math.round((anchor.z + Number.EPSILON) / gridSize) * gridSize
                 );
                 this.targetPosition = BABYLON.Vector3.Lerp(this.targetPosition, snapped, lerpRate);
