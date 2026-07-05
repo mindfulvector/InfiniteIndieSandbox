@@ -72,6 +72,11 @@
       "file": "skybreak-run.json",
       "name": "Skybreak Run",
       "desc": "A cannon-jump course over the void: fire between islands, smash breakable walls for secrets, and blast up to the vault"
+    },
+    {
+      "file": "the-gauntlet.json",
+      "name": "The Gauntlet",
+      "desc": "A wave-survival arena: clear the walkers while dodging charging brutes and a sentry turret, then loot the vault"
     }
   ]
 }
