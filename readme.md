@@ -68,6 +68,7 @@ To switch between modes, press the `Esc` key then to enter a new mode:
 * Press `Space` to place the object
 * Press `Delete` to remove the last placed object
 * In cursor mode, press `F` to **duplicate** the highlighted object — a copy with the same rotation, scale and settings appears, grabbed and ready to place
+* Press `U` to **undo** the last deletion — the object (or whole selection) you just removed comes back, wires and all
 
 Objects are placed centred under the cursor. Most objects rest their **base** on
 the cursor (a tree sits *on* the surface), while **terrain** tiles snap their

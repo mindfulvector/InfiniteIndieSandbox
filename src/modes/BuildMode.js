@@ -6,6 +6,7 @@ class BuildMode {
         this.selectedObjectIndex = 0; // Index of the selected object in BuildableObjectList
         this.currentInstance = null; // Currently placed/selected instance in the world
         this.placedInstances = [];   // stack of {wo, inst} placed this session, for undo/delete
+        this._deleteHistory = [];    // stack of deleted-object snapshot GROUPS, for un-delete (U)
         this.grabbed = false;        // true while moving a previously-placed object
         this.gridSize = 10;
         this.lastUndoInstanceIndex = -1;
@@ -382,32 +383,79 @@ class BuildMode {
     deleteAction() {
         if (typeof this.selection != 'undefined' && this.selection.length > 0) {
             let n = 0, locked = 0;
+            const group = [];
             this.selection.slice().forEach((node) => {
                 if (node.worldObject && !this.app.isPurchased(node.worldObject.name)) {
                     locked++;
                     return;   // can't remove locked objects
                 }
+                const snap = this._snapshot(node);
+                if (snap) group.push(snap);
                 this.app.showBoundingBoxAll(node, false);
                 this.removePlacedInstance(node);
                 n++;
             });
             this.selection = [];
+            if (group.length) this._deleteHistory.push(group);
             if (n > 0) {
                 this.app.sound.play('delete');
-                this.app.toasty('Removed ' + n + ' object' + (n === 1 ? '' : 's') + '.');
+                this.app.toasty('Removed ' + n + ' object' + (n === 1 ? '' : 's') + '.  (U to undo)');
             }
             else if (locked > 0) this.app.toasty('Locked — purchase in the shop to remove.');
         } else if (this.placedInstances.length > 0) {
             const last = this.placedInstances.pop();
             if (last && last.inst) {
+                const snap = this._snapshot(last.inst);
+                if (snap) this._deleteHistory.push([snap]);
                 this.app.showBoundingBoxAll(last.inst, false);
                 this.removePlacedInstance(last.inst);
             }
             this.app.sound.play('delete');
-            this.app.toasty('Removed last placed object.');
+            this.app.toasty('Removed last placed object.  (U to undo)');
         } else {
             this.app.toasty('Nothing to remove. Press 0 to select placed objects.');
         }
+    }
+
+    // Snapshot an instance so a delete can be undone: position (its rest pose
+    // if a script animates it), rotation, scale, params and wires -- deep
+    // copies, so the live object can be disposed without touching the record.
+    _snapshot(inst) {
+        if (!inst || !inst.worldObject) return null;
+        const po = (inst.restPos != null) ? inst.restPos
+            : (inst.restY != null ? new BABYLON.Vector3(inst.position.x, inst.restY, inst.position.z) : inst.position);
+        return {
+            wo: inst.worldObject.name,
+            po: po.clone(),
+            ro: inst.rotationQuaternion ? inst.rotationQuaternion.clone() : null,
+            sc: inst.scaling ? inst.scaling.clone() : null,
+            pr: inst.params ? JSON.parse(JSON.stringify(inst.params)) : {},
+            wi: inst.wires ? JSON.parse(JSON.stringify(inst.wires)) : [],
+        };
+    }
+
+    // Undo the most recent deletion: recreate every object in the last delete
+    // group from its snapshot (params and wires intact), back into the world.
+    undoDelete() {
+        if (this._deleteHistory.length === 0) {
+            this.app.toasty('Nothing to undo.');
+            return;
+        }
+        const group = this._deleteHistory.pop();
+        let restored = 0;
+        group.forEach((snap) => {
+            const wo = this.app.findWorldObject(snap.wo);
+            if (!wo) return;
+            const inst = wo.createInstance(snap);
+            if (!inst) return;
+            inst.checkCollisions = true;
+            this.placedInstances.push({ wo: wo, inst: inst });
+            // Linked builders see the restore as a placement.
+            if (this.app.net && !this.app.net.closed) this.app.net.sendAdd(inst);
+            restored++;
+        });
+        this.app.sound.play('place');
+        this.app.toasty('Restored ' + restored + ' object' + (restored === 1 ? '' : 's') + '.');
     }
 
     // Dispose an instance and drop it from the undo stack.
@@ -631,6 +679,11 @@ class BuildMode {
         // rows of a configured object without re-browsing or re-tuning it.
         if (!this.currentInstance && this.app.keyPressed('F')) {
             this.duplicateSelected();
+        }
+
+        // U undoes the last deletion -- brings back what you just removed.
+        if (!this.currentInstance && this.app.keyPressed('U')) {
+            this.undoDelete();
         }
 
         // Space (in cursor mode, over a highlighted object) grabs it to move
