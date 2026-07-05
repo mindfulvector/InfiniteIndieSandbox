@@ -77,6 +77,11 @@
       "file": "the-gauntlet.json",
       "name": "The Gauntlet",
       "desc": "A wave-survival arena: clear the walkers while dodging charging brutes and a sentry turret, then loot the vault"
+    },
+    {
+      "file": "bladeworks.json",
+      "name": "Bladeworks",
+      "desc": "A skill trial: time the sweeping blades, flank the shielder to open its gate, then dodge the charger to the vault"
     }
   ]
 }

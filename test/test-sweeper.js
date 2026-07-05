@@ -74,11 +74,14 @@ async function main() {
             const pm = window.app.activeMode, w = window.__W.w;
             pm.playerMaxHp = 100; pm.playerHp = 100; pm.hurtCooldown = 0;
             pm.blocking = false; pm.dodgeFrames = 0;
-            // Park the player at the sweeper's HOME centre and run frames: the
-            // blade passes over them repeatedly, so HP must drop.
+            // FREEZE the blade over the player (speed 0, phase 0 -> parked at
+            // home x). A *moving* blade only grazes a point-player for a few
+            // frames per pass, which aliases under load; contact damage itself
+            // is what we assert here (the sweep is proven in [2]).
+            w.params.speed = 0; w.script._phase = 0; w.script._lastSin = 0;
             pm.player.position.copyFrom(new BABYLON.Vector3(40, 2, 40));
             const hp0 = pm.playerHp;
-            for (let i = 0; i < 200; i++) { pm.hurtCooldown = 0; w.script.update(true, pm); }
+            for (let i = 0; i < 200; i++) { pm.hurtCooldown = 0; w.script._cool = 0; w.script.update(true, pm); }
             const took = hp0 - pm.playerHp;
             pm.playerMaxHp = 10000; pm.playerHp = 10000;
             return { took };
@@ -91,9 +94,11 @@ async function main() {
             const pm = window.app.activeMode, w = window.__W.w;
             pm.playerMaxHp = 100; pm.playerHp = 100; pm.hurtCooldown = 0;
             pm.blocking = false; pm.dodgeFrames = 400;   // rolling throughout
+            // Same frozen-blade-over-player setup: a roll must eat every hit.
+            w.params.speed = 0; w.script._phase = 0; w.script._lastSin = 0;
             pm.player.position.copyFrom(new BABYLON.Vector3(40, 2, 40));
             const hp0 = pm.playerHp;
-            for (let i = 0; i < 200; i++) { pm.hurtCooldown = 0; w.script.update(true, pm); }
+            for (let i = 0; i < 200; i++) { pm.hurtCooldown = 0; w.script._cool = 0; w.script.update(true, pm); }
             pm.dodgeFrames = 0;
             const unharmed = pm.playerHp === hp0;
             pm.playerMaxHp = 10000; pm.playerHp = 10000;
@@ -105,6 +110,7 @@ async function main() {
         // --- 5. Play reset parks it home ---
         const reset = await h.evaluate(() => {
             const pm = window.app.activeMode, w = window.__W.w;
+            w.params.speed = 3; w.script._phase = 0.6;   // restore motion (prior tests froze it)
             for (let i = 0; i < 20; i++) w.script.update(true, pm);   // move it off-home
             const off = Math.abs(w.position.x - window.__W.home) > 0.1;
             w.script.onPlayReset(pm);
