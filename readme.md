@@ -325,6 +325,11 @@ it rides the surface of any pool so you can cross deep water without
 swimming. `WASD` steers, `Space` hops out. Beach it on dry land and it
 just sits there.
 
+**Hazards:** drop a **Hazard** zone (Logic) over lava, spikes, or a pit —
+it hurts the player while they stand in it (a well-timed **Dodge** roll
+gets you through unscathed). Pair it with a **Checkpoint** so a misstep
+costs a stretch, not the whole level.
+
 **Teleporters:** drop two **Teleport** pads (Logic) and wire one's *Teleport
 To* to the other's *Link Target* — step on the first and you blink to the
 second. Wire it both ways for a two-way portal, or many pads into a hub:

@@ -132,6 +132,14 @@ class Manifest {
                   ]
         }, 'TriggerScript');
 
+        // A damage volume: an intangible translucent-red hazard zone that
+        // hurts the player on a tick while they stand in it (see HazardScript).
+        app.createWorldObject('l_hazard', {
+            prims: [
+                     {ty: 'box',       s: [2,1,2], p: [0,0,0]},
+                  ]
+        }, 'HazardScript');
+
         // A basic enemy: a red-marble blob that can be attacked in play mode
         // and, when defeated, bursts into collectable pixels.
         app.createWorldObject('en_blob', {
