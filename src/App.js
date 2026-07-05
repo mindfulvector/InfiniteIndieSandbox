@@ -3304,9 +3304,17 @@ class App {
     registerShadowCaster(node) {
         if (!this.shadows || !node) return;
         try {
-            this.shadows.addShadowCaster(node, true);
-            const meshes = [node].concat(node.getChildMeshes ? node.getChildMeshes() : []);
-            meshes.forEach((m) => {
+            // Only REAL meshes belong in the shadow map's render list. A
+            // multi-part model instance is rooted on a geometry-less
+            // TransformNode (no getBoundingInfo), and adding it via
+            // addShadowCaster(node, true) crashes the shadow pass every frame
+            // with "getBoundingInfo is not a function". So walk the hierarchy
+            // and add each child mesh that actually has geometry.
+            const all = [node].concat(node.getChildMeshes ? node.getChildMeshes() : []);
+            all.forEach((m) => {
+                const hasGeom = typeof m.getBoundingInfo === 'function' &&
+                    typeof m.getTotalVertices === 'function' && m.getTotalVertices() > 0;
+                if (hasGeom) this.shadows.addShadowCaster(m, false);
                 // InstancedMesh only proxies receiveShadows from its source
                 // mesh -- assigning on the instance is a silent no-op.
                 const t = m.sourceMesh || m;
