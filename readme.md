@@ -69,6 +69,7 @@ To switch between modes, press the `Esc` key then to enter a new mode:
 * Press `Delete` to remove the last placed object
 * In cursor mode, press `F` to **duplicate** the highlighted object — a copy with the same rotation, scale and settings appears, grabbed and ready to place
 * Press `U` to **undo** the last deletion — the object (or whole selection) you just removed comes back, wires and all
+* Press `Y` to **redo** — re-removes what you just undid; U and Y round-trip a deletion cleanly both ways
 * **Shift-click** several objects to select them as a group, then `Delete` or `F` (duplicate) acts on the whole group at once
 * Grab a shift-click group and **move it as one** — the whole cluster slides together, keeping its shape
 

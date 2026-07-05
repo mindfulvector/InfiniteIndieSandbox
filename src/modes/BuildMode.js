@@ -7,6 +7,7 @@ class BuildMode {
         this.currentInstance = null; // Currently placed/selected instance in the world
         this.placedInstances = [];   // stack of {wo, inst} placed this session, for undo/delete
         this._deleteHistory = [];    // stack of deleted-object snapshot GROUPS, for un-delete (U)
+        this._redoHistory = [];      // stack of UNDO-restored instance GROUPS, for redo (Y)
         this.grabbed = false;        // true while moving a previously-placed object
         this.gridSize = 10;
         this.lastUndoInstanceIndex = -1;
@@ -458,6 +459,8 @@ class BuildMode {
     // Remove objects. In cursor mode (0) with the cursor over object(s), delete
     // those; otherwise undo the most recently placed object.
     deleteAction() {
+        // A fresh deletion diverges history -- the redo trail is no longer valid.
+        this._redoHistory = [];
         if (typeof this.selection != 'undefined' && this.selection.length > 0) {
             let n = 0, locked = 0;
             const group = [];
@@ -519,7 +522,7 @@ class BuildMode {
             return;
         }
         const group = this._deleteHistory.pop();
-        let restored = 0;
+        const restoredInsts = [];
         group.forEach((snap) => {
             const wo = this.app.findWorldObject(snap.wo);
             if (!wo) return;
@@ -529,10 +532,35 @@ class BuildMode {
             this.placedInstances.push({ wo: wo, inst: inst });
             // Linked builders see the restore as a placement.
             if (this.app.net && !this.app.net.closed) this.app.net.sendAdd(inst);
-            restored++;
+            restoredInsts.push(inst);
         });
+        // Feed the redo stack so Y can re-remove exactly what we just restored.
+        if (restoredInsts.length) this._redoHistory.push(restoredInsts);
         this.app.sound.play('place');
-        this.app.toasty('Restored ' + restored + ' object' + (restored === 1 ? '' : 's') + '.');
+        const restored = restoredInsts.length;
+        this.app.toasty('Restored ' + restored + ' object' + (restored === 1 ? '' : 's') + '.  (Y to redo)');
+    }
+
+    // Redo the most recently undone deletion: re-remove exactly the objects the
+    // last undo brought back, and push their snapshots back onto the undo stack
+    // so U can restore them again (a symmetric undo/redo pair).
+    redoDelete() {
+        if (this._redoHistory.length === 0) {
+            this.app.toasty('Nothing to redo.');
+            return;
+        }
+        const group = this._redoHistory.pop();
+        const snaps = [];
+        group.forEach((inst) => {
+            if (!inst) return;
+            const snap = this._snapshot(inst);
+            if (snap) snaps.push(snap);
+            this.app.showBoundingBoxAll(inst, false);
+            this.removePlacedInstance(inst);
+        });
+        if (snaps.length) this._deleteHistory.push(snaps);
+        this.app.sound.play('delete');
+        this.app.toasty('Re-removed ' + snaps.length + ' object' + (snaps.length === 1 ? '' : 's') + '.  (U to undo)');
     }
 
     // Dispose an instance and drop it from the undo stack.
@@ -761,6 +789,11 @@ class BuildMode {
         // U undoes the last deletion -- brings back what you just removed.
         if (!this.currentInstance && this.app.keyPressed('U')) {
             this.undoDelete();
+        }
+
+        // Y redoes it -- re-removes what U just brought back.
+        if (!this.currentInstance && this.app.keyPressed('Y')) {
+            this.redoDelete();
         }
 
         // Space (in cursor mode, over a highlighted object) grabs it to move
