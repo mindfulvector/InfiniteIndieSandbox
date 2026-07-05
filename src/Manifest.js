@@ -240,6 +240,16 @@ class Manifest {
                   ]
         }, 'ShielderScript');
 
+        // A support enemy: a healer drone that revives wounded allies --
+        // kill it first (see MenderScript). Floating orb + a green cross.
+        app.createWorldObject('en_mender', {
+            prims: [
+                     {ty: 'sphere',   s: [1.1],           p: [0, 0.2, 0], col: [0.4, 0.8, 0.55], tex: {id: 'marble'}},
+                     {ty: 'box',      s: [0.8, 0.22, 0.22], p: [0, 0.6, 0.5], col: [0.4, 1.0, 0.5]},
+                     {ty: 'box',      s: [0.22, 0.8, 0.22], p: [0, 0.6, 0.5], col: [0.4, 1.0, 0.5]},
+                  ]
+        }, 'MenderScript');
+
         app.createWorldObject('en_charger', {
             prims: [
                      {ty: 'box',      s: [1.1, 1.0, 1.4], p: [0, 0, 0],    col: [0.85, 0.5, 0.15], tex: {id: 'marble', w: 2, h: 2}},

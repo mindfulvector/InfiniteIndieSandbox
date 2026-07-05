@@ -386,6 +386,11 @@ later one and it takes over. Great for long platformers and dungeons.
 **Power** doubles your damage, **Shield** makes you invincible. Scatter
 them through a tough fight, or wire their *Collected* event to a counter.
 
+**Mender enemies:** the **Mender** (Enemies) is a healer drone — it won't
+attack you, but it keeps the rest of the pack topped up, so a fight can
+drag on forever until you hunt it down first. Take out the healer, then
+mop up.
+
 **Shielder enemies:** the **Shielder** (Enemies) blocks attacks from the
 front and turns to face you — but slowly. Dash around it (that's what the
 Dodge roll is for) and strike its back, where the guard can't reach.
