@@ -46,8 +46,9 @@ pre-wired challenge park with four zones: a Combat Yard whose entrance wakes a
 spawner (with a camera cut), a Star Climb that pays the scoreboard when you
 collect all four stars, a Crossing bridged only by a moving platform (watch
 the patrol on the far side), and a furnished Homestead with a sliding door
-and a pocket-interior cell door. It doubles as a live tour of everything the
-wiring system can do — open the Wiring view there and study the connections.
+and a portal door into its own named sub-level. It doubles as a live tour of
+everything the wiring system can do — open the Wiring view there and study
+the connections.
 
 To switch between modes, press the `Esc` key then to enter a new mode:
 
@@ -165,16 +166,17 @@ to the doorway gap — in the Wiring view it accepts *Open* / *Close* /
 counter can unlock a room (a settings option makes it start open instead).
 Furnish with the **Decor** category: table, chair, floor lamp, and rug.
 
-For a whole room behind a single door, place a **Cell Door** (Props) — its
-glowing panel is a portal: walk into it in play mode and you're teleported
-into a small decorated interior — and that room is **yours to remodel**:
-it's made of real objects, so enter build mode while inside (or click its
-pieces from anywhere) to redecorate, and your changes save with the world
-and survive every visit (its settings pick the starting theme, a cozy den or a
-columned hall). Step on the glowing exit pad to return to where you entered.
-While you're inside, enemies outside politely freeze. The door fires *Player
-Entered* / *Player Exited* wiring events, so entering a room can start timers,
-cut cameras, or count visits.
+For a whole level behind a single door, place a **Portal Door** (Props) — its
+glowing panel leads to a **named sub-level stored inside your world**, the
+way Disney Infinity doors mapped to levels: if the level behind the door
+doesn't exist yet, walking in asks you to **name it** and creates it around a
+small starter room. Inside, you're in a **real world of its own** — build,
+wire, save, even place *more portal doors* (levels nest as deep as you like).
+Walk into the sub-level's own exit portal to return to where you entered.
+Sub-levels ride inside the owning world's save and exports, so a shared
+world carries every level behind its doors. The door fires *Player Entered*
+/ *Player Exited* wiring events, so stepping through can start timers, cut
+cameras, or step quests.
 
 #### Paths and moving platforms
 

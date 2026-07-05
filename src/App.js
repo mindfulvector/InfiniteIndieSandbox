@@ -162,6 +162,11 @@ class App {
         const app = this;
         this.toastyTimer = 0;
         this.world = null;
+        // Portal doors: the active world's named sub-levels (name -> world
+        // snapshot) and the ancestry of worlds the player is standing inside
+        // (see enterSubWorld / exitSubWorld).
+        this.subWorlds = {};
+        this.worldStack = [];
         this.menu = {
             state: 0,               // no menu displayed
             renderedState: 0,       // if the two numbers are different we need to update the menu
@@ -1067,6 +1072,9 @@ class App {
     // display name (e.g. 'Door', 'Cube 1x1') for the selected-object readout.
     prettyName(name) {
         if(!name) return '';
+        // Display-name overrides where the derived name misleads (the object
+        // id stays stable for save compatibility).
+        if(name === 'pr_door_cell') return 'Portal Door';
         let n = name.replace(/^(t|pr|al|cp|d|l)_/, '').replace(/_/g, ' ');
         return n.replace(/\b\w/g, (c) => c.toUpperCase());
     }
@@ -1496,9 +1504,16 @@ class App {
             const kinds = { 1: 'rolling', 2: 'flat', 3: 'arena', 4: 'islands', 5: 'hub' };
             if(menuItem === 0) {
                 app.menu.state = app.menu.prevState || MENU_MAIN;
+            } else if(menuItem === 9) {
+                // Session start includes picking who's playing: jump to the
+                // progression-slot picker and come back here.
+                app.menu.prevState = MENU_WORLD_TEMPLATE;
+                app.menu.state = MENU_SLOT;
             } else if(kinds[menuItem]) {
                 app.menu.state = MENU_HUD;
                 app.world = new SandboxWorld(app);
+                app.worldStack = [];
+                app.subWorlds = {};
                 app.world.clearWorld();
                 app.world.buildTemplate(kinds[menuItem]);
                 app.goto_playMode();
@@ -1559,11 +1574,15 @@ class App {
         case MENU_LOAD:
             if(menuItem == 0) {
                 app.menu.state = app.menu.prevState;
+            } else if(menuItem == 9) {
+                // Pick the progression slot as part of starting the session.
+                app.menu.prevState = MENU_LOAD;
+                app.menu.state = MENU_SLOT;
             } else {
                 if(!app.world) {
                     app.world = new SandboxWorld(app);
                 }
-                const nm = app.namedWorlds()[menuItem - 1];
+                const nm = app.namedWorlds().slice(0, 8)[menuItem - 1];
                 app.currentWorldFile = null;   // named saves are sandbox worlds
                 if(nm && app.world.loadNamed(nm)) {
                     app.toasty('Loaded "' + nm + '".');
@@ -2081,6 +2100,16 @@ class App {
                             handler: () => { app.triggerMenuItem(this.menu.state, n); }
                         });
                     });
+                    // Loading starts a session: show which progression slot
+                    // is playing and offer the switch right here.
+                    if (!saving) {
+                        this.MenuItem({
+                            type: 'button',
+                            name: 'btnLoadSlot',
+                            text: '9. Progression Slot  (slot ' + (this.saveSlot || 1) + ' active)',
+                            handler: () => { app.triggerMenuItem(MENU_LOAD, 9); }
+                        });
+                    }
                 }
 
                 this.MenuItem({
@@ -2417,6 +2446,14 @@ class App {
                         text: t.label,
                         handler: () => { app.triggerMenuItem(MENU_WORLD_TEMPLATE, t.n); }
                     });
+                });
+                // Starting a session includes choosing WHO is playing: show
+                // the active progression slot and offer the switch here.
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnTplSlot',
+                    text: '9. Progression Slot  (slot ' + (this.saveSlot || 1) + ' active)',
+                    handler: () => { app.triggerMenuItem(MENU_WORLD_TEMPLATE, 9); }
                 });
                 this.MenuItem({
                     type: 'button',
@@ -3047,6 +3084,60 @@ class App {
         this.toasty('Progression slot ' + n + ' active.');
     }
 
+    // ---- portal doors: nested sub-worlds -----------------------------------
+    // A portal door leads to a NAMED sub-level stored INSIDE its parent
+    // world's save (Disney-Infinity style: the door's level lives in the
+    // world that owns the door). Entering swaps the whole scene to the
+    // sub-world; exiting swaps back and folds any edits into the parent.
+
+    // Swap into the named sub-level. `seed` furnishes it on first entry;
+    // `returnSpot`/`doorId` let the exit teleport the player back beside the
+    // door they came through. Returns true when the swap happened.
+    enterSubWorld(name, seed, returnSpot, doorId) {
+        if (!this.world || !name) return false;
+        if (!this.subWorlds[name]) this.subWorlds[name] = seed || { objects: [] };
+        const blob = this.subWorlds[name];
+        const frame = {
+            data: this.world.serialize(),          // embeds the current subWorlds
+            name: name,
+            doorId: doorId,
+            returnSpot: returnSpot ? { x: returnSpot.x, y: returnSpot.y, z: returnSpot.z } : null,
+            parentSpawn: this.world.spawnPoint ? this.world.spawnPoint.clone() : null,
+        };
+        this.worldStack.push(frame);
+        this.world.loadFromData(blob);             // also swaps this.subWorlds
+        return true;
+    }
+
+    // Swap back out to the parent world, folding the sub-level's current
+    // state (edits and all) into the parent's subWorlds map. Returns the
+    // popped stack frame (for the return teleport), or null at the root.
+    exitSubWorld() {
+        if (!this.worldStack.length || !this.world) return null;
+        const current = this.world.serialize();
+        const frame = this.worldStack.pop();
+        frame.data.subWorlds = frame.data.subWorlds || {};
+        frame.data.subWorlds[frame.name] = current;
+        this.world.loadFromData(frame.data);
+        if (frame.parentSpawn) this.world.spawnPoint = frame.parentSpawn;
+        return frame;
+    }
+
+    // The complete ROOT world snapshot regardless of where the player is
+    // standing: the current world folded up through every stacked ancestor.
+    // Used by saves/exports so they always capture the whole world tree.
+    rootWorldData() {
+        if (!this.world) return null;
+        let cur = this.world.serialize();
+        for (let i = this.worldStack.length - 1; i >= 0; i--) {
+            const parent = JSON.parse(JSON.stringify(this.worldStack[i].data));
+            parent.subWorlds = parent.subWorlds || {};
+            parent.subWorlds[this.worldStack[i].name] = cur;
+            cur = parent;
+        }
+        return cur;
+    }
+
     // Every named world in storage, sorted.
     namedWorlds() {
         const out = [];
@@ -3333,11 +3424,14 @@ class App {
             this.toasty('No world to export — start or load a game first.');
             return null;
         }
-        return JSON.stringify({
+        const data = this.rootWorldData();
+        const out = {
             format: 'iis-world',
             version: 1,
-            objects: this.world.serialize().objects,
-        });
+            objects: data.objects,
+        };
+        if (data.subWorlds) out.subWorlds = data.subWorlds;   // portal-door levels travel too
+        return JSON.stringify(out);
     }
 
     downloadWorld() {
@@ -3372,7 +3466,8 @@ class App {
             return false;
         }
         if (!this.world) this.world = new SandboxWorld(this);
-        this.world.loadFromData({ objects: payload.objects });
+        this.worldStack = [];   // imports are fresh root worlds
+        this.world.loadFromData({ objects: payload.objects, subWorlds: payload.subWorlds });
         // Co-op Play Sets flag themselves; PlayMode auto-joins P2 on entry.
         this.coopWorld = !!payload.coop;
         this.toasty(payload.coop ? 'Co-op world imported — grab a friend!' : 'World imported!');

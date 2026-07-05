@@ -108,26 +108,50 @@ async function main() {
         check('M1 counts as the first step of M2', m1.q2Steps === 1, m1);
         await h.screenshot('vault-opened');
 
-        // --- 4. M2: enter the pocket room ---
+        // --- 4. M2: step through the portal door into its sub-level ---
         await h.evaluate(() => {
             const pm = window.app.activeMode;
-            pm.player.position.copyFrom(window.__C.cell.position);
+            pm.player.position.copyFrom(window.__C.cell.position.add(new BABYLON.Vector3(0.8, -0.9, 0)));
         });
-        await h.waitFor(() => window.__C.q2.script._complete === true, null, 20000);
+        // The quest steps (and completes) in the parent BEFORE the world
+        // swaps; the swap itself confirms the door worked end to end.
+        await h.waitFor(() => window.app.worldStack.length === 1, null, 20000);
         const m2 = await h.evaluate(() => ({
             pixels: window.app.pixels,
-            inside: window.app.activeMode.insideCell,
+            inside: window.app.worldStack.length === 1,
+            subName: window.app.worldStack[0] && window.app.worldStack[0].name,
+            q2Done: window.__C.q2.script._complete === true,   // pre-swap reference
             q3Steps: window.__C.q3.script._done.size,
         }));
         console.log('[4] M2 complete', m2);
-        check('entering the vault room completes M2 (+20)', m2.pixels >= 30 && m2.inside, m2);
+        check('entering the vault room completes M2 (+20) inside its own sub-level',
+            m2.pixels >= 30 && m2.inside && m2.q2Done, m2);
         check('M2 counts as the first step of M3', m2.q3Steps === 1, m2);
-        // Step back outside via the exit pad for the finale.
+        // Walk back out through the sub-level's exit portal for the finale.
         await h.evaluate(() => {
-            const pm = window.app.activeMode;
-            pm.player.position.copyFrom(window.__C.cell.script._exitSpot);
+            const app = window.app;
+            const exit = app.findWorldObject('pr_door_cell').instances.filter(Boolean)
+                .find((i) => i.params && i.params.mode === 'exit');
+            app.activeMode.player.position.copyFrom(
+                exit.position.add(new BABYLON.Vector3(0.8, -0.9, 0)));
         });
-        await h.waitFor(() => window.app.activeMode.insideCell === false, null, 20000);
+        await h.waitFor(() => window.app.worldStack.length === 0, null, 20000);
+        await h.waitFrames(8);
+        // The swap rebuilt every parent instance: re-capture the references
+        // (quest progress survived in the instances' mirrored params).
+        await h.evaluate(() => {
+            const app = window.app;
+            const live = (n) => app.findWorldObject(n).instances.filter(Boolean);
+            const quests = live('l_quest');
+            const C = window.__C;
+            C.q1 = quests.find((q) => q.worldId === C.q1.worldId);
+            C.q2 = quests.find((q) => q.worldId === C.q2.worldId);
+            C.q3 = quests.find((q) => q.worldId === C.q3.worldId);
+            C.door = live('pr_door')[0];
+            C.race = live('l_race')[0];
+            C.gate = live('l_trigger').find((t) => (t.wires || []).length === 2);
+            C.board = live('l_scoreboard')[0];
+        });
 
         // --- 5. M3: a lap at the gate -> +50, scoreboard, camera cut ---
         await h.evaluate(() => {
