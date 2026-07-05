@@ -1261,13 +1261,17 @@ class PlayMode {
     // (the dodge-velocity pattern). frames controls the throw distance.
     launchPlayer(dir, height, speed, frames) {
         if (!this.cc || this.driving || this.grinding) return;
-        this.bouncePlayer(height || 12);
         const d = dir.clone(); d.y = 0;
-        if (d.lengthSquared() > 0.0001) {
-            d.normalize();
-            this._launchVel = d.scale((speed || 0.6));
-            this._launchFrames = frames || 26;
-        }
+        if (d.lengthSquared() < 0.0001) return;
+        d.normalize();
+        // A single per-frame impulse carrying BOTH forward throw and an upward
+        // kick, applied via moveWithCollisions and eased out at 0.94/frame
+        // (the dodge-velocity path). Grounded-independent -- the player can be
+        // mid-air over the barrel -- and the CC's own gravity supplies the
+        // downward half of the arc, so the throw reads as a real launch.
+        this._launchVel = d.scale(speed || 0.6);
+        this._launchVel.y = (height || 12) * 0.06;
+        this._launchFrames = frames || 26;
     }
 
     // ---- drop-in buddy (local 2P v1) ------------------------------------------

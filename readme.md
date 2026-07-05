@@ -248,7 +248,9 @@ they're yours to play anywhere, like every figure you own. Its sequel, **Nightfa
 the arena for a dramatic camera reveal, fight the crowned titan through all
 three of its phases while reinforcements pour in, and depose it to swing
 the loot vault open. A **★ FEATURED** pick rotates daily at the top of the
-list. For a longer quest, **The Locked Depths** is a key-and-lock dungeon (dodge across a lava
+list. For a longer quest, **Skybreak Run** is a cannon-jump course over the void (fire between
+floating islands, smash breakable walls for hidden treasure, and blast up
+to the vault), **The Locked Depths** is a key-and-lock dungeon (dodge across a lava
 channel for the gold key, slip past the sentry for the silver, and unlock
 the vault — checkpoints keep a misstep cheap), and **Aether Ruins** is a
 three-stage adventure —

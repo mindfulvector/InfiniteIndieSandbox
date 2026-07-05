@@ -46,6 +46,10 @@ class CannonScript {
     }
 
     update(isPlayMode, mode) {
+        // The barrel is intangible so the launch isn't stopped by its own
+        // prims (you step in and fly out); the platform under it holds you up.
+        this.inst.checkCollisions = false;
+        (this.inst.getChildMeshes ? this.inst.getChildMeshes() : []).forEach((m) => { m.checkCollisions = false; });
         if (!isPlayMode || !mode || !mode.player) return;
         if (this._cool > 0) { this._cool--; return; }
         if (mode.driving || mode.grinding) return;
@@ -55,9 +59,6 @@ class CannonScript {
             const fwd = this._forward();
             const power = this.getParam('power') || 14;
             const reach = this.getParam('reach') || 26;
-            // Pop the player to the muzzle first so the barrel's own prims
-            // don't block the shot, then fling them along the barrel.
-            mode.player.position.copyFrom(p.add(fwd.scale(1.8)).add(new BABYLON.Vector3(0, 1.0, 0)));
             // Distance param scales both the forward speed and the flight time.
             mode.launchPlayer(fwd, power, 0.35 + reach * 0.012, Math.round(reach * 0.9));
             this._cool = 45;

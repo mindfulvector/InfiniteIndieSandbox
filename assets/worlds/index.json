@@ -67,6 +67,11 @@
       "file": "locked-depths.json",
       "name": "The Locked Depths",
       "desc": "A key-and-lock dungeon: cross the lava for the gold key, slip past the sentry for the silver, unlock the vault \u2014 checkpoints throughout"
+    },
+    {
+      "file": "skybreak-run.json",
+      "name": "Skybreak Run",
+      "desc": "A cannon-jump course over the void: fire between islands, smash breakable walls for secrets, and blast up to the vault"
     }
   ]
 }
