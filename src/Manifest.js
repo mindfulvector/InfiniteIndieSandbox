@@ -216,6 +216,15 @@ class Manifest {
                   ]
         }, 'ConveyorScript');
 
+        // A rotating platform: a solid disc that spins and carries its rider
+        // around the pivot (see SpinnerScript). Disc + an off-centre marker.
+        app.createWorldObject('t_spinner', {
+            prims: [
+                     {ty: 'cylinder', s: [5, 0.4, 5], p: [0, 0, 0],    col: [0.4, 0.42, 0.5], tex: {id: 'marble', w: 3, h: 3}},
+                     {ty: 'box',      s: [0.6, 0.15, 3], p: [0, 0.24, 1.2], col: [0.9, 0.75, 0.3]},
+                  ]
+        }, 'SpinnerScript');
+
         app.createWorldObject('l_fan', {
             prims: [
                      {ty: 'box',       s: [2,4,2], p: [0,0,0]},
