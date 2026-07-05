@@ -4,7 +4,9 @@ class SandboxWorld {
     }
 
     // Compact world snapshot: the same structure the save slots store, also
-    // wrapped by App.exportWorld for shareable world files.
+    // wrapped by App.exportWorld for shareable world files. Portal-door
+    // sub-levels ride along in `subWorlds` (name -> nested snapshot, each of
+    // which may carry its own subWorlds -- worlds nest recursively).
     serialize() {
         let saveData = {
             'objects': [],
@@ -12,6 +14,9 @@ class SandboxWorld {
         this.app.BuildableObjectList.forEach((woObject) => {
             saveData.objects = saveData.objects.concat(woObject.getAllInstanceData());
         });
+        if (this.app.subWorlds && Object.keys(this.app.subWorlds).length > 0) {
+            saveData.subWorlds = this.app.subWorlds;
+        }
         return saveData;
     }
 
@@ -34,8 +39,10 @@ class SandboxWorld {
 
     // Named world saves: the player-facing replacement for numbered slots
     // (numbered slots remain for character PROGRESSION; worlds get names).
+    // Saving folds the whole portal-door ancestry (rootWorldData), so saving
+    // from INSIDE a sub-level still stores the complete root world.
     saveNamed(name) {
-        const saveData = this.serialize();
+        const saveData = this.app.rootWorldData ? this.app.rootWorldData() : this.serialize();
         window.localStorage.setItem('iis_world_' + name, JSON.stringify(saveData));
         return saveData.objects.length;
     }
@@ -45,6 +52,7 @@ class SandboxWorld {
         try { saveData = JSON.parse(window.localStorage.getItem('iis_world_' + name)); }
         catch (e) { return false; }
         if (!saveData) return false;
+        this.app.worldStack = [];   // a fresh root world: no portal ancestry
         return this.loadFromData(saveData);
     }
 
@@ -65,6 +73,7 @@ class SandboxWorld {
             return false;
         }
         console.log('[loadFromSlot] :saveData', saveData);
+        this.app.worldStack = [];   // a fresh root world: no portal ancestry
         return this.loadFromData(saveData);
     }
 
@@ -74,6 +83,9 @@ class SandboxWorld {
     loadFromData(saveData) {
         const app = this.app;
         this.clearWorld();
+        // The loaded world's own sub-levels become the active set (an empty
+        // map when the save predates portal doors).
+        app.subWorlds = saveData.subWorlds || {};
         let loadedObjectCount = 0;
 
         (saveData.objects || []).forEach((instData) => {
@@ -363,7 +375,9 @@ class SandboxWorld {
         this._place('d_chair', -20.6, 1.225, -1.4);   // legs reach -0.55
         this._place('d_lamp', -21.2, 0.705, 0.4);     // base reaches -0.03
         this._place('d_rug', -19.6, 0.7, -1.2);       // slab reaches -0.025
-        const cellDoor = this._place('pr_door_cell', -21.3, 2.0, -0.2, null, Math.PI / 2);
+        // The homestead's portal door ships pre-named, so stepping through
+        // creates its "Homestead Interior" sub-level without prompting.
+        const cellDoor = this._place('pr_door_cell', -21.3, 2.0, -0.2, { world: 'Homestead Interior' }, Math.PI / 2);
 
         // --- "Tour the Park" quest: visit the yard, finish the climb, step
         // inside the homestead's pocket room. Three distinct sources -> 25 px.

@@ -162,6 +162,11 @@ class App {
         const app = this;
         this.toastyTimer = 0;
         this.world = null;
+        // Portal doors: the active world's named sub-levels (name -> world
+        // snapshot) and the ancestry of worlds the player is standing inside
+        // (see enterSubWorld / exitSubWorld).
+        this.subWorlds = {};
+        this.worldStack = [];
         this.menu = {
             state: 0,               // no menu displayed
             renderedState: 0,       // if the two numbers are different we need to update the menu
@@ -389,7 +394,9 @@ class App {
             this.scene.render();
             this.update();
 
-            if(this.menu.state == MENU_HUD) {
+            // The in-game text field freezes the world while it's open --
+            // typing WASD must never walk the player or drive build keys.
+            if(this.menu.state == MENU_HUD && !this.textEntryOpen) {
                 if(null != this.activeMode) {
                     this.activeMode.update();
                 }
@@ -1084,6 +1091,9 @@ class App {
     // display name (e.g. 'Door', 'Cube 1x1') for the selected-object readout.
     prettyName(name) {
         if(!name) return '';
+        // Display-name overrides where the derived name misleads (the object
+        // id stays stable for save compatibility).
+        if(name === 'pr_door_cell') return 'Portal Door';
         let n = name.replace(/^(t|pr|al|cp|d|l)_/, '').replace(/_/g, ' ');
         return n.replace(/\b\w/g, (c) => c.toUpperCase());
     }
@@ -1291,6 +1301,9 @@ class App {
 
     // System-wide updates such as starting and existing particular modes
     update() {
+        // While the text field is open it owns the keyboard entirely.
+        if(this.textEntryOpen) return;
+
         if(this.keyPressed('ESCAPE')) {
             if(this.menu.state == MENU_HUD) {
                 if(null != this.activeMode) {
@@ -1528,9 +1541,16 @@ class App {
             const kinds = { 1: 'rolling', 2: 'flat', 3: 'arena', 4: 'islands', 5: 'hub' };
             if(menuItem === 0) {
                 app.menu.state = app.menu.prevState || MENU_MAIN;
+            } else if(menuItem === 9) {
+                // Session start includes picking who's playing: jump to the
+                // progression-slot picker and come back here.
+                app.menu.prevState = MENU_WORLD_TEMPLATE;
+                app.menu.state = MENU_SLOT;
             } else if(kinds[menuItem]) {
                 app.menu.state = MENU_HUD;
                 app.world = new SandboxWorld(app);
+                app.worldStack = [];
+                app.subWorlds = {};
                 app.world.clearWorld();
                 app.world.buildTemplate(kinds[menuItem]);
                 app.goto_playMode();
@@ -1591,11 +1611,15 @@ class App {
         case MENU_LOAD:
             if(menuItem == 0) {
                 app.menu.state = app.menu.prevState;
+            } else if(menuItem == 9) {
+                // Pick the progression slot as part of starting the session.
+                app.menu.prevState = MENU_LOAD;
+                app.menu.state = MENU_SLOT;
             } else {
                 if(!app.world) {
                     app.world = new SandboxWorld(app);
                 }
-                const nm = app.namedWorlds()[menuItem - 1];
+                const nm = app.namedWorlds().slice(0, 8)[menuItem - 1];
                 app.currentWorldFile = null;   // named saves are sandbox worlds
                 if(nm && app.world.loadNamed(nm)) {
                     app.toasty('Loaded "' + nm + '".');
@@ -2113,6 +2137,16 @@ class App {
                             handler: () => { app.triggerMenuItem(this.menu.state, n); }
                         });
                     });
+                    // Loading starts a session: show which progression slot
+                    // is playing and offer the switch right here.
+                    if (!saving) {
+                        this.MenuItem({
+                            type: 'button',
+                            name: 'btnLoadSlot',
+                            text: '9. Progression Slot  (slot ' + (this.saveSlot || 1) + ' active)',
+                            handler: () => { app.triggerMenuItem(MENU_LOAD, 9); }
+                        });
+                    }
                 }
 
                 this.MenuItem({
@@ -2449,6 +2483,14 @@ class App {
                         text: t.label,
                         handler: () => { app.triggerMenuItem(MENU_WORLD_TEMPLATE, t.n); }
                     });
+                });
+                // Starting a session includes choosing WHO is playing: show
+                // the active progression slot and offer the switch here.
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnTplSlot',
+                    text: '9. Progression Slot  (slot ' + (this.saveSlot || 1) + ' active)',
+                    handler: () => { app.triggerMenuItem(MENU_WORLD_TEMPLATE, 9); }
                 });
                 this.MenuItem({
                     type: 'button',
@@ -3079,6 +3121,60 @@ class App {
         this.toasty('Progression slot ' + n + ' active.');
     }
 
+    // ---- portal doors: nested sub-worlds -----------------------------------
+    // A portal door leads to a NAMED sub-level stored INSIDE its parent
+    // world's save (Disney-Infinity style: the door's level lives in the
+    // world that owns the door). Entering swaps the whole scene to the
+    // sub-world; exiting swaps back and folds any edits into the parent.
+
+    // Swap into the named sub-level. `seed` furnishes it on first entry;
+    // `returnSpot`/`doorId` let the exit teleport the player back beside the
+    // door they came through. Returns true when the swap happened.
+    enterSubWorld(name, seed, returnSpot, doorId) {
+        if (!this.world || !name) return false;
+        if (!this.subWorlds[name]) this.subWorlds[name] = seed || { objects: [] };
+        const blob = this.subWorlds[name];
+        const frame = {
+            data: this.world.serialize(),          // embeds the current subWorlds
+            name: name,
+            doorId: doorId,
+            returnSpot: returnSpot ? { x: returnSpot.x, y: returnSpot.y, z: returnSpot.z } : null,
+            parentSpawn: this.world.spawnPoint ? this.world.spawnPoint.clone() : null,
+        };
+        this.worldStack.push(frame);
+        this.world.loadFromData(blob);             // also swaps this.subWorlds
+        return true;
+    }
+
+    // Swap back out to the parent world, folding the sub-level's current
+    // state (edits and all) into the parent's subWorlds map. Returns the
+    // popped stack frame (for the return teleport), or null at the root.
+    exitSubWorld() {
+        if (!this.worldStack.length || !this.world) return null;
+        const current = this.world.serialize();
+        const frame = this.worldStack.pop();
+        frame.data.subWorlds = frame.data.subWorlds || {};
+        frame.data.subWorlds[frame.name] = current;
+        this.world.loadFromData(frame.data);
+        if (frame.parentSpawn) this.world.spawnPoint = frame.parentSpawn;
+        return frame;
+    }
+
+    // The complete ROOT world snapshot regardless of where the player is
+    // standing: the current world folded up through every stacked ancestor.
+    // Used by saves/exports so they always capture the whole world tree.
+    rootWorldData() {
+        if (!this.world) return null;
+        let cur = this.world.serialize();
+        for (let i = this.worldStack.length - 1; i >= 0; i--) {
+            const parent = JSON.parse(JSON.stringify(this.worldStack[i].data));
+            parent.subWorlds = parent.subWorlds || {};
+            parent.subWorlds[this.worldStack[i].name] = cur;
+            cur = parent;
+        }
+        return cur;
+    }
+
     // Every named world in storage, sorted.
     namedWorlds() {
         const out = [];
@@ -3101,8 +3197,10 @@ class App {
         window.localStorage.setItem('iis_worlds_migrated', '1');
     }
 
-    // Ask the player for a short text (world names). Tests inject via
-    // app.testPromptValue; browsers fall back to window.prompt.
+    // Ask the player for a short text (world names, sub-level names, builder
+    // requests, co-op codes...). Tests inject via app.testPromptValue;
+    // otherwise the styled in-game text field opens (showTextEntry). The
+    // callback receives the string, or null when cancelled.
     promptText(label, def, cb) {
         if (this.testPromptValue !== undefined) {
             const v = this.testPromptValue;
@@ -3110,9 +3208,108 @@ class App {
             cb(v);
             return;
         }
-        let v = null;
-        try { v = window.prompt(label, def || ''); } catch (e) { v = null; }
-        cb(v);
+        this.showTextEntry(label, def, cb);
+    }
+
+    // ---- in-game text entry ---------------------------------------------------
+    // A reusable modal text field styled like the rest of the HUD. While it
+    // is open the whole game freezes (the render loop skips mode updates and
+    // the CharacterController stops), so typing WASD doesn't walk the player.
+    // Enter confirms, Escape cancels; tests drive app._textEntry directly.
+    showTextEntry(label, def, cb) {
+        if (this._textEntry) { cb(null); return; }   // one modal at a time
+        const A = BABYLON.GUI.Control;
+
+        // Freeze gameplay input for the duration.
+        this.textEntryOpen = true;
+        const pm = this.activeMode;
+        const pausedCC = !!(pm && pm.cc && pm.constructor.name === 'PlayMode');
+        if (pausedCC) pm.cc.stop();
+
+        const blocker = new BABYLON.GUI.Rectangle('textEntryBlocker');
+        blocker.width = 1; blocker.height = 1;
+        blocker.background = 'rgba(4, 6, 16, 0.55)';
+        blocker.thickness = 0;
+        blocker.isPointerBlocker = true;
+        this.gui.addControl(blocker);
+
+        const panel = new BABYLON.GUI.Rectangle('textEntryPanel');
+        panel.width = '440px'; panel.height = '200px';
+        panel.cornerRadius = 12;
+        panel.thickness = 1;
+        panel.color = HUD_ACCENT;
+        panel.background = 'rgba(10, 16, 34, 0.95)';
+        blocker.addControl(panel);
+
+        const stack = new BABYLON.GUI.StackPanel('textEntryStack');
+        stack.width = '400px';
+        panel.addControl(stack);
+
+        const title = new BABYLON.GUI.TextBlock('textEntryLabel', label || 'Enter text:');
+        title.height = '44px';
+        title.color = '#eaf2ff';
+        title.fontSize = 18;
+        title.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        stack.addControl(title);
+
+        const input = new BABYLON.GUI.InputText('textEntryInput', def || '');
+        input.width = '400px'; input.height = '46px';
+        input.maxWidth = '400px';
+        input.color = '#ffffff';
+        input.fontSize = 17;
+        input.background = 'rgba(36, 58, 92, 0.55)';
+        input.focusedBackground = 'rgba(46, 74, 118, 0.75)';
+        input.thickness = 1;
+        input.focusedColor = HUD_ACCENT;
+        stack.addControl(input);
+
+        const row = new BABYLON.GUI.StackPanel('textEntryButtons');
+        row.isVertical = false;
+        row.height = '62px';
+        stack.addControl(row);
+        const mkBtn = (name, text, handler) => {
+            const b = BABYLON.GUI.Button.CreateSimpleButton(name, text);
+            b.width = '150px'; b.height = '42px';
+            b.color = '#eaf2ff'; b.fontSize = 16;
+            b.cornerRadius = 9; b.thickness = 1;
+            b.background = 'rgba(36, 58, 92, 0.55)';
+            b.paddingLeft = '10px'; b.paddingTop = '14px';
+            b.onPointerEnterObservable.add(() => { b.background = HUD_ACCENT; b.color = '#0b1018'; });
+            b.onPointerOutObservable.add(() => { b.background = 'rgba(36, 58, 92, 0.55)'; b.color = '#eaf2ff'; });
+            b.onPointerUpObservable.add(handler);
+            row.addControl(b);
+            return b;
+        };
+
+        const close = (value) => {
+            if (!this._textEntry) return;   // double-fire guard (Enter + click)
+            this._textEntry = null;
+            this.textEntryOpen = false;
+            blocker.dispose();
+            // Stale presses typed into the field must not fire game actions.
+            this.keysPressed = {};
+            if (pausedCC && pm.cc && this.activeMode === pm) pm.cc.start();
+            this.sound.play(value ? 'menu-select' : 'menu-move');
+            cb(value);
+        };
+        const confirm = () => {
+            const v = (input.text || '').trim();
+            close(v.length ? v : null);
+        };
+        mkBtn('textEntryOk', 'OK  (Enter)', confirm);
+        mkBtn('textEntryCancel', 'Cancel  (Esc)', () => close(null));
+
+        // Enter/Escape while typing.
+        if (input.onKeyboardEventProcessedObservable) {
+            input.onKeyboardEventProcessedObservable.add((evt) => {
+                if (evt.key === 'Enter') confirm();
+                else if (evt.key === 'Escape') close(null);
+            });
+        }
+        if (input.focus) input.focus();
+
+        this._textEntry = { blocker: blocker, input: input, confirm: confirm,
+            cancel: () => close(null) };
     }
 
     loadEconomy() {
@@ -3365,11 +3562,14 @@ class App {
             this.toasty('No world to export — start or load a game first.');
             return null;
         }
-        return JSON.stringify({
+        const data = this.rootWorldData();
+        const out = {
             format: 'iis-world',
             version: 1,
-            objects: this.world.serialize().objects,
-        });
+            objects: data.objects,
+        };
+        if (data.subWorlds) out.subWorlds = data.subWorlds;   // portal-door levels travel too
+        return JSON.stringify(out);
     }
 
     downloadWorld() {
@@ -3404,7 +3604,8 @@ class App {
             return false;
         }
         if (!this.world) this.world = new SandboxWorld(this);
-        this.world.loadFromData({ objects: payload.objects });
+        this.worldStack = [];   // imports are fresh root worlds
+        this.world.loadFromData({ objects: payload.objects, subWorlds: payload.subWorlds });
         // Co-op Play Sets flag themselves; PlayMode auto-joins P2 on entry.
         this.coopWorld = !!payload.coop;
         this.toasty(payload.coop ? 'Co-op world imported — grab a friend!' : 'World imported!');

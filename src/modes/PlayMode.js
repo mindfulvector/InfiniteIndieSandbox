@@ -23,9 +23,11 @@ class PlayMode {
         this.launcherCooldown = 0;
         this.juggleHits = 0;
 
-        // True while the player is inside a pocket interior (see
-        // CellDoorScript); the outdoor enemies freeze while it's set.
-        this.insideCell = false;
+        // A portal-door swap requested by PortalDoorScript this frame. The
+        // swap disposes and rebuilds EVERY instance, so it must never run
+        // from inside the script-update loop -- it executes at the top of
+        // the next update (the deferred-respawn lesson).
+        this.pendingPortal = null;
 
         // Figure special attack (V): each figure has a signature move with a
         // long shared cooldown (see specialAttack).
@@ -319,6 +321,14 @@ class PlayMode {
         if (this._pendingRespawn) {
             this._pendingRespawn = false;
             this.respawn();
+        }
+
+        // A portal-door swap requested last frame runs now, for the same
+        // reason: it disposes every instance in the scene.
+        if (this.pendingPortal) {
+            const req = this.pendingPortal;
+            this.pendingPortal = null;
+            this.doPortal(req);
         }
 
         // Photo mode: P freezes the whole world (nothing below this line
@@ -2311,6 +2321,94 @@ class PlayMode {
     // position -- returns true to negate the damage. Ordinary enemies don't.
     _enemyBlocks(inst, fromPos) {
         return !!(inst && inst.script && inst.script.blocksHit && inst.script.blocksHit(fromPos));
+    }
+
+    // ---- portal doors: world swaps -------------------------------------------
+
+    // Combat/effect state must not leak across a world swap: enemies,
+    // projectiles and homing pixels belong to the world they were made in.
+    _clearTransient() {
+        this.enemyManager.reset();
+        this.playerProjectiles.forEach((pr) => pr.mesh && pr.mesh.dispose());
+        this.playerProjectiles = [];
+        this.pixelBursts.forEach((pb) => pb.mesh && pb.mesh.dispose());
+        this.pixelBursts = [];
+        this.clearLockOn();
+        this.comboStage = 0;
+        this.comboTimer = 0;
+    }
+
+    // Move the player AND drag the follow camera by the same delta, so the
+    // view arrives with them instead of flying across the world.
+    _teleport(to) {
+        const delta = to.subtract(this.player.position);
+        this.player.position.copyFrom(to);
+        if (this.app.camera && this.app.camera.position) {
+            this.app.camera.position.addInPlace(delta);
+        }
+    }
+
+    // The current world's exit portal (a portal door in 'exit' mode).
+    _findExitDoor() {
+        const wo = this.app.findWorldObject('pr_door_cell');
+        if (!wo) return null;
+        return wo.instances.find((i) => i && i.params && i.params.mode === 'exit') || null;
+    }
+
+    // Execute a portal swap requested by PortalDoorScript. Runs from the top
+    // of update() only -- it rebuilds every instance in the scene.
+    doPortal(req) {
+        const app = this.app;
+        if (!this.player) return;
+
+        if (req.type === 'enter') {
+            if (!app.enterSubWorld(req.name, req.seed, this.player.position, req.doorId)) return;
+            this._clearTransient();
+            // Arrive in front of the sub-level's exit door. If the room was
+            // edited down to nothing, inject one -- never strand the player.
+            let exit = this._findExitDoor();
+            if (!exit) {
+                const wo = app.findWorldObject('pr_door_cell');
+                exit = wo ? wo.createInstance() : null;
+                if (exit) {
+                    exit.position = new BABYLON.Vector3(0, 1.5, 3.2);
+                    exit.params = Object.assign({}, exit.params, { mode: 'exit' });
+                }
+            }
+            const spawn = exit
+                ? (exit.getAbsolutePosition ? exit.getAbsolutePosition() : exit.position)
+                    .add(new BABYLON.Vector3(0, -0.9, -2.2))
+                : new BABYLON.Vector3(0, 1.5, 0);
+            this._teleport(spawn);
+            this.spawnPoint = spawn.clone();        // death inside respawns inside
+            app.world.spawnPoint = spawn.clone();   // mode switches keep the spot
+            this.app.sound.play('respawn');
+            app.toasty('Entering "' + req.name + '"...');
+        } else if (req.type === 'exit') {
+            const frame = app.exitSubWorld();
+            if (!frame) return;
+            this._clearTransient();
+            let out = frame.returnSpot
+                ? new BABYLON.Vector3(frame.returnSpot.x, frame.returnSpot.y, frame.returnSpot.z)
+                : (app.world.spawnPoint ? app.world.spawnPoint.clone() : new BABYLON.Vector3(0, 3, 0));
+            // The return spot was by definition beside the door -- push it
+            // clear so the doorway doesn't swallow the player again.
+            const door = app.findInstance('pr_door_cell', frame.doorId);
+            if (door) {
+                const dp = door.getAbsolutePosition ? door.getAbsolutePosition() : door.position;
+                const flat = new BABYLON.Vector3(out.x - dp.x, 0, out.z - dp.z);
+                if (flat.lengthSquared() < 2.56) {
+                    const dir = flat.lengthSquared() > 0.0001
+                        ? flat.normalize() : new BABYLON.Vector3(0, 0, -1);
+                    out = new BABYLON.Vector3(dp.x + dir.x * 2.6, out.y, dp.z + dir.z * 2.6);
+                }
+            }
+            this._teleport(out);
+            this.spawnPoint = (app.world.spawnPoint || out).clone();
+            if (door) app.fireEvent(door, 'exited');
+            this.app.sound.play('respawn');
+            app.toasty('Back to the world above.');
+        }
     }
 
     // A blocked hit: a pale flash + clang, no damage.

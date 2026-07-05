@@ -38,6 +38,24 @@ class QuestScript {
         this._done = new Set();    // 'wo#id' keys of step sources counted
         this._complete = false;
         this._wasPlay = null;
+        this._restored = false;    // lazy: params exist only after construction
+    }
+
+    // Quest progress survives portal-door world swaps: the live state mirrors
+    // into inst.params (which serialize with the instance) and restores here.
+    // Death/build-mode resets clear the mirror too, so run semantics hold.
+    _restoreOnce() {
+        if (this._restored) return;
+        this._restored = true;
+        const p = this.inst.params || {};
+        if (Array.isArray(p.qdone)) this._done = new Set(p.qdone);
+        if (p.qcomplete) this._complete = true;
+    }
+
+    _mirror() {
+        if (!this.inst.params) this.inst.params = {};
+        this.inst.params.qdone = [...this._done];
+        this.inst.params.qcomplete = this._complete;
     }
 
     getParam(key) {
@@ -51,18 +69,23 @@ class QuestScript {
     _rearm() {
         this._done = new Set();
         this._complete = false;
+        this._restored = true;   // a reset IS the state; don't resurrect params
+        this._mirror();
     }
 
     onInput(action, from) {
+        this._restoreOnce();
         if (action === 'reset') { this._rearm(); return; }
         if (action !== 'step' || this._complete) return;
         const id = from ? ((from.worldObject ? from.worldObject.name : '?') + '#' + from.worldId)
                         : ('anon#' + this._done.size);
         if (this._done.has(id)) return;
         this._done.add(id);
+        this._mirror();
         this.app.fireEvent(this.inst, 'progress');
         if (this._done.size >= this._need()) {
             this._complete = true;
+            this._mirror();
             const reward = this.getParam('reward') || 0;
             if (reward > 0) this.app.addPixels(reward);
             this.app.fireEvent(this.inst, 'complete');
@@ -75,6 +98,7 @@ class QuestScript {
     onPlayReset(mode) { this._rearm(); }
 
     update(isPlayMode, mode) {
+        this._restoreOnce();
         if (!isPlayMode) {
             if (this._wasPlay !== false) {
                 this._wasPlay = false;
