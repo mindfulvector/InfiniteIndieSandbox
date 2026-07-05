@@ -280,6 +280,57 @@ class BuildMode {
         this.app.sound.play('place');
     }
 
+    // Duplicate the highlighted object: build a fresh instance carrying the
+    // same rotation, scale and per-instance params (but NOT its wires -- a
+    // copy starts unwired, since wires point at specific instances), offset a
+    // little, and hand it to the normal move/place flow as the grabbed active
+    // instance. Space drops it.
+    duplicateSelected() {
+        if (typeof this.selection == 'undefined' || this.selection.length === 0) {
+            this.app.toasty('Move the cursor over an object first, then F to duplicate it.');
+            return;
+        }
+        const node = this.selection[0];
+        const wo = node.worldObject;
+        if (!wo) { this.app.toasty("That object can't be duplicated."); return; }
+        if (!this.app.isPurchased(wo.name)) {
+            this.app.toasty('Locked — buy ' + this.app.prettyName(wo.name) +
+                ' (' + this.app.priceOf(wo.name) + ' px) in the shop to copy it.');
+            return;
+        }
+
+        const instData = {
+            po: node.position.add(new BABYLON.Vector3(1.5, 0, 1.5)),
+            ro: node.rotationQuaternion ? node.rotationQuaternion.clone() : null,
+            sc: node.scaling ? node.scaling.clone() : null,
+            pr: node.params ? JSON.parse(JSON.stringify(node.params)) : {},
+        };
+        const copy = wo.createInstance(instData);
+        if (!copy) { this.app.toasty("Couldn't duplicate that object."); return; }
+        copy.checkCollisions = true;
+
+        // Become the active (grabbed) instance, reusing the move/place logic
+        // (mirror grabSelectedObject's field setup so move/rotate/scale work).
+        this.clearSelection();
+        this.cursor?.dispose();
+        this.cursor = null;
+        this.currentInstance = copy;
+        this.currentWorldObject = wo;
+        this.selectedObjectIndex = this.app.BuildableObjectList.indexOf(wo);
+        this.grabbed = true;
+        const bb = this.computeWorldBBox(copy);
+        this.targetPosition = bb
+            ? new BABYLON.Vector3(bb.center.x, bb.min.y, bb.center.z)
+            : copy.position.clone();
+        this.targetScale = copy.scaling.x;
+        this.initialScale = copy.scaling.x;
+        if (copy.rotationQuaternion) this.targetRotation = copy.rotationQuaternion.clone();
+        this.app.showBoundingBoxAll(copy, true);
+        this.frameCameraToInstance(copy);
+        this.app.sound.play('place');
+        this.app.toasty('Duplicated ' + this.app.prettyName(wo.name) + ' — move it and Space to place.');
+    }
+
     // Pick up the object currently highlighted by the cursor so it can be moved.
     // It becomes the active instance and reuses the normal move/rotate/scale and
     // base-align/camera logic; Space drops it back into the world.
@@ -575,6 +626,13 @@ class BuildMode {
             this.deleteAction();
         }
 
+        // F duplicates the highlighted object: a fresh copy (same rotation,
+        // scale and settings) is grabbed for placement, so you can stamp out
+        // rows of a configured object without re-browsing or re-tuning it.
+        if (!this.currentInstance && this.app.keyPressed('F')) {
+            this.duplicateSelected();
+        }
+
         // Space (in cursor mode, over a highlighted object) grabs it to move
         // it -- the same key that places, so building flows on one thumb.
         // Shift+Space opens the highlighted object's properties instead.
@@ -624,12 +682,16 @@ class BuildMode {
             // (Cursor-mode Space is handled above: grab, or Shift+Space for
             // properties.)
 
-            // Rotate through color gradient for cursor
-            this.cursorMatIndex += 1;
-            if(this.cursorMatIndex >= 100) {
-                this.cursorMatIndex = 0;
+            // Rotate through color gradient for cursor. (Guard the cursor:
+            // in cursor mode it's normally present, but a just-placed grab or
+            // duplicate can leave a one-frame gap before it's rebuilt below.)
+            if (this.cursor) {
+                this.cursorMatIndex += 1;
+                if(this.cursorMatIndex >= 100) {
+                    this.cursorMatIndex = 0;
+                }
+                this.cursor.material = this.cursorMats[this.cursorMatIndex];
             }
-            this.cursor.material = this.cursorMats[this.cursorMatIndex];
         }
 
         if (objectChanged) {
