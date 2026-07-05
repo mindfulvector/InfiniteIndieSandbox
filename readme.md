@@ -335,6 +335,11 @@ give them the same color, and the lock stays shut until you've grabbed the
 key — then walking into it opens the way (the key is used up). Wire several
 keys and locks by color for a proper dungeon.
 
+**Barrel cannons:** drop a **Cannon** (Props), rotate it to aim, and step
+in — it flings you in a big arc the way it points. Tune its power and
+distance to clear a chasm or reach a high ledge, and wire its *Fired*
+event to whatever should happen when you launch.
+
 **Wind & updrafts:** drop a **Fan** zone (Logic) and set its direction —
 an **up** fan lifts you up a shaft to a high ledge (no ladder needed), a
 sideways fan blows you across a gap. Wire it on/off from a switch, or

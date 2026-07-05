@@ -1255,6 +1255,21 @@ class PlayMode {
         this._bounceRestore = 30;
     }
 
+    // A cannon / launch pad: fling the player along `dir` (a normalised
+    // horizontal vector) with a ballistic arc -- the trampoline's CC-jump
+    // borrow for height, plus a decaying horizontal impulse applied per frame
+    // (the dodge-velocity pattern). frames controls the throw distance.
+    launchPlayer(dir, height, speed, frames) {
+        if (!this.cc || this.driving || this.grinding) return;
+        this.bouncePlayer(height || 12);
+        const d = dir.clone(); d.y = 0;
+        if (d.lengthSquared() > 0.0001) {
+            d.normalize();
+            this._launchVel = d.scale((speed || 0.6));
+            this._launchFrames = frames || 26;
+        }
+    }
+
     // ---- drop-in buddy (local 2P v1) ------------------------------------------
     // The buddy is a friendly bipedal rig (the walker builder in a fixed
     // friendly green) on the enemy-shared GravityBody -- deliberately NOT a
@@ -1784,6 +1799,14 @@ class PlayMode {
     }
 
     updateDodge() {
+        // A cannon launch's horizontal impulse rides here too (also per-frame,
+        // moveWithCollisions), decaying so it eases out rather than stopping dead.
+        if (this._launchFrames > 0 && this._launchVel && this.player &&
+                !this.driving && !this.grinding) {
+            this._launchFrames--;
+            this.player.moveWithCollisions(this._launchVel);
+            this._launchVel.scaleInPlace(0.94);
+        }
         if (this.dodgeFrames <= 0) return;
         this.dodgeFrames--;
         if (this.dodgeVel) this.player.moveWithCollisions(this.dodgeVel);

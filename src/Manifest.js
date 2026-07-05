@@ -143,6 +143,16 @@ class Manifest {
                   ]
         }, 'BreakableScript');
 
+        // A barrel cannon: step in and it launches the player along the way
+        // it faces (rotate to aim). See CannonScript + PlayMode.launchPlayer.
+        app.createWorldObject('pr_cannon', {
+            prims: [
+                     {ty: 'cylinder', s: [1.3, 0.8, 1.3], p: [0, -0.4, 0], col: [0.3, 0.3, 0.35], tex: {id: 'marble'}},
+                     {ty: 'cylinder', s: [0.9, 1.6, 0.9], p: [0, 0.4, 0.5], col: [0.5, 0.4, 0.2], tex: {id: 'wood', s: 40}},
+                     {ty: 'cylinder', s: [0.55, 0.3, 0.55], p: [0, 0.4, 1.3], col: [0.2, 0.2, 0.22], tex: {id: 'marble'}},
+                  ]
+        }, 'CannonScript');
+
         app.createWorldObject('l_hazard', {
             prims: [
                      {ty: 'box',       s: [2,1,2], p: [0,0,0]},
