@@ -55,7 +55,7 @@ class BuildMode {
             if (pi.type !== BABYLON.PointerEventTypes.POINTERTAP) return;
             if (this.currentInstance) return;   // placement mode keeps its keys
             const inst = this._instanceFromMesh(pi.pickInfo && pi.pickInfo.pickedMesh);
-            if (inst) this.selectInstance(inst);
+            if (inst) this.selectInstance(inst, !!(pi.event && pi.event.shiftKey));
         });
 
         // The left sidebar object list (see _refreshSidebar).
@@ -255,17 +255,32 @@ class BuildMode {
 
     // Put the cursor on an instance and make it the selection (mouse path;
     // the WASD cursor rebuilds the selection on its next move as usual).
-    selectInstance(inst) {
-        this.targetPosition = inst.position.clone();
+    // With `additive` (shift-click) the instance is TOGGLED into a multi-
+    // selection instead of replacing it -- shift-click a run of objects,
+    // then Delete or F acts on the whole group.
+    selectInstance(inst, additive) {
+        if (typeof this.selection == 'undefined') this.selection = [];
+        if (additive) {
+            const idx = this.selection.indexOf(inst);
+            if (idx >= 0) {
+                this.selection.splice(idx, 1);
+                this.app.showBoundingBoxAll(inst, false);
+            } else {
+                this.selection.push(inst);
+                this.app.showBoundingBoxAll(inst, true);
+            }
+        } else {
+            this.selection.forEach((s) => this.app.showBoundingBoxAll(s, false));
+            this.selection = [inst];
+            this.app.showBoundingBoxAll(inst, true);
+        }
+        // Anchor the cursor on the most-recently-touched instance.
+        const anchor = this.selection.length ? this.selection[this.selection.length - 1] : inst;
+        this.targetPosition = anchor.position.clone();
         if (this.cursor) {
-            this.cursor.position = this.targetPosition.clone();
+            this.cursor.position = anchor.position.clone();
             this.cursor.computeWorldMatrix();
         }
-        if (typeof this.selection != 'undefined') {
-            this.selection.forEach((s) => this.app.showBoundingBoxAll(s, false));
-        }
-        this.selection = [inst];
-        this.app.showBoundingBoxAll(inst, true);
     }
 
     // Commit the current instance into the world: hide its highlight, record it
@@ -281,6 +296,23 @@ class BuildMode {
         this.app.sound.play('place');
     }
 
+    // Build a fresh instance of `node` offset a little, carrying its
+    // rotation, scale and params (but NOT wires -- a copy starts unwired).
+    // Registered on the placed/undo stacks and shared to linked builders.
+    _copyInstance(node) {
+        const wo = node.worldObject;
+        if (!wo) return null;
+        const inst = wo.createInstance({
+            po: node.position.add(new BABYLON.Vector3(1.5, 0, 1.5)),
+            ro: node.rotationQuaternion ? node.rotationQuaternion.clone() : null,
+            sc: node.scaling ? node.scaling.clone() : null,
+            pr: node.params ? JSON.parse(JSON.stringify(node.params)) : {},
+        });
+        if (!inst) return null;
+        inst.checkCollisions = true;
+        return inst;
+    }
+
     // Duplicate the highlighted object: build a fresh instance carrying the
     // same rotation, scale and per-instance params (but NOT its wires -- a
     // copy starts unwired, since wires point at specific instances), offset a
@@ -291,6 +323,29 @@ class BuildMode {
             this.app.toasty('Move the cursor over an object first, then F to duplicate it.');
             return;
         }
+        // A multi-selection duplicates as a GROUP: copy each object in place
+        // (offset), then re-select the copies (no grab -- you'd need a group
+        // move for that, which the WASD cursor doesn't do yet).
+        if (this.selection.length > 1) {
+            const copies = [];
+            this.selection.slice().forEach((n) => {
+                if (n.worldObject && this.app.isPurchased(n.worldObject.name)) {
+                    const c = this._copyInstance(n);
+                    if (c) {
+                        this.placedInstances.push({ wo: n.worldObject, inst: c });
+                        if (this.app.net && !this.app.net.closed) this.app.net.sendAdd(c);
+                        copies.push(c);
+                    }
+                }
+            });
+            this.selection.forEach((s) => this.app.showBoundingBoxAll(s, false));
+            this.selection = copies;
+            copies.forEach((c) => this.app.showBoundingBoxAll(c, true));
+            this.app.sound.play('place');
+            this.app.toasty('Duplicated ' + copies.length + ' objects.');
+            return;
+        }
+
         const node = this.selection[0];
         const wo = node.worldObject;
         if (!wo) { this.app.toasty("That object can't be duplicated."); return; }
@@ -300,15 +355,8 @@ class BuildMode {
             return;
         }
 
-        const instData = {
-            po: node.position.add(new BABYLON.Vector3(1.5, 0, 1.5)),
-            ro: node.rotationQuaternion ? node.rotationQuaternion.clone() : null,
-            sc: node.scaling ? node.scaling.clone() : null,
-            pr: node.params ? JSON.parse(JSON.stringify(node.params)) : {},
-        };
-        const copy = wo.createInstance(instData);
+        const copy = this._copyInstance(node);
         if (!copy) { this.app.toasty("Couldn't duplicate that object."); return; }
-        copy.checkCollisions = true;
 
         // Become the active (grabbed) instance, reusing the move/place logic
         // (mirror grabSelectedObject's field setup so move/rotate/scale work).
