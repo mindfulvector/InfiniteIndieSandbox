@@ -48,6 +48,11 @@
       "file": "skyward-steps.json",
       "name": "Skyward Steps",
       "desc": "A puzzle-platformer: jump the gaps, ride the trampoline to the sky-ledge, grab the star, and the gate opens the vault"
+    },
+    {
+      "file": "tidewater-run.json",
+      "name": "Tidewater Run",
+      "desc": "A boat voyage: cast off, sail the lake through three ring gates past bobbing barrels, and loot the treasure island"
     }
   ]
 }
