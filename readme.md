@@ -391,6 +391,11 @@ walk into it — its flag raises and it becomes your respawn point, so
 dying sends you back there instead of all the way to the start. Touch a
 later one and it takes over. Great for long platformers and dungeons.
 
+**Defeat streaks:** chain enemy kills without getting hit and your **pixel
+multiplier** climbs (3 in a row = 1.5x, 6 = 2x, 10 = 3x) — dodging and
+blocking keep the chain alive, only a solid hit breaks it. Clean, aggressive
+play pays out.
+
 **Power-ups:** grab a **Power-up** (Pickups) for a few seconds of an edge —
 **Power** doubles your damage, **Shield** makes you invincible. Scatter
 them through a tough fight, or wire their *Collected* event to a counter.

@@ -559,6 +559,7 @@ class EnemyManager {
         const pos = e.mesh.position.add(new BABYLON.Vector3(0, e.kind === 'walker' ? 1 : 0, 0));
         this.spawnFlash(pos, e.color, 14);
         this.pm.spawnPixelBurst(pos, 12);          // reuse PlayMode's collectable pixels
+        if (this.pm.notchDefeat) this.pm.notchDefeat(pos);   // extend the defeat streak
         this.app.addXp(e.kind === 'walker' ? 8 : 5);   // walkers are tougher -> more XP
         e.mesh.dispose(false, false);              // recurse to child body parts; keep shared materials
         this.enemies.splice(index, 1);

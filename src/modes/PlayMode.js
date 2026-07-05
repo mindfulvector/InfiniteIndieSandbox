@@ -75,6 +75,12 @@ class PlayMode {
         this.blockMesh = null;      // translucent shield shown while guarding
         this.blockedHits = 0;       // lifetime counters (asserted by tests)
         this.dodgedHits = 0;
+        // Defeat streak: chaining kills without taking a hit raises a pixel
+        // multiplier. Dodging/blocking keeps it; getting hit (or a timeout)
+        // breaks it. See notchDefeat / streakMult.
+        this._streak = 0;
+        this._streakTimer = 0;
+        this._bestStreak = 0;
         this.dodgeCount = 0;
         this.dodgeFrames = 0;       // frames left of the active roll (i-frames)
         this.dodgeCooldown = 0;
@@ -368,6 +374,8 @@ class PlayMode {
         if (this.playerHp < this.playerMaxHp) {
             this.playerHp = Math.min(this.playerMaxHp, this.playerHp + 0.04);
         }
+        // Defeat-streak window: let the chain lapse if you go too long between kills.
+        if (this._streakTimer > 0 && --this._streakTimer <= 0) this.resetStreak();
     }
 
     renderUI() {
@@ -2157,6 +2165,35 @@ class PlayMode {
         this._powerTimer = frames || 300;
     }
 
+    // The current pixel multiplier for the defeat streak. Tiers reward
+    // sustained aggression without getting hit.
+    streakMult() {
+        const s = this._streak;
+        if (s >= 10) return 3;
+        if (s >= 6)  return 2;
+        if (s >= 3)  return 1.5;
+        return 1;
+    }
+
+    // Register an enemy defeat: extend the streak, refresh its window, and
+    // drop BONUS pixels scaled by the multiplier (on top of the base reward
+    // the defeat already spawned). Every defeat path funnels through here.
+    notchDefeat(pos) {
+        const prevMult = this.streakMult();
+        this._streak++;
+        this._streakTimer = 240;   // ~4s to land the next kill or lose the chain
+        if (this._streak > this._bestStreak) this._bestStreak = this._streak;
+        const mult = this.streakMult();
+        if (mult > 1 && pos) {
+            const bonus = Math.round(10 * (mult - 1));   // +5 / +10 / +20 pixels
+            if (bonus > 0) this.spawnPixelBurst(pos, bonus);
+        }
+        if (mult > prevMult) this.app.toasty('Streak x' + this._streak + '  —  ' + mult + 'x pixels!');
+    }
+
+    // Break the streak (a hit landed, a death, or the window lapsed).
+    resetStreak() { this._streak = 0; this._streakTimer = 0; }
+
     damagePlayer(amount, sourcePos) {
         if (this.hurtCooldown > 0) return;
         // Shield power-up: invulnerable while it lasts.
@@ -2202,6 +2239,7 @@ class PlayMode {
         }
         this.playerHp -= amount;
         this.hurtCooldown = 15;
+        this.resetStreak();   // a hit that actually lands breaks the chain
         if (this.playerHp <= 0) {
             this.playerHp = 0;
             this._pendingRespawn = true;
@@ -2213,6 +2251,7 @@ class PlayMode {
 
     respawn() {
         this.app.sound.play('respawn');
+        this.resetStreak();                       // death breaks the chain
         if (this.driving) this.dismountKart();   // death mid-drive: on foot first
         this.endGrind();                          // death mid-grind: off the rail
         // The whole party comes back with P1, healthy and at their side.
@@ -2287,6 +2326,10 @@ class PlayMode {
     defeatEnemy(inst, wo) {
         inst.defeated = true;
         this.app.sound.play('enemy-defeat');
+        // Every placed-enemy defeat (scripted onDefeated included) notches the
+        // streak before rewards are handed out.
+        const dpos = (inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position).clone();
+        this.notchDefeat(dpos);
         // Scripted enemies (the boss) own their defeat: rewards, wiring
         // events, and a RESETTABLE hide instead of disposal.
         if (inst.script && inst.script.onDefeated) {
