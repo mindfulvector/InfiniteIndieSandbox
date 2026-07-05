@@ -582,9 +582,12 @@ class PlayMode {
                         to.scaleInPlace(1 / d);
                         if (to.x * dir.x + to.z * dir.z < COS_HALF) return;
                     }
-                    inst.hp -= dmg;
+                    if (this._enemyBlocks(inst, p)) { this._clang(inst); }
+                    else {
+                        inst.hp -= dmg;
+                        if (inst.hp <= 0) this.defeatEnemy(inst, wo);
+                    }
                     hits++;
-                    if (inst.hp <= 0) this.defeatEnemy(inst, wo);
                 }
             });
         });
@@ -621,8 +624,11 @@ class PlayMode {
                         to.scaleInPlace(1 / d);
                         if (to.x * dir.x + to.z * dir.z < 0.34) return;
                     }
-                    inst.hp -= dmg;
-                    if (inst.hp <= 0) this.defeatEnemy(inst, wo);
+                    if (this._enemyBlocks(inst, p)) { this._clang(inst); }
+                    else {
+                        inst.hp -= dmg;
+                        if (inst.hp <= 0) this.defeatEnemy(inst, wo);
+                    }
                 }
             });
         });
@@ -687,8 +693,11 @@ class PlayMode {
                         to.scaleInPlace(1 / d);
                         if (to.x * dir.x + to.z * dir.z < cosHalf) return;
                     }
-                    inst.hp -= dmg;
-                    if (inst.hp <= 0) this.defeatEnemy(inst, wo);
+                    if (this._enemyBlocks(inst, p)) { this._clang(inst); }
+                    else {
+                        inst.hp -= dmg;
+                        if (inst.hp <= 0) this.defeatEnemy(inst, wo);
+                    }
                 }
             });
         });
@@ -801,8 +810,11 @@ class PlayMode {
                         if (inst && inst.isEnemy && !inst.defeated) {
                             const ip = inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position;
                             if (BABYLON.Vector3.Distance(ip, pr.mesh.position) <= hitRange) {
-                                inst.hp -= dmg;
-                                if (inst.hp <= 0) this.defeatEnemy(inst, wo);
+                                if (this._enemyBlocks(inst, pr.mesh.position)) { this._clang(inst); }
+                                else {
+                                    inst.hp -= dmg;
+                                    if (inst.hp <= 0) this.defeatEnemy(inst, wo);
+                                }
                                 hit = true;
                                 break;
                             }
@@ -2254,6 +2266,22 @@ class PlayMode {
         this.app.toasty(loss > 0
             ? 'Overwhelmed! Lost ' + loss + ' pixels — the run resets...'
             : 'Overwhelmed! Respawning...');
+    }
+
+    // A scripted enemy (the shielder) can BLOCK a hit from a given attacker
+    // position -- returns true to negate the damage. Ordinary enemies don't.
+    _enemyBlocks(inst, fromPos) {
+        return !!(inst && inst.script && inst.script.blocksHit && inst.script.blocksHit(fromPos));
+    }
+
+    // A blocked hit: a pale flash + clang, no damage.
+    _clang(inst) {
+        const ip = inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position;
+        if (this.enemyManager && this.enemyManager.spawnFlash) {
+            this.enemyManager.spawnFlash(ip.add(new BABYLON.Vector3(0, 1, 0)),
+                new BABYLON.Color3(0.7, 0.85, 1.0), 6);
+        }
+        this.app.sound.play('shot-blocked');
     }
 
     defeatEnemy(inst, wo) {

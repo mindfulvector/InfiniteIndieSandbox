@@ -206,6 +206,15 @@ class Manifest {
         // points along +z so the yaw-tracked base aims it at the player.
         // A charging enemy: winds up, then dashes at the player in a straight
         // line (dodgeable/blockable). See ChargerScript.
+        // A shielded enemy: blocks frontal hits, turns slowly -- flank it.
+        // See ShielderScript + PlayMode.blocksHit.
+        app.createWorldObject('en_shielder', {
+            prims: [
+                     {ty: 'box',      s: [1.0, 1.4, 1.0], p: [0, 0, 0],    col: [0.4, 0.45, 0.6], tex: {id: 'marble', w: 2, h: 2}},
+                     {ty: 'box',      s: [1.3, 1.5, 0.2], p: [0, 0, 0.6],  col: [0.7, 0.75, 0.9], tex: {id: 'marble'}},
+                  ]
+        }, 'ShielderScript');
+
         app.createWorldObject('en_charger', {
             prims: [
                      {ty: 'box',      s: [1.1, 1.0, 1.4], p: [0, 0, 0],    col: [0.85, 0.5, 0.15], tex: {id: 'marble', w: 2, h: 2}},

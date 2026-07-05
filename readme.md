@@ -371,6 +371,10 @@ later one and it takes over. Great for long platformers and dungeons.
 **Power** doubles your damage, **Shield** makes you invincible. Scatter
 them through a tough fight, or wire their *Collected* event to a counter.
 
+**Shielder enemies:** the **Shielder** (Enemies) blocks attacks from the
+front and turns to face you — but slowly. Dash around it (that's what the
+Dodge roll is for) and strike its back, where the guard can't reach.
+
 **Charger enemies:** the **Charger** (Enemies) is a dash attacker — it holds
 still until you get close, swells up as a warning, then rushes you in a
 straight line. Time a **Dodge** roll through it, or raise your **Block**
