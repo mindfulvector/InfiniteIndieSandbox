@@ -48,6 +48,32 @@ async function main() {
             check(`${n} (logic) stays flat-coloured`, texInfo[n] === false, { [n]: texInfo[n] });
         });
 
+        // --- 1b. Wood/brick/marble prims wear REAL images from the CC0
+        //         texture pack (assets/textures/1), not procedural paint ---
+        const packTex = await h.evaluate(() => {
+            const urlOf = (woName) => {
+                const wo = window.app.findWorldObject(woName);
+                const meshes = [wo.mesh].concat(wo.mesh.getChildMeshes ? wo.mesh.getChildMeshes() : []);
+                for (const m of meshes) {
+                    const t = m.material && m.material.diffuseTexture;
+                    if (t && t.url) return t.url;
+                }
+                return null;
+            };
+            return {
+                door: urlOf('pr_door'),        // wood
+                wall: urlOf('in_wall'),        // brick
+                floor: urlOf('in_floor'),      // planks
+                blob: urlOf('en_blob'),        // marble
+            };
+        });
+        console.log('\n[1b] pack textures', packTex);
+        check('wood, brick, planks and marble prims load images from the texture pack',
+            !!(packTex.door && packTex.door.includes('textures/1/') &&
+               packTex.wall && packTex.wall.includes('textures/1/') &&
+               packTex.floor && packTex.floor.includes('textures/1/') &&
+               packTex.blob && packTex.blob.includes('textures/1/')), packTex);
+
         // --- 2. Grass terrain renders in a new sandbox ---
         await h.tapUntil('1', () => window.app.menu.state === 11);
         await h.tapUntil('1', () => window.app.activeMode &&

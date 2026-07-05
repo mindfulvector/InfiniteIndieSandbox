@@ -88,7 +88,7 @@ class Manifest {
         app.createWorldObject('in_floor', {
             anchor: 'below',
             prims: [
-                     {ty: 'box', s: [4, 0.25, 4], p: [0, 0, 0], tex: {id: 'wood', s: 40}},
+                     {ty: 'box', s: [4, 0.25, 4], p: [0, 0, 0], tex: {id: 'planks'}},
                   ]
         });
 

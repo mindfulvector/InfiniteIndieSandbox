@@ -145,6 +145,19 @@ const HUD_PANEL_BG     = "rgba(13,20,32,0.82)";
 const HUD_BAR_BG       = "rgba(10,15,24,0.72)";
 
 class App {
+    // The CC0 texture pack (assets/textures/1, Screaming Brain Studios):
+    // 25 seamless 128x128 variants per family. These are the variants the
+    // game uses, picked by eye -- change a path here to reskin everywhere
+    // that texture id appears.
+    static PACK_TEX = {
+        wood:   'assets/textures/1/128x128/Wood/Wood_13-128x128.png',    // warm toy-like grain
+        planks: 'assets/textures/1/128x128/Wood/Wood_18-128x128.png',    // weathered floorboards
+        brick:  'assets/textures/1/128x128/Bricks/Bricks_22-128x128.png',// classic red brick
+        marble: 'assets/textures/1/128x128/Tile/Tile_05-128x128.png',    // cream marble tile
+        grass:  'assets/textures/1/128x128/Grass/Grass_01-128x128.png',  // rich chunky lawn (reads at distance)
+        toxicTop: 'assets/textures/1/128x128/Grass/Grass_22-128x128.png',// sickly moss (toxic theme)
+    };
+
     constructor() {
         const app = this;
         this.toastyTimer = 0;
@@ -2687,18 +2700,35 @@ class App {
         try {
             switch(spec.id) {
             case 'brick':
-                tex = new BABYLON.BrickProceduralTexture('brickTex[' + uid + ']', 512, this.scene);
-                tex.numberOfBricksHeight = spec.h || 6;
-                tex.numberOfBricksWidth = spec.w || 10;
+                // Classic red brick from the CC0 texture pack (~4 bricks per
+                // tile). The old procedural params meant "bricks across/up",
+                // so tiling scales them down by that count to keep the
+                // author-chosen density on every wall.
+                tex = new BABYLON.Texture(App.PACK_TEX.brick, this.scene);
+                tex.name = 'brickTex[' + uid + ']';
+                tex.uScale = Math.max(0.5, (spec.w || 10) / 4);
+                tex.vScale = Math.max(0.5, (spec.h || 6) / 4);
                 break;
             case 'wood':
-                tex = new BABYLON.WoodProceduralTexture('woodTex[' + uid + ']', 1024, this.scene, null, true);
-                tex.ampScale = spec.s || 100;
+                // Warm toy-like wood grain from the pack. The old `s` param
+                // was procedural grain amplitude -- irrelevant for an image;
+                // a gentle 2x tile reads well on furniture and doors alike.
+                tex = new BABYLON.Texture(App.PACK_TEX.wood, this.scene);
+                tex.name = 'woodTex[' + uid + ']';
+                tex.uScale = 2;
+                tex.vScale = 2;
+                break;
+            case 'planks':
+                // Weathered floorboards (interior floors, decks).
+                tex = new BABYLON.Texture(App.PACK_TEX.planks, this.scene);
+                tex.name = 'planksTex[' + uid + ']';
+                tex.uScale = 2;
+                tex.vScale = 2;
                 break;
             case 'grass':
-                // The REAL grass image (the same albedo the big gltf terrain
-                // cube uses) -- replaces the earlier procedural grass.
-                tex = new BABYLON.Texture('assets/textures/grass3_albedo.png', this.scene);
+                // Pack grass (dense, saturated, tiles invisibly) -- the same
+                // image the terrain atlas bakes for block tops.
+                tex = new BABYLON.Texture(App.PACK_TEX.grass, this.scene);
                 tex.name = 'grassTex[' + uid + ']';
                 break;
             case 'dirt':
@@ -2706,9 +2736,12 @@ class App {
                 tex.name = 'dirtTex[' + uid + ']';
                 break;
             case 'marble':
-                tex = new BABYLON.MarbleProceduralTexture('marbleTex[' + uid + ']', 512, this.scene);
-                tex.numberOfTilesHeight = spec.h || 1;
-                tex.numberOfTilesWidth = spec.w || 1;
+                // Cream marble tile from the pack; the diffuse tint (col)
+                // colours it exactly like the old procedural marble.
+                tex = new BABYLON.Texture(App.PACK_TEX.marble, this.scene);
+                tex.name = 'marbleTex[' + uid + ']';
+                tex.uScale = spec.w || 1;
+                tex.vScale = spec.h || 1;
                 break;
             case 'noise':
                 tex = new BABYLON.PerlinNoiseProceduralTexture('noiseTex[' + uid + ']', 256, this.scene);
@@ -2757,13 +2790,20 @@ class App {
             loaded += 1;
             if(loaded < 2) return;
             ctx.drawImage(dirt, 0, 0, 512, 512);
-            ctx.drawImage(grass, 512, 0, 512, 512);
+            // The pack grass is a seamless 128 tile: 2x2 keeps the features
+            // big enough to read at gameplay camera distance (4x4 averaged
+            // away to flat green; a single 4x upscale went blurry).
+            for (let ty = 0; ty < 2; ty++) {
+                for (let tx = 0; tx < 2; tx++) {
+                    ctx.drawImage(grass, 512 + tx * 256, ty * 256, 256, 256);
+                }
+            }
             dt.update();
         };
         dirt.onload = done;
         grass.onload = done;
         dirt.src = 'assets/textures/dirt.png';
-        grass.src = 'assets/textures/grass3_albedo.png';
+        grass.src = App.PACK_TEX.grass;
         this._terrainAtlasMat = mat;
         return mat;
     }
@@ -2800,6 +2840,29 @@ class App {
         }
         ctx.globalAlpha = 1;
         dt.update();
+        // The toxic crust has a real match in the texture pack (sickly moss):
+        // tile it into the TOP half under a light acid-speckle repaint. The
+        // other themes keep their procedural paint -- the pack has no sand,
+        // snow or lava.
+        if (theme === 'toxic') {
+            const moss = new Image();
+            moss.onload = () => {
+                for (let ty = 0; ty < 4; ty++) {
+                    for (let tx = 0; tx < 4; tx++) {
+                        ctx.drawImage(moss, 512 + tx * 128, ty * 128, 128, 128);
+                    }
+                }
+                for (let i = 0; i < 500; i++) {
+                    ctx.fillStyle = (i % 2) ? pal.fleck : pal.fleck2;
+                    ctx.globalAlpha = 0.25 + Math.random() * 0.3;
+                    ctx.fillRect(512 + Math.random() * 512, Math.random() * 512,
+                        2 + Math.random() * 3, 2 + Math.random() * 3);
+                }
+                ctx.globalAlpha = 1;
+                dt.update();
+            };
+            moss.src = App.PACK_TEX.toxicTop;
+        }
         this._themeAtlasMats[theme] = mat;
         return mat;
     }
