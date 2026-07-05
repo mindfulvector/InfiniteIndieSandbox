@@ -2355,6 +2355,27 @@ class PlayMode {
         return wo.instances.find((i) => i && i.params && i.params.mode === 'exit') || null;
     }
 
+    // Turn the player (and the follow camera) to face AWAY from a door just
+    // stepped through, so walking forward never falls straight back in. The
+    // CharacterController derives avatar yaw FROM the camera (rotation.y =
+    // _av2cam - alpha), so camera alpha is the source of truth: aim it along
+    // the away direction, then apply the CC's own mapping so the visual
+    // facing and the first W press agree.
+    _faceAwayFrom(doorPos) {
+        if (!this.player) return;
+        const away = this.player.position.subtract(doorPos);
+        away.y = 0;
+        if (away.lengthSquared() < 0.0001) return;
+        away.normalize();
+        const cam = this.app.camera;
+        if (cam && cam.alpha !== undefined) {
+            cam.alpha = Math.atan2(-away.z, -away.x);
+            if (this.cc && this.cc._av2cam !== undefined) {
+                this.player.rotation.y = this.cc._av2cam - cam.alpha;
+            }
+        }
+    }
+
     // Execute a portal swap requested by PortalDoorScript. Runs from the top
     // of update() only -- it rebuilds every instance in the scene.
     doPortal(req) {
@@ -2380,6 +2401,10 @@ class PlayMode {
                     .add(new BABYLON.Vector3(0, -0.9, -2.2))
                 : new BABYLON.Vector3(0, 1.5, 0);
             this._teleport(spawn);
+            if (exit) {
+                this._faceAwayFrom(exit.getAbsolutePosition
+                    ? exit.getAbsolutePosition() : exit.position);
+            }
             this.spawnPoint = spawn.clone();        // death inside respawns inside
             app.world.spawnPoint = spawn.clone();   // mode switches keep the spot
             this.app.sound.play('respawn');
@@ -2404,6 +2429,10 @@ class PlayMode {
                 }
             }
             this._teleport(out);
+            if (door) {
+                this._faceAwayFrom(door.getAbsolutePosition
+                    ? door.getAbsolutePosition() : door.position);
+            }
             this.spawnPoint = (app.world.spawnPoint || out).clone();
             if (door) app.fireEvent(door, 'exited');
             this.app.sound.play('respawn');

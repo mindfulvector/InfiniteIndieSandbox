@@ -23,6 +23,9 @@ class DoorScript {
 
         this.paramDefs = [
             { key: 'startOpen', label: 'Start open', type: 'enum', options: ['no', 'yes'], default: 'no' },
+            { key: 'texture', label: 'Texture', type: 'enum', options: ['wood', 'planks', 'brick', 'marble'], default: 'wood' },
+            { key: 'tint', label: 'Tint', type: 'enum',
+              options: ['none', 'red', 'orange', 'gold', 'green', 'blue', 'purple', 'white'], default: 'none' },
         ];
         // Closed-by-default is right nearly always; don't interrupt room
         // building with a params popup on every placement (edit via cursor
@@ -84,6 +87,11 @@ class DoorScript {
     }
 
     update(isPlayMode, mode) {
+        // Texture + tint settings; untouched doors keep the authored look.
+        const tex = this.getParam('texture'), tint = this.getParam('tint');
+        if (this.inst._lookKey !== undefined || tex !== 'wood' || tint !== 'none') {
+            this.app.applyInstanceLook(this.inst, tex, tint, null);
+        }
         if (!isPlayMode) {
             // Build mode: always closed, so the placement footprint is honest.
             if (this._wasPlay !== false) {

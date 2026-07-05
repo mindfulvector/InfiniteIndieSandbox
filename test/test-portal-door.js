@@ -106,6 +106,18 @@ async function main() {
         check('the sub-level is named on the stack', inside.stackName === 'Vaultlet', inside);
         check('the seeded starter room stands (floors, walls, an exit portal)',
             inside.floors === 4 && inside.walls === 8 && inside.exits === 1, inside);
+        const facingIn = await h.evaluate(() => {
+            const app = window.app, pm = app.activeMode;
+            const exit = app.findWorldObject('pr_door_cell').instances.filter(Boolean)
+                .find((i) => i.params && i.params.mode === 'exit');
+            const away = pm.player.position.subtract(exit.position);
+            away.y = 0; away.normalize();
+            const fwd = pm.playerForward();
+            return { dot: Math.round((fwd.x * away.x + fwd.z * away.z) * 100) / 100 };
+        });
+        console.log('[2b] arrival facing', facingIn);
+        check('the player arrives FACING AWAY from the exit door (no accidental re-entry)',
+            facingIn.dot > 0.6, facingIn);
         await h.screenshot('inside-sub-level');
 
         // --- 3. Edit the room, then exit through the exit portal ---
@@ -134,6 +146,18 @@ async function main() {
                 questSteps: ((quest.params || {}).qdone || []).length,
             };
         });
+        const facingOut = await h.evaluate(() => {
+            const app = window.app, pm = app.activeMode;
+            const door = app.findWorldObject('pr_door_cell').instances.filter(Boolean)
+                .find((i) => !i.params || i.params.mode !== 'exit');
+            const away = pm.player.position.subtract(door.position);
+            away.y = 0; away.normalize();
+            const fwd = pm.playerForward();
+            return { dot: Math.round((fwd.x * away.x + fwd.z * away.z) * 100) / 100 };
+        });
+        console.log('\n[3a] return facing', facingOut);
+        check('the player returns FACING AWAY from the door they came out of',
+            facingOut.dot > 0.6, facingOut);
         console.log('\n[3] back in the parent', back);
         check('exiting restores the parent world (terrain back)', back.tiles === setup.tiles0, back);
         check('the door remembers its sub-level name', back.doorName === 'Vaultlet', back);
@@ -190,6 +214,56 @@ async function main() {
         console.log('\n[6] death inside', death);
         check('death inside the sub-level respawns INSIDE it',
             death.stack === 1 && death.hp > 0 && death.floors === 4, death);
+
+        // --- 7. Door look settings: texture + tint re-skin door instances ---
+        const looks = await h.evaluate(() => {
+            const app = window.app;
+            // Portal door: marble frame, purple tint (glow takes the tint).
+            const portal = app.findWorldObject('pr_door_cell').instances.filter(Boolean)[0];
+            portal.params.texture = 'marble';
+            portal.params.tint = 'purple';
+            // Sliding door: brick texture, red tint.
+            const slide = app.findWorldObject('pr_door').createInstance();
+            slide.position = app.activeMode.player.position.add(new BABYLON.Vector3(3, 1.5, 0));
+            slide.params.texture = 'brick';
+            slide.params.tint = 'red';
+            return { made: true };
+        });
+        await h.waitFrames(8);   // scripts apply looks on their next update
+        const skins = await h.evaluate(() => {
+            const app = window.app;
+            const texUrlOf = (inst) => {
+                const kids = [inst].concat(inst.getChildMeshes ? inst.getChildMeshes() : []);
+                for (const m of kids) {
+                    const mat = m.material;
+                    if (mat && mat.name && mat.name.indexOf('lookMat') === 0) {
+                        return { url: mat.diffuseTexture ? mat.diffuseTexture.url : null,
+                                 r: Math.round(mat.diffuseColor.r * 100) / 100 };
+                    }
+                }
+                return null;
+            };
+            const portal = app.findWorldObject('pr_door_cell').instances.filter(Boolean)[0];
+            const slide = app.findWorldObject('pr_door').instances.filter(Boolean)
+                .find((i) => i.params && i.params.tint === 'red');
+            const glow = [portal].concat(portal.getChildMeshes())
+                .find((m) => m.name && m.name.indexOf('cellglow') >= 0);
+            return {
+                portal: texUrlOf(portal),
+                slide: texUrlOf(slide),
+                glowG: glow && glow.material.emissiveColor
+                    ? Math.round(glow.material.emissiveColor.g * 100) / 100 : null,
+            };
+        });
+        console.log('\n[7] door looks', skins);
+        check('the portal door re-skins to marble with a purple tint',
+            skins.portal && skins.portal.url && skins.portal.url.indexOf('Tile') >= 0 &&
+            skins.portal.r === 0.7, skins);
+        check('the portal glow panel takes the tint colour',
+            skins.glowG === 0.5, skins);
+        check('the sliding door re-skins to brick with a red tint',
+            skins.slide && skins.slide.url && skins.slide.url.indexOf('Bricks') >= 0 &&
+            skins.slide.r === 0.9, skins);
 
         console.log('\n========================================');
         console.log(failures === 0
