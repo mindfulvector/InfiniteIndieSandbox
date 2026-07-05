@@ -1817,7 +1817,7 @@ class PlayMode {
         });
         this.app.BuildableObjectList.forEach((wo) => {
             wo.instances.forEach((inst) => {
-                if (inst && inst.isEnemy && !inst.defeated) {
+                if (inst && inst.isEnemy && !inst.defeated && !inst.isBreakable) {
                     const ip = inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position;
                     const d = BABYLON.Vector3.Distance(ip, p);
                     if (d < bestD) { bestD = d; best = { type: 'inst', inst: inst, wo: wo }; }
@@ -1881,7 +1881,7 @@ class PlayMode {
         });
         this.app.BuildableObjectList.forEach((wo) => {
             wo.instances.forEach((inst) => {
-                if (inst && inst.isEnemy && !inst.defeated) {
+                if (inst && inst.isEnemy && !inst.defeated && !inst.isBreakable) {
                     const ip = inst.getAbsolutePosition ? inst.getAbsolutePosition() : inst.position;
                     const d = BABYLON.Vector3.Distance(ip, p);
                     if (d < bestD) { bestD = d; best = ip; }

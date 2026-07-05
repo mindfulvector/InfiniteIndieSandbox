@@ -134,6 +134,15 @@ class Manifest {
 
         // A damage volume: an intangible translucent-red hazard zone that
         // hurts the player on a tick while they stand in it (see HazardScript).
+        // A destructible block: smash it with an attack to open a passage
+        // or drop loot (see BreakableScript). Solid until broken, resets each run.
+        app.createWorldObject('t_breakable', {
+            prims: [
+                     {ty: 'box', s: [2, 2, 2], p: [0, 0, 0], col: [0.55, 0.5, 0.45], tex: {id: 'brick', w: 4, h: 4}},
+                     {ty: 'box', s: [2.1, 0.2, 2.1], p: [0, 0.9, 0], col: [0.35, 0.32, 0.3], tex: {id: 'brick', w: 4, h: 1}},
+                  ]
+        }, 'BreakableScript');
+
         app.createWorldObject('l_hazard', {
             prims: [
                      {ty: 'box',       s: [2,1,2], p: [0,0,0]},

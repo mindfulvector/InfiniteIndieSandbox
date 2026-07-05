@@ -355,6 +355,11 @@ walk into it — its flag raises and it becomes your respawn point, so
 dying sends you back there instead of all the way to the start. Touch a
 later one and it takes over. Great for long platformers and dungeons.
 
+**Breakable blocks:** drop a **Breakable** block (Terrain) as a wall — hit
+it with your attacks to smash it and open the way (or drop a little
+treasure). Set how many hits it takes, and wire its *Broken* event to a
+door, a spawner, or a camera. Great for hidden passages.
+
 **Sentry turrets:** drop an **en_turret** (Enemies) into a world for a
 stationary gunner — it swivels to track you and fires when you're in
 range (mind the walls, and your Block/Dodge). Destroy it and it fires a
