@@ -291,6 +291,17 @@ class BuildMode {
         this.placedInstances.push({ wo: this.currentWorldObject, inst: this.currentInstance });
         // Linked builders share their edits live.
         if (this.app.net && !this.app.net.closed) this.app.net.sendAdd(this.currentInstance);
+        // Group move: drop the followers too -- re-register them on the undo
+        // stack at their new spot and share the move to linked builders.
+        if (this._groupFollowers) {
+            this._groupFollowers.forEach((g) => {
+                if (!g.inst) return;
+                this.app.showBoundingBoxAll(g.inst, false);
+                this.placedInstances.push({ wo: g.inst.worldObject, inst: g.inst });
+                if (this.app.net && !this.app.net.closed) this.app.net.sendAdd(g.inst);
+            });
+            this._groupFollowers = null;
+        }
         this.currentInstance = null;
         this.grabbed = false;
         this.app.sound.play('place');
@@ -399,6 +410,19 @@ class BuildMode {
             return;
         }
 
+        // Group move: when several are selected, the rest FOLLOW the anchor,
+        // each keeping its offset. Capture that before clearSelection wipes it,
+        // and take the followers off the undo stack too (they re-register on drop).
+        this._groupFollowers = null;
+        if (this.selection.length > 1) {
+            const anchorPos = node.position.clone();
+            this._groupFollowers = this.selection
+                .filter((f) => f && f !== node && f.worldObject)
+                .map((f) => ({ inst: f, off: f.position.subtract(anchorPos) }));
+            const followSet = new Set(this._groupFollowers.map((g) => g.inst));
+            this.placedInstances = this.placedInstances.filter((p) => !followSet.has(p.inst));
+        }
+
         // It's being moved, not duplicated -- take it off the undo stack.
         this.placedInstances = this.placedInstances.filter((p) => p.inst !== node);
 
@@ -422,8 +446,13 @@ class BuildMode {
         if (node.rotationQuaternion) this.targetRotation = node.rotationQuaternion.clone();
 
         this.app.showBoundingBoxAll(node, true);
+        if (this._groupFollowers) {
+            this._groupFollowers.forEach((g) => this.app.showBoundingBoxAll(g.inst, true));
+        }
         this.frameCameraToInstance(node);
-        this.app.toasty('Moving object — Space to drop it.');
+        this.app.toasty(this._groupFollowers
+            ? 'Moving ' + (this._groupFollowers.length + 1) + ' objects — Space to drop them.'
+            : 'Moving object — Space to drop it.');
     }
 
     // Remove objects. In cursor mode (0) with the cursor over object(s), delete
@@ -1097,6 +1126,17 @@ class BuildMode {
             // for every object regardless of its pivot.
             this.currentInstance.scaling = this.makeBuildableObjectScale(this.targetScale);
             const center = this.anchorInstance(this.currentInstance, anchor);
+
+            // Group move: drag the followers along, each holding its offset from
+            // the anchor (translation only -- they keep their own scale/rotation).
+            if (this._groupFollowers) {
+                this._groupFollowers.forEach((g) => {
+                    if (g.inst) {
+                        g.inst.position.copyFrom(this.currentInstance.position.add(g.off));
+                        g.inst.computeWorldMatrix(true);
+                    }
+                });
+            }
 
             // Keep the camera trained on the object's visual centre.
             this.camFocus.position.copyFrom(center);
