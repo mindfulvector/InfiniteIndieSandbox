@@ -2972,7 +2972,7 @@ class App {
     // uMin,vMin,uMax,vMax) instead of the prim's planar tiling.
     makeChamferAtlasBox(name, w, h, d, topUV, sideUV) {
         const minDim = Math.min(w, Math.min(h, d));
-        const c = minDim * 0.16;                       // ~5x the prim chamfer
+        const c = minDim * 0.05;
         if (!(c > 0.004)) {
             const faceUV = [];
             for (let i = 0; i < 6; i++) faceUV.push(i === 4 ? topUV : sideUV);
