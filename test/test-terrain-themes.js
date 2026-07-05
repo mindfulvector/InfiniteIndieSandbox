@@ -22,7 +22,7 @@ async function main() {
     const h = new GameHarness({ headless: true, shotDir: process.env.IIS_SHOT_DIR, port: 7097 });
     try {
         await h.start();
-        await h.waitForReady(['t_sand', 't_snow', 't_sand_2', 't_snow_2']);
+        await h.waitForReady(['t_sand', 't_snow', 't_lava', 't_toxic', 't_lava_2', 't_toxic_2']);
         await h.tapUntil('1', () => window.app.activeMode &&
             window.app.activeMode.constructor.name === 'PlayMode' && window.app.menu.state === 0);
         await h.waitFor(() => window.app.activeMode && !!window.app.activeMode.cc, null, 20000);
@@ -51,6 +51,11 @@ async function main() {
                     sand: app.findWorldObject('t_sand').surface,
                     snow: app.findWorldObject('t_snow').surface,
                 },
+                lavaShared: m('t_lava') === m('t_lava_2'),
+                toxicShared: m('t_toxic') === m('t_toxic_2'),
+                fourDistinct: new Set([m('t_sand'), m('t_snow'), m('t_lava'), m('t_toxic')].map((x) => x.name)).size === 4,
+                lavaTex: m('t_lava').diffuseTexture.name,
+                lavaCat: app.objectCategory('t_lava'),
             };
         });
         console.log('\n[1] atlases', mats);
@@ -61,6 +66,9 @@ async function main() {
             mats.texName === 'themeAtlas_sand' && mats.texW === 1024, mats);
         check('footsteps map sand to stone and snow to carpet',
             mats.surfaces.sand === 'stone' && mats.surfaces.snow === 'carpet', mats);
+        check('volcanic + toxic register as terrain, each with its own shared atlas',
+            mats.lavaShared && mats.toxicShared && mats.fourDistinct &&
+            mats.lavaTex === 'themeAtlas_volcanic' && mats.lavaCat.toLowerCase().indexOf('terr') >= 0, mats);
 
         // --- 2. A sand platform holds the player up ---
         await h.evaluate(() => {

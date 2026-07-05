@@ -70,9 +70,11 @@ async function main() {
 
         // --- 4. The Share digit path imports Tiny Arena into build mode ---
         const arena = await h.evaluate(() => {
-            // Row 3 is the first gallery entry; Tiny Arena is second -> row 4.
-            window.app.triggerMenuItem(15, 4);
-            return true;
+            // Row 3 is the first gallery entry; find Tiny Arena's actual row
+            // in the (date-rotated) ordered gallery rather than hardcoding it.
+            const idx = window.app.orderedGallery().findIndex((g) => g.file === 'tiny-arena.json');
+            window.app.triggerMenuItem(15, 3 + idx);
+            return { row: 3 + idx };
         });
         await h.waitFor(() => window.app.activeMode &&
             window.app.activeMode.constructor.name === 'BuildMode', null, 20000);

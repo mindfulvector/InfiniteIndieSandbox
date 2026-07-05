@@ -31,6 +31,10 @@ class Manifest {
         app.createWorldObject('t_sand_2', { anchor: 'below', grassBlock: { s: [2, 2, 2], theme: 'sand' }, surface: 'stone' });
         app.createWorldObject('t_snow',   { anchor: 'below', grassBlock: { s: [2, 1, 2], theme: 'snow' }, surface: 'carpet' });
         app.createWorldObject('t_snow_2', { anchor: 'below', grassBlock: { s: [2, 2, 2], theme: 'snow' }, surface: 'carpet' });
+        app.createWorldObject('t_lava',   { anchor: 'below', grassBlock: { s: [2, 1, 2], theme: 'volcanic' }, surface: 'stone' });
+        app.createWorldObject('t_lava_2', { anchor: 'below', grassBlock: { s: [2, 2, 2], theme: 'volcanic' }, surface: 'stone' });
+        app.createWorldObject('t_toxic',  { anchor: 'below', grassBlock: { s: [2, 1, 2], theme: 'toxic' }, surface: 'stone' });
+        app.createWorldObject('t_toxic_2',{ anchor: 'below', grassBlock: { s: [2, 2, 2], theme: 'toxic' }, surface: 'stone' });
         
         // A wirable sliding (pocket) door: two fixed jambs and a named 'panel'
         // child that DoorScript slides sideways on open/close. Total footprint

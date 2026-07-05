@@ -2778,6 +2778,10 @@ class App {
         const PALETTES = {
             sand: { side: '#a9834f', top: '#e2c884', fleck: '#c9ad68', fleck2: '#f0dca4' },
             snow: { side: '#8fa3b8', top: '#eef4fb', fleck: '#ffffff', fleck2: '#cddcec' },
+            // Volcanic: charred basalt sides, a glowing-ember crust on top.
+            volcanic: { side: '#2c2622', top: '#8a2b17', fleck: '#ff7a2a', fleck2: '#ffc24a' },
+            // Toxic: sickly alien crust with acid-green speckle.
+            toxic: { side: '#3a2f52', top: '#4f7a2f', fleck: '#b6ff4a', fleck2: '#8de0ff' },
         };
         const pal = PALETTES[theme] || PALETTES.sand;
         const mat = new BABYLON.StandardMaterial('terrainBlockMat_' + theme, this.scene);
