@@ -322,6 +322,11 @@ it rides the surface of any pool so you can cross deep water without
 swimming. `WASD` steers, `Space` hops out. Beach it on dry land and it
 just sits there.
 
+**Checkpoints:** place a **Checkpoint** flag (Logic) in your level and
+walk into it — its flag raises and it becomes your respawn point, so
+dying sends you back there instead of all the way to the start. Touch a
+later one and it takes over. Great for long platformers and dungeons.
+
 **Sentry turrets:** drop an **en_turret** (Enemies) into a world for a
 stationary gunner — it swivels to track you and fires when you're in
 range (mind the walls, and your Block/Dodge). Destroy it and it fires a

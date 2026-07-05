@@ -180,6 +180,14 @@ class Manifest {
                      {ty: 'box',       s: [0.5, 0.2, 0.5], p: [0, 0.35, 0], col: [0.4, 0.9, 1.0]},
                   ]
         }, 'GateScript');
+        // A respawn checkpoint flag: touch it to set your respawn point (see
+        // CheckpointScript). The 'flag' child raises up the pole when active.
+        app.createWorldObject('l_checkpoint', {
+            prims: [
+                     {ty: 'box',      s: [0.16, 2.2, 0.16], p: [0, 0, 0],      col: [0.7, 0.72, 0.78], tex: {id: 'marble'}},
+                     {ty: 'box',      s: [0.9, 0.55, 0.08], p: [0.5, -0.7, 0], col: [0.3, 0.95, 0.55], tex: {id: 'cloud'}, nm: 'flag'},
+                  ]
+        }, 'CheckpointScript');
         // A scoreboard: wired events score points, the score shows on the HUD,
         // and hitting the target fires its `reached` output.
         app.createWorldObject('l_scoreboard', {
