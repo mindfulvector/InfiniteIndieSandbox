@@ -366,6 +366,10 @@ its *Fully Healed* pulse to end a checkpoint, or drop one in a boss arena.
 it and it carries you along its set direction. Chain them into a factory
 floor, use one to feed the player into a hazard, or wire it on and off.
 
+**Crumbling platforms:** the **Crumble Tile** (Terrain) holds still until you
+step on it — then it shakes and drops away, so you have to keep moving. It
+reforms a moment later, so a collapsing bridge is replayable in one run.
+
 **Moving hazards:** the **Sweeper** (Logic) is a blade that swings back and
 forth — time your run across, or a **Dodge** roll slips through it. Set its
 axis, throw, speed and damage; wire its *Swept* pulse to sync other traps.

@@ -179,6 +179,16 @@ class Manifest {
                   ]
         }, 'RegenScript');
 
+        // A crumbling platform: stand on it and it shakes, then drops away
+        // for a moment before reforming (see CrumbleScript).
+        app.createWorldObject('t_crumble', {
+            prims: [
+                     {ty: 'box', s: [2, 0.5, 2], p: [0, 0, 0], col: [0.55, 0.5, 0.42], tex: {id: 'marble', w: 2, h: 2}},
+                     {ty: 'box', s: [1.7, 0.12, 0.2], p: [0, 0.28, 0], col: [0.3, 0.26, 0.2]},
+                     {ty: 'box', s: [0.2, 0.12, 1.7], p: [0, 0.28, 0], col: [0.3, 0.26, 0.2]},
+                  ]
+        }, 'CrumbleScript');
+
         app.createWorldObject('l_hazard', {
             prims: [
                      {ty: 'box',       s: [2,1,2], p: [0,0,0]},
