@@ -1,5 +1,9 @@
 {
-  "featured": ["glow-circuit.json", "starter-parkour.json", "tiny-arena.json"],
+  "featured": [
+    "glow-circuit.json",
+    "starter-parkour.json",
+    "tiny-arena.json"
+  ],
   "gallery": [
     {
       "file": "starter-parkour.json",
@@ -37,7 +41,7 @@
     {
       "file": "twin-trials.json",
       "name": "Twin Trials",
-      "desc": "A 2-player Play Set: player 2 joins automatically — stand together to open the vault, clear the arena as a team"
+      "desc": "A 2-player Play Set: player 2 joins automatically \u2014 stand together to open the vault, clear the arena as a team"
     },
     {
       "file": "gatekeeper-vault.json",
@@ -57,7 +61,12 @@
     {
       "file": "aether-ruins.json",
       "name": "Aether Ruins",
-      "desc": "A three-stage adventure: destroy the sentry and clear the wave, teleport to the key-star, and loot the vault — checkpoints between"
+      "desc": "A three-stage adventure: destroy the sentry and clear the wave, teleport to the key-star, and loot the vault \u2014 checkpoints between"
+    },
+    {
+      "file": "locked-depths.json",
+      "name": "The Locked Depths",
+      "desc": "A key-and-lock dungeon: cross the lava for the gold key, slip past the sentry for the silver, unlock the vault \u2014 checkpoints throughout"
     }
   ]
 }
