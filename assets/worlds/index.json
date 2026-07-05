@@ -97,6 +97,11 @@
       "file": "wardens-locks.json",
       "name": "The Warden's Locks",
       "desc": "A pressure-plate puzzle vault: weigh down the latch plate to open the first lock, press BOTH plates to trip the counter on the second, then claim the vault"
+    },
+    {
+      "file": "shellfall.json",
+      "name": "Shellfall",
+      "desc": "A bombardment courtyard: duck the turret behind cover pillars, but keep moving \u2014 the spitter's arcing shells rain right over them. Clear the wave to open the vault"
     }
   ]
 }
