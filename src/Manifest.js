@@ -136,6 +136,17 @@ class Manifest {
                   ]
         }, 'EnemyScript');
 
+        // A stationary sentry turret: tracks the player and fires enemy shots
+        // on a cadence; attackable + defeatable (see TurretScript). The barrel
+        // points along +z so the yaw-tracked base aims it at the player.
+        app.createWorldObject('en_turret', {
+            prims: [
+                     {ty: 'cylinder', s: [1.1, 0.5, 1.1], p: [0, -0.5, 0],  col: [0.3, 0.32, 0.4], tex: {id: 'marble'}},
+                     {ty: 'box',      s: [0.9, 0.7, 0.9], p: [0, 0.1, 0],   col: [0.55, 0.2, 0.15], tex: {id: 'marble', w: 2, h: 2}},
+                     {ty: 'box',      s: [0.25, 0.25, 1.0], p: [0, 0.2, 0.6], col: [0.9, 0.5, 0.3]},
+                  ]
+        }, 'TurretScript');
+
         // A spawner pad: in play mode it spawns enemies of a chosen type at a set
         // frequency up to a limit (all editable via the parameters popup).
         app.createWorldObject('l_spawner', {

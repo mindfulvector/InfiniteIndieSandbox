@@ -316,6 +316,11 @@ slips away, the camera comes off its leash (`WASD` to move, `R`/`F` for
 height, `Shift` to hurry, mouse to orbit), and `Enter` saves a PNG of your
 shot. Press `P` again to jump back into the fray exactly where it left off.
 
+**Sentry turrets:** drop an **en_turret** (Enemies) into a world for a
+stationary gunner — it swivels to track you and fires when you're in
+range (mind the walls, and your Block/Dodge). Destroy it and it fires a
+*Turret Destroyed* event you can wire to a door or a counter.
+
 **Logic gates:** the **Gate** toy (Logic) combines wired signals — set it
 to **AND** (opens only when all its inputs are on, e.g. two pressure
 plates), **OR** (any input), or **NOT** (a switch that inverts). Wire
