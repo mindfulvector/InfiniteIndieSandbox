@@ -317,6 +317,11 @@ slips away, the camera comes off its leash (`WASD` to move, `R`/`F` for
 height, `Shift` to hurry, mouse to orbit), and `Enter` saves a PNG of your
 shot. Press `P` again to jump back into the fray exactly where it left off.
 
+**Boats:** drop a **Boat** (Props) onto or beside water, hop in, and sail —
+it rides the surface of any pool so you can cross deep water without
+swimming. `WASD` steers, `Space` hops out. Beach it on dry land and it
+just sits there.
+
 **Sentry turrets:** drop an **en_turret** (Enemies) into a world for a
 stationary gunner — it swivels to track you and fires when you're in
 range (mind the walls, and your Block/Dodge). Destroy it and it fires a

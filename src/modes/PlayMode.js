@@ -834,6 +834,7 @@ class PlayMode {
             seatY: p.seatY != null ? p.seatY : 1.0,
             canJump: !!p.canJump,
             canFly: !!p.canFly,
+            watercraft: !!p.watercraft,
             turnInPlace: !!p.turnInPlace,
             armed: !!p.armed,
             hint: p.hint || 'Hop in!  WASD drives · Space hops out',
@@ -952,6 +953,22 @@ class PlayMode {
         const vx = Math.sin(inst.rotation.y) * speed;
         const vz = Math.cos(inst.rotation.y) * speed;
         inst._kartBody.step(vx, vz);
+
+        // Watercraft ride the water surface: when the hull is over a t_water
+        // column, ease its Y to the surface (minus the draft) and cancel
+        // gravity so it doesn't sink. Over dry land it behaves like a normal
+        // grounded vehicle -- you can beach it, but it belongs on the water.
+        if (prof.watercraft) {
+            const surf = this.waterTopAt(inst.position.x, inst.position.z);
+            if (surf != null) {
+                const draft = 0.35;
+                inst.position.y += ((surf - draft) - inst.position.y) * Math.min(1, 6 * dt);
+                inst._kartBody.vy = 0;
+                inst._onWater = true;
+            } else {
+                inst._onWater = false;
+            }
+        }
 
         // Seat the player; the camera follows them for free.
         this.player.position.copyFrom(inst.position.add(new BABYLON.Vector3(0, prof.seatY, 0)));

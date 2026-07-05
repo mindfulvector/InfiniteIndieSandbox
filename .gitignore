@@ -1,4 +1,7 @@
 node_modules/
 test/screenshots/*
 !test/screenshots/.gitkeep
+
+# macOS Finder metadata
 .DS_Store
+**/.DS_Store

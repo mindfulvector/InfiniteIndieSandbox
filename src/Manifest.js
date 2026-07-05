@@ -207,6 +207,15 @@ class Manifest {
 
         // A drivable hover-kart: walk into it in play mode to mount, WASD or
         // the left stick drives with momentum, Space hops out. Premium.
+        // A drivable boat: a watercraft that rides the water surface (see
+        // BoatScript + the watercraft branch in PlayMode.updateDriving).
+        app.createWorldObject('pr_boat', {
+            prims: [
+                     {ty: 'box',      s: [1.6, 0.5, 2.8], p: [0, 0, 0],     col: [0.5, 0.34, 0.18], tex: {id: 'wood', s: 50}},
+                     {ty: 'box',      s: [1.3, 0.4, 2.4], p: [0, 0.35, 0],  col: [0.7, 0.5, 0.28], tex: {id: 'wood', s: 40}},
+                     {ty: 'box',      s: [0.2, 1.1, 0.2], p: [0, 0.8, -0.3], col: [0.6, 0.42, 0.24], tex: {id: 'wood', s: 30}},
+                  ]
+        }, 'BoatScript');
         app.createWorldObject('pr_kart', {
             prims: [
                      {ty: 'box', s: [1.6, 0.45, 2.4],  p: [0, 0, 0],      tex: {id: 'road'}},
