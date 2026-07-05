@@ -1,13 +1,15 @@
 /*
  * Sound-effects (SFX) test
  * ------------------------
- * The game synthesises all sound effects at runtime (Web Audio, no asset
- * files) via app.sound (SoundManager). Every play() request is logged to
- * app.sound.recent even when no audio device exists, so a headless run can
- * assert the game ASKED for the right sound at the right moment:
+ * app.sound (SoundManager) plays recorded samples from assets/sounds/ with
+ * the original synthesised recipes as an automatic fallback. Every play()
+ * request is logged to app.sound.recent even when no audio device exists, so
+ * a headless run can assert the game ASKED for the right sound at the right
+ * moment (and, once the pack preloads, that it sounded via 'sample'):
+ *   - every mapped pack file preloads (a 404/bad mapping shows up as failed),
  *   - footsteps fire on a cadence while walking, tagged with the surface
  *     underfoot (grass on terrain tops, wood on a door slab, dirt on a
- *     grass-block's side face rotated upward),
+ *     grass-block's side face rotated upward), and play from the pack,
  *   - jump / double-jump / land follow the character controller's state,
  *   - combat rings: melee swing+hit, enemy defeat, ranged shot, pixel blips,
  *   - hurt / death / respawn follow the survival flow,
@@ -67,6 +69,22 @@ async function main() {
         console.log('\n[1] menu sounds so far:', menuSounds.filter((n) => n === 'menu-select').length, 'selects');
         check('navigating the menus rang menu-select', menuSounds.includes('menu-select'), menuSounds);
 
+        // --- 1b. The mapped sound pack preloads completely ---
+        // The key presses above were the unlock gesture, so the pack is
+        // already streaming in. Every mapped file must decode: a missing
+        // file or a bad path in the map lands in `failed`.
+        let packOk = true;
+        try {
+            await h.waitFor(() => {
+                const s = window.app.sound.samplesReady();
+                return s.loaded + s.failed >= s.total;
+            }, null, 30000);
+        } catch (_) { packOk = false; }
+        const pack = await h.evaluate(() => window.app.sound.samplesReady());
+        console.log('\n[1b] sample pack', pack);
+        check('every mapped pack sample loads and decodes (no 404s, no bad paths)',
+            packOk && pack.total > 50 && pack.loaded === pack.total && pack.failed === 0, pack);
+
         // --- 2. Footsteps while walking, tagged grass on the terrain ---
         await clearLog();
         await h.evaluate(() => { window.app.activeMode.cc._onKeyDown({ key: 'w' }); });
@@ -74,10 +92,13 @@ async function main() {
         await h.evaluate(() => { window.app.activeMode.cc._onKeyUp({ key: 'w' }); });
         const steps = await h.evaluate(() =>
             window.app.sound.recent.filter((r) => r.name === 'footstep'));
-        console.log('\n[2] footsteps while walking', { count: steps.length, surfaces: steps.map((s) => s.surface) });
+        console.log('\n[2] footsteps while walking', { count: steps.length,
+            surfaces: steps.map((s) => s.surface), via: steps.map((s) => s.via) });
         check('walking produces cadenced footsteps (>= 2 in ~80 frames)', steps.length >= 2, steps);
         check('terrain-top footsteps are tagged grass',
             steps.length > 0 && steps.every((s) => s.surface === 'grass'), steps);
+        check('footsteps play the recorded pack samples (via sample, not synth)',
+            steps.length > 0 && steps.every((s) => s.via === 'sample'), steps);
         await h.screenshot('walking-footsteps');
 
         // The walk above can carry the avatar right up to the grid's edge --

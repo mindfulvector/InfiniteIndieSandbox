@@ -6,7 +6,7 @@
  *   - each theme shares ONE atlas material across its blocks (instancing
  *     stays safe), distinct from the grass atlas and from each other,
  *   - a placed sand block carries collisions (the player lands on it),
- *   - footstep surfaces map sand->stone and snow->carpet,
+ *   - footstep surfaces are the real ones from the sound pack (sand, snow),
  *   - no page errors along the way.
  */
 
@@ -64,8 +64,8 @@ async function main() {
         check('each theme shares one atlas, distinct from grass and each other',
             mats.sandShared && mats.snowShared && mats.sandVsSnow && mats.sandVsGrass &&
             mats.texName === 'themeAtlas_sand' && mats.texW === 1024, mats);
-        check('footsteps map sand to stone and snow to carpet',
-            mats.surfaces.sand === 'stone' && mats.surfaces.snow === 'carpet', mats);
+        check('footsteps use the real pack surfaces (sand, snow)',
+            mats.surfaces.sand === 'sand' && mats.surfaces.snow === 'snow', mats);
         check('volcanic + toxic register as terrain, each with its own shared atlas',
             mats.lavaShared && mats.toxicShared && mats.fourDistinct &&
             mats.lavaTex === 'themeAtlas_volcanic' && mats.lavaCat.toLowerCase().indexOf('terr') >= 0, mats);
@@ -96,7 +96,7 @@ async function main() {
         console.log('[2] standing on sand', stood);
         check('the player lands and stands on a sand platform', true, stood);
         check('the surface underfoot reads as the theme\'s footstep sound',
-            stood.surface === 'stone', stood);
+            stood.surface === 'sand', stood);
         await h.screenshot('terrain-themes');
 
         // --- 3. No unexpected page errors ---

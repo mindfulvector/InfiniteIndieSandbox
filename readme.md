@@ -507,13 +507,16 @@ pack shows as owned once you have all its contents, however you got them.
 
 ### Sound
 
-Every sound in the game is **synthesised at runtime** with the Web Audio API —
-there are no audio files to download. Footsteps change with the surface
-underfoot: grass and dirt (terrain blocks even sound different per face — walk
-on a block's grassy top vs. a dirt side turned upward), wooden props, stone,
-and metal platforms. Jumping, double-jumping, landing, gliding, every attack
-and hit, pickups, level-ups, purchases, and the build/wiring tools all have
-their own effects. Press `M` to mute or unmute (the setting is remembered).
+Every gameplay event plays a **recorded sound effect** from the pack under
+`assets/sounds/` (loaded in the background after your first input). Footsteps
+change with the surface underfoot: grass, dirt, sand, snow, wooden props,
+stone, carpet, and metal platforms — terrain blocks even sound different per
+face (walk on a block's grassy top vs. a dirt side turned upward). Jumping,
+double-jumping, landing, gliding, every attack and hit, pickups, level-ups,
+purchases, and the build/wiring tools all have their own effects, with slight
+random variation so repeats sound natural. If a sample hasn't loaded yet (or
+fails to), a **synthesised Web Audio fallback** covers it seamlessly. Press
+`M` to mute or unmute (the setting is remembered).
 
 The **Chime** logic toy (`l_chime`) is a separate, placeable instrument: wire
 any event into it and it sings a configured pattern (jingle, alarm, gong,

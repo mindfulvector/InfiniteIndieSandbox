@@ -1,18 +1,23 @@
-// Procedurally-synthesised sound effects for the whole game, built on the Web
-// Audio API. There are NO audio asset files: every effect is a tiny recipe of
-// oscillators and filtered noise, which fits how the rest of the game works
-// (procedural textures, runtime thumbnails) and keeps the download at zero.
+// Sound effects for the whole game, built on the Web Audio API.
+//
+// Every event now plays a real recorded sample from the sound pack under
+// assets/sounds/ (fetched + decoded lazily after the first user gesture).
+// The original procedurally-synthesised recipes are kept as an automatic
+// fallback: they cover the moments before a sample finishes loading, any
+// file that fails to load, and events the pack has no good match for.
 //
 // Usage: app.sound.play('jump'), app.sound.play('footstep', {surface:'wood'}).
 //
 // Design notes:
 //  - Browsers gate audio behind a user gesture, so the AudioContext is created
-//    lazily and resumed on the first pointer/key input.
+//    lazily and resumed on the first pointer/key input; sample preloading
+//    starts at the same moment.
 //  - play() ALWAYS records the request in `recent` (a small ring buffer) even
 //    when muted or when no audio device exists -- the headless test harness
-//    asserts against that log, and it doubles as a debugging trace.
-//  - Synthesis failures must never break gameplay: everything audible is
-//    wrapped in try/catch and the game continues silently.
+//    asserts against that log, and it doubles as a debugging trace. Audible
+//    plays note HOW they sounded in `via` ('sample' or 'synth').
+//  - Sound failures must never break gameplay: loading and playback are
+//    wrapped so the game continues (synthesised, or silent) on any error.
 //  - The mute flag persists in localStorage ('iis_muted'); M toggles it.
 class SoundManager {
     constructor(app) {
@@ -20,25 +25,111 @@ class SoundManager {
         this.ctx = null;        // lazily-created AudioContext
         this.master = null;     // master gain (overall volume)
         this.muted = window.localStorage.getItem('iis_muted') === '1';
-        this.recent = [];       // ring buffer of {name, surface?, t} for tests/debug
+        this.recent = [];       // ring buffer of {name, surface?, via?, t} for tests/debug
         this._lastPlay = {};    // per-sound last-play time, for rate limiting
         this._noiseBuf = null;  // shared 1s white-noise buffer
+        this._buffers = {};     // pack path -> AudioBuffer | 'loading' | 'failed'
+        this._preloadStarted = false;
 
-        // Create/resume the context on the first real user input (autoplay policy).
+        // Create/resume the context on the first real user input (autoplay
+        // policy) and start fetching the sample pack in the background.
         const unlock = () => {
             this._ensureContext();
             if (this.ctx && this.ctx.state === 'suspended') {
                 this.ctx.resume().catch(() => {});
             }
+            this._preloadSamples();
         };
         window.addEventListener('pointerdown', unlock);
         window.addEventListener('keydown', unlock);
     }
 
+    // ---- the sample map ---------------------------------------------------
+    // Event name -> file(s) in assets/sounds/. Arrays are picked from at
+    // random so repeated hits and steps don't machine-gun the same take.
+
+    // Footsteps by surface. The pack ships real takes for almost every
+    // surface the game has; dirt borrows the foley gravel takes (closest
+    // scuff) and sand the digital gravel ones (drier crunch).
+    static FOOTSTEPS = {
+        grass:  ['Footsteps/digital/digital_footstep_grass_1.wav',  'Footsteps/digital/digital_footstep_grass_2.wav',
+                 'Footsteps/digital/digital_footstep_grass_3.wav',  'Footsteps/digital/digital_footstep_grass_4.wav'],
+        dirt:   ['Footsteps/foley_footstep_gravel_1.wav',           'Footsteps/foley_footstep_gravel_2.wav',
+                 'Footsteps/foley_footstep_gravel_3.wav',           'Footsteps/foley_footstep_gravel_4.wav'],
+        sand:   ['Footsteps/digital/digital_footstep_gravel_1.wav', 'Footsteps/digital/digital_footstep_gravel_2.wav',
+                 'Footsteps/digital/digital_footstep_gravel_3.wav', 'Footsteps/digital/digital_footstep_gravel_4.wav'],
+        snow:   ['Footsteps/digital/digital_footstep_snow_1.wav',   'Footsteps/digital/digital_footstep_snow_2.wav',
+                 'Footsteps/digital/digital_footstep_snow_3.wav',   'Footsteps/digital/digital_footstep_snow_4.wav'],
+        wood:   ['Footsteps/digital/digital_footstep_wood_1.wav',   'Footsteps/digital/digital_footstep_wood_2.wav',
+                 'Footsteps/digital/digital_footstep_wood_3.wav',   'Footsteps/digital/digital_footstep_wood_4.wav'],
+        stone:  ['Footsteps/foley_footstep_concrete_1.wav',         'Footsteps/foley_footstep_concrete_2.wav',
+                 'Footsteps/foley_footstep_concrete_3.wav',         'Footsteps/foley_footstep_concrete_4.wav'],
+        carpet: ['Footsteps/foley_footstep_carpet_1.wav',           'Footsteps/foley_footstep_carpet_2.wav',
+                 'Footsteps/foley_footstep_carpet_3.wav',           'Footsteps/foley_footstep_carpet_4.wav'],
+        metal:  ['Materials/metal_blunt_tap.wav'],
+    };
+
+    static SAMPLES = {
+        // Locomotion.
+        'jump':           'Retro/jump.wav',
+        'doubleJump':     'Retro/jump_square.wav',
+        'land':           'Materials/clothing_thud.wav',
+        'glide':          'Environment/ambient_wind.wav',
+
+        // Player combat.
+        'melee-swing':    ['Combat and Gore/swipe.wav', 'Other/whoosh_1.wav', 'Other/whoosh_2.wav'],
+        'melee-hit':      ['Combat and Gore/punch.wav', 'Combat and Gore/punch_2.wav', 'Combat and Gore/punch_3.wav'],
+        'melee-finisher': ['Combat and Gore/crunch_splat.wav', 'Combat and Gore/crunch_splat_2.wav'],
+        'ranged-shot':    'Weapons/shot_muffled.wav',
+        'shot-hit':       'Retro/explosion_quick.wav',
+        'shot-blocked':   ['Weapons/sword_clash.wav', 'Weapons/sword_clash_2.wav'],
+        'lock-on':        'UI/sci_fi_select.wav',
+        'lock-off':       'UI/sci_fi_deselect.wav',
+
+        // Enemies.
+        'enemy-shot':     'Retro/throw.wav',
+        'enemy-defeat':   ['Retro/explosion_small.wav', 'Retro/explosion_medium.wav'],
+
+        // Player survival.
+        'player-hurt':    'Retro/hurt.wav',
+        'player-death':   'Retro/lose.wav',
+        'respawn':        'Retro/power_up.wav',
+
+        // Collection / economy / progression.
+        'pixel':          ['Retro/coin.wav', 'Retro/coin_2.wav', 'Retro/coin_3.wav', 'Retro/coin_4.wav'],
+        'pickup-health':  'Items/heart_collect.wav',
+        'pickup-pixels':  'Items/coin_collect.wav',
+        'pickup-star':    'Items/gem_collect.wav',
+        'levelup':        'Musical Effects/8_bit_positive_long.wav',
+        'purchase':       'Items/coins_gather_medium.wav',
+        'denied':         'UI/sci_fi_disallow.wav',
+
+        // UI / build / wiring.
+        'menu-move':      ['UI/pop_1.wav', 'UI/pop_2.wav', 'UI/pop_3.wav', 'UI/pop_4.wav'],
+        'menu-select':    ['UI/select_1.wav', 'UI/select_2.wav', 'UI/select_3.wav', 'UI/select_4.wav'],
+        'place':          'Materials/wood_small_drop.wav',
+        'delete':         'Materials/paper_scrunch.wav',
+        'wire-connect':   'UI/click_double_on.wav',
+        'wire-delete':    'UI/click_double_off.wav',
+    };
+
+    // Per-event gain (samples are mastered louder than the old synth): 1 is
+    // full, quieter for high-frequency events so bursts don't overwhelm.
+    static VOLUME = {
+        'footstep': 0.7, 'glide': 0.45, 'pixel': 0.55, 'menu-move': 0.5,
+        'menu-select': 0.7, 'enemy-shot': 0.55, 'land': 0.8, 'melee-swing': 0.8,
+    };
+
+    // Musical/one-shot stingers play as recorded; everything percussive gets
+    // a small random pitch wobble so repeats sound organic.
+    static NO_JITTER = new Set(['levelup', 'player-death', 'respawn', 'denied',
+        'purchase', 'glide', 'lock-on', 'lock-off']);
+
     // Sounds that fire in rapid bursts get a minimum gap (ms) so a shower of
-    // pixels or a held arrow key doesn't degenerate into noise.
+    // pixels or a held arrow key doesn't degenerate into noise. The glide
+    // wind is a long recording, so it re-triggers sparsely.
     static rateLimitMs(name) {
-        const limits = { 'pixel': 35, 'footstep': 90, 'menu-move': 45, 'glide': 120, 'enemy-shot': 60 };
+        const limits = { 'pixel': 35, 'footstep': 90, 'menu-move': 45, 'glide': 1100, 'enemy-shot': 60 };
         return (limits[name] != null) ? limits[name] : 15;
     }
 
@@ -51,14 +142,16 @@ class SoundManager {
         if (last != null && now - last < SoundManager.rateLimitMs(name)) return false;
         this._lastPlay[name] = now;
 
-        this.recent.push({ name: name, surface: opts.surface, t: now });
+        const entry = { name: name, surface: opts.surface, t: now };
+        this.recent.push(entry);
         if (this.recent.length > 120) this.recent.splice(0, this.recent.length - 120);
 
         if (this.muted) return true;
         this._ensureContext();
         if (!this.ctx) return true;
         try {
-            this._synth(name, opts);
+            if (this._playSample(name, opts)) entry.via = 'sample';
+            else { this._synth(name, opts); entry.via = 'synth'; }
         } catch (e) {
             // Sound must never take the game down with it.
         }
@@ -86,6 +179,75 @@ class SoundManager {
         } catch (e) {
             this.ctx = null;    // no audio device: play() keeps logging silently
         }
+    }
+
+    // ---- sample loading + playback -----------------------------------------
+
+    // Every file the map references, flattened (deduped by the object keying).
+    static allSamplePaths() {
+        const paths = new Set();
+        const add = (v) => (Array.isArray(v) ? v : [v]).forEach((p) => paths.add(p));
+        Object.values(SoundManager.SAMPLES).forEach(add);
+        Object.values(SoundManager.FOOTSTEPS).forEach(add);
+        return [...paths];
+    }
+
+    // Fetch + decode the whole mapped subset of the pack in the background.
+    // ~100 short WAVs from the local server: cheap, and by the time the
+    // player is moving everything is resident.
+    _preloadSamples() {
+        if (this._preloadStarted || !this.ctx) return;
+        this._preloadStarted = true;
+        SoundManager.allSamplePaths().forEach((p) => this._loadSample(p));
+    }
+
+    _loadSample(path) {
+        if (this._buffers[path]) return;
+        this._buffers[path] = 'loading';
+        fetch(encodeURI('assets/sounds/' + path))
+            .then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.arrayBuffer(); })
+            .then((ab) => this.ctx.decodeAudioData(ab))
+            .then((buf) => { this._buffers[path] = buf; })
+            .catch(() => { this._buffers[path] = 'failed'; });   // synth covers it
+    }
+
+    // Loading progress, mostly for tests/debugging.
+    samplesReady() {
+        const all = SoundManager.allSamplePaths();
+        let loaded = 0, failed = 0;
+        all.forEach((p) => {
+            const b = this._buffers[p];
+            if (b === 'failed') failed++;
+            else if (b && b !== 'loading') loaded++;
+        });
+        return { loaded: loaded, failed: failed, total: all.length };
+    }
+
+    // Play the mapped sample for an event. Returns false when the event has
+    // no mapping or its buffer isn't decoded yet -- the caller then falls
+    // back to the synthesised recipe, so there is never a silent gap.
+    _playSample(name, opts) {
+        let spec;
+        if (name === 'footstep') spec = SoundManager.FOOTSTEPS[opts.surface];
+        else spec = SoundManager.SAMPLES[name];
+        if (!spec) return false;
+        const path = Array.isArray(spec) ? spec[Math.floor(Math.random() * spec.length)] : spec;
+        const buf = this._buffers[path];
+        if (!buf || buf === 'loading' || buf === 'failed') {
+            if (!buf) this._loadSample(path);   // first request kicks the load
+            return false;
+        }
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+        if (!SoundManager.NO_JITTER.has(name)) {
+            src.playbackRate.value = 0.94 + Math.random() * 0.12;
+        }
+        const g = this.ctx.createGain();
+        g.gain.value = SoundManager.VOLUME[name] != null ? SoundManager.VOLUME[name] : 1.0;
+        src.connect(g);
+        g.connect(this.master);
+        src.start();
+        return true;
     }
 
     // ---- synthesis helpers ----------------------------------------------------
@@ -150,12 +312,12 @@ class SoundManager {
         });
     }
 
-    // ---- footsteps: one recipe per walkable surface ----------------------------
+    // ---- footstep fallback: one recipe per walkable surface --------------------
 
-    // Each surface gets its own timbre so the ground underfoot is audible:
-    //   grass - soft rustle          dirt  - dull scuff with a low body
+    // Synthesised stand-ins while the samples stream in (or if they fail):
+    //   grass - soft rustle          dirt/sand - dull scuff with a low body
     //   wood  - hollow knock         stone - hard bright tap
-    //   metal - ringing clank
+    //   metal - ringing clank        snow/carpet - muffled press
     _footstep(surface) {
         const r = 0.9 + Math.random() * 0.2;   // step-to-step variation
         switch (surface) {
@@ -163,6 +325,7 @@ class SoundManager {
             this._noiseBurst({ dur: 0.09, vol: 0.11, type: 'lowpass', f: 700 * r });
             break;
         case 'dirt':
+        case 'sand':
             this._noiseBurst({ dur: 0.10, vol: 0.13, type: 'lowpass', f: 320 * r });
             this._tone({ f0: 95 * r, f1: 60, dur: 0.06, vol: 0.06 });
             break;
@@ -179,12 +342,16 @@ class SoundManager {
             this._tone({ f0: 587 * r, dur: 0.08, vol: 0.04 });
             this._noiseBurst({ dur: 0.03, vol: 0.07, type: 'highpass', f: 2500 });
             break;
+        case 'snow':
+        case 'carpet':
+            this._noiseBurst({ dur: 0.11, vol: 0.09, type: 'lowpass', f: 240 * r });
+            break;
         default:
             this._noiseBurst({ dur: 0.08, vol: 0.10, type: 'lowpass', f: 600 * r });
         }
     }
 
-    // ---- the effect recipes -----------------------------------------------------
+    // ---- the synthesised fallback recipes ---------------------------------------
 
     _synth(name, opts) {
         switch (name) {

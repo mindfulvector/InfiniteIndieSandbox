@@ -25,12 +25,12 @@ class Manifest {
         app.createWorldObject('t_block_2', { anchor: 'below', grassBlock: { s: [2, 2, 2] } });
         app.createWorldObject('t_block_1', { anchor: 'below', grassBlock: { s: [1, 1, 1] } });
         // Themed terrain: same instancable atlas trick, different climates.
-        // Footstep surfaces borrow the closest existing sound: sand crunches
-        // like stone, snow muffles like carpet.
-        app.createWorldObject('t_sand',   { anchor: 'below', grassBlock: { s: [2, 1, 2], theme: 'sand' }, surface: 'stone' });
-        app.createWorldObject('t_sand_2', { anchor: 'below', grassBlock: { s: [2, 2, 2], theme: 'sand' }, surface: 'stone' });
-        app.createWorldObject('t_snow',   { anchor: 'below', grassBlock: { s: [2, 1, 2], theme: 'snow' }, surface: 'carpet' });
-        app.createWorldObject('t_snow_2', { anchor: 'below', grassBlock: { s: [2, 2, 2], theme: 'snow' }, surface: 'carpet' });
+        // The sound pack has real takes for these: sand crunches like dry
+        // gravel and snow gets its own muffled steps (see SoundManager).
+        app.createWorldObject('t_sand',   { anchor: 'below', grassBlock: { s: [2, 1, 2], theme: 'sand' }, surface: 'sand' });
+        app.createWorldObject('t_sand_2', { anchor: 'below', grassBlock: { s: [2, 2, 2], theme: 'sand' }, surface: 'sand' });
+        app.createWorldObject('t_snow',   { anchor: 'below', grassBlock: { s: [2, 1, 2], theme: 'snow' }, surface: 'snow' });
+        app.createWorldObject('t_snow_2', { anchor: 'below', grassBlock: { s: [2, 2, 2], theme: 'snow' }, surface: 'snow' });
         app.createWorldObject('t_lava',   { anchor: 'below', grassBlock: { s: [2, 1, 2], theme: 'volcanic' }, surface: 'stone' });
         app.createWorldObject('t_lava_2', { anchor: 'below', grassBlock: { s: [2, 2, 2], theme: 'volcanic' }, surface: 'stone' });
         app.createWorldObject('t_toxic',  { anchor: 'below', grassBlock: { s: [2, 1, 2], theme: 'toxic' }, surface: 'stone' });

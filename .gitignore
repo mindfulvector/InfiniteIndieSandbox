@@ -1,3 +1,4 @@
 node_modules/
 test/screenshots/*
 !test/screenshots/.gitkeep
+.DS_Store
