@@ -407,6 +407,10 @@ pays out.
 **Power** doubles your damage, **Shield** makes you invincible. Scatter
 them through a tough fight, or wire their *Collected* event to a counter.
 
+**Spitter enemies:** the **Spitter** (Enemies) is artillery — it lobs arcing
+shots that sail over walls and rain down on where you stand, so hiding behind
+cover won't save you. Keep moving: the shot lands where you *were*.
+
 **Bomber enemies:** the **Bomber** (Enemies) is a kamikaze — it rushes you
 and blows up in a blast radius, so dodge-roll through it or back off. Best
 countered by popping it at range, where the explosion can't reach you.

@@ -279,6 +279,15 @@ class Manifest {
                   ]
         }, 'BomberScript');
 
+        // An artillery enemy: lobs arcing shots that sail over cover -- keep
+        // moving to dodge (see SpitterScript). A squat mortar body + a barrel.
+        app.createWorldObject('en_spitter', {
+            prims: [
+                     {ty: 'box',      s: [1.3, 0.9, 1.3], p: [0, 0, 0],    col: [0.4, 0.5, 0.3], tex: {id: 'marble', w: 2, h: 2}},
+                     {ty: 'cylinder', s: [0.5, 1.0, 0.5], p: [0, 0.6, 0.4], col: [0.6, 0.75, 0.3]},
+                  ]
+        }, 'SpitterScript');
+
         app.createWorldObject('en_charger', {
             prims: [
                      {ty: 'box',      s: [1.1, 1.0, 1.4], p: [0, 0, 0],    col: [0.85, 0.5, 0.15], tex: {id: 'marble', w: 2, h: 2}},
