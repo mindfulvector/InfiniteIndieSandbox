@@ -171,6 +171,14 @@ class Manifest {
                   ]
         }, 'SweeperScript');
 
+        // A healing zone: stand in it to recover HP over time (see
+        // RegenScript). The benevolent twin of the hazard volume.
+        app.createWorldObject('l_regen', {
+            prims: [
+                     {ty: 'box', s: [3, 3, 3], p: [0, 0, 0], col: [0.3, 1.0, 0.5]},
+                  ]
+        }, 'RegenScript');
+
         app.createWorldObject('l_hazard', {
             prims: [
                      {ty: 'box',       s: [2,1,2], p: [0,0,0]},

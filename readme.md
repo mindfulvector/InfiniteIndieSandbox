@@ -355,6 +355,10 @@ an **up** fan lifts you up a shaft to a high ledge (no ladder needed), a
 sideways fan blows you across a gap. Wire it on/off from a switch, or
 point one at a hazard for a "don't get blown into the spikes" beat.
 
+**Healing zones:** the **Regen Field** (Logic) is a glowing patch that heals
+you while you stand in it — a place to retreat and recover mid-fight. Wire
+its *Fully Healed* pulse to end a checkpoint, or drop one in a boss arena.
+
 **Conveyor belts:** the **Conveyor** (Logic) is a moving walkway — stand on
 it and it carries you along its set direction. Chain them into a factory
 floor, use one to feed the player into a hazard, or wire it on and off.
