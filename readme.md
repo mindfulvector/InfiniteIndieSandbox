@@ -246,7 +246,10 @@ they're yours to play anywhere, like every figure you own. Its sequel, **Nightfa
 the arena for a dramatic camera reveal, fight the crowned titan through all
 three of its phases while reinforcements pour in, and depose it to swing
 the loot vault open. A **★ FEATURED** pick rotates daily at the top of the
-list.
+list. For a longer quest, **Aether Ruins** is a three-stage adventure —
+fight past a sentry and clear a wave to open the first gate, teleport up to
+a key-star to open the second, and loot the vault, with checkpoints so a
+death doesn't send you back to the start.
 
 ### Play Mode
 In play mode, a default avatar will be dropped into the world at the origin `(0,0,0)`.
