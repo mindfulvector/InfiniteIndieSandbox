@@ -188,6 +188,14 @@ class Manifest {
                      {ty: 'box',      s: [0.9, 0.55, 0.08], p: [0.5, -0.7, 0], col: [0.3, 0.95, 0.55], tex: {id: 'cloud'}, nm: 'flag'},
                   ]
         }, 'CheckpointScript');
+        // A teleporter pad: wire one pad's `link` to another pad's `here`,
+        // step on it, and you're whisked to the partner (see TeleportScript).
+        app.createWorldObject('l_teleport', {
+            prims: [
+                     {ty: 'cylinder', s: [1.8, 0.2, 1.8], p: [0, 0, 0],   col: [0.3, 0.2, 0.5], tex: {id: 'marble'}},
+                     {ty: 'cylinder', s: [1.3, 0.08, 1.3], p: [0, 0.12, 0], col: [0.7, 0.5, 1.0], tex: {id: 'cloud'}},
+                  ]
+        }, 'TeleportScript');
         // A scoreboard: wired events score points, the score shows on the HUD,
         // and hitting the target fires its `reached` output.
         app.createWorldObject('l_scoreboard', {

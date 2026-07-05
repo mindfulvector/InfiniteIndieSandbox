@@ -322,6 +322,11 @@ it rides the surface of any pool so you can cross deep water without
 swimming. `WASD` steers, `Space` hops out. Beach it on dry land and it
 just sits there.
 
+**Teleporters:** drop two **Teleport** pads (Logic) and wire one's *Teleport
+To* to the other's *Link Target* — step on the first and you blink to the
+second. Wire it both ways for a two-way portal, or many pads into a hub:
+instant shortcuts, secret rooms, and puzzle warps.
+
 **Checkpoints:** place a **Checkpoint** flag (Logic) in your level and
 walk into it — its flag raises and it becomes your respawn point, so
 dying sends you back there instead of all the way to the start. Touch a
