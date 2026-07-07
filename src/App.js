@@ -327,20 +327,20 @@ class App {
         this.camera.attachControl(canvas, true);
         */
 
-        // Toy-box lighting (the Disney-Infinity read): ONE warm directional
-        // sun that casts soft blurred shadows, plus a dim cool sky fill so
-        // shadowed faces stay readable. The old single hemispheric light lit
-        // everything evenly -- which is exactly what made objects look like
-        // video-game geometry instead of physical toys on a table.
+        // Toy-box lighting (the Disney-Infinity 3.0 read): a BRIGHT, sunny,
+        // high-key scene -- one warm directional sun casting soft shadows over
+        // a strong sky-blue hemispheric fill, so the whole world feels like a
+        // cheerful playset under a clear midday sky rather than a dim diorama.
         var light1 = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0.2, 1, 0.1), this.scene);
-        light1.intensity = 0.45;
-        light1.diffuse = new BABYLON.Color3(0.75, 0.82, 0.95);      // cool sky fill
-        light1.groundColor = new BABYLON.Color3(0.35, 0.30, 0.25);  // warm bounce
+        light1.intensity = 0.72;                                    // high-key fill
+        light1.diffuse = new BABYLON.Color3(0.86, 0.92, 1.0);       // bright sky blue
+        light1.groundColor = new BABYLON.Color3(0.45, 0.40, 0.33);  // warm sunny bounce
+        light1.specular = new BABYLON.Color3(0.2, 0.2, 0.2);
         this.sun = new BABYLON.DirectionalLight("sun",
             new BABYLON.Vector3(-0.55, -0.62, 0.42).normalize(), this.scene);
         this.sun.position = new BABYLON.Vector3(40, 80, -30);
-        this.sun.intensity = 1.15;
-        this.sun.diffuse = new BABYLON.Color3(1.0, 0.96, 0.88);     // warm sunlight
+        this.sun.intensity = 1.25;
+        this.sun.diffuse = new BABYLON.Color3(1.0, 0.97, 0.9);      // warm sunlight
         try {
             // Cascaded Shadow Maps, not a plain ShadowGenerator. A single
             // directional light over our large terrain (10x10 tiles) has to
@@ -376,6 +376,38 @@ class App {
         } catch (e) {
             this.shadows = null;    // no shadow support: the sun still shapes faces
         }
+
+        // A gradient sky + gentle distance haze: turns the flat navy void into
+        // a sunny DI-style horizon and gives far terrain atmospheric depth.
+        this.buildSky([0.32, 0.58, 0.87], [0.82, 0.91, 0.98]);
+
+        // Lightweight IBL: reflect the sky into an environment cube so PBR
+        // models (the glTF barrels/chests/turret) have something bright to
+        // reflect. Without it, any metallic surface (the barrel ships at
+        // metallic=1) is a black mirror that vanishes from most angles. One
+        // reflection probe of just the sky dome renders once and costs nothing
+        // per frame; hex themes re-render it (see buildSky).
+        try {
+            const probe = new BABYLON.ReflectionProbe('skyEnv', 128, this.scene);
+            probe.renderList.push(this.skyDome);
+            probe.cubeTexture.refreshRate = BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+            this.scene.environmentTexture = probe.cubeTexture;
+            this.scene.environmentIntensity = 0.9;
+            this._skyProbe = probe;
+        } catch (e) { /* no probe support: PBR still lit by the sun + fill */ }
+
+        // Image-processing polish for the toy sheen: a touch more contrast and
+        // exposure with a soft vignette, so colours read punchy and rounded
+        // like a Disney-Infinity screenshot rather than flat WebGL output.
+        try {
+            const ip = this.scene.imageProcessingConfiguration;
+            ip.isEnabled = true;
+            ip.contrast = 1.12;
+            ip.exposure = 1.09;
+            ip.vignetteEnabled = true;
+            ip.vignetteWeight = 1.4;
+            ip.vignetteColor = new BABYLON.Color4(0.05, 0.05, 0.1, 0);
+        } catch (e) { /* image processing unsupported: plain output is fine */ }
         //this.defaultSphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 1 }, this.scene);
 
         //var box2 = BABYLON.Mesh.CreateBox("box2", 2, this.scene);
@@ -3056,6 +3088,68 @@ class App {
         return mesh;
     }
 
+    // Gradient sky dome + matched distance fog. `zenith` and `horizon` are
+    // [r,g,b] in 0..1: the dome fades zenith (overhead) down to horizon (eye
+    // level), the fog and clear colour both take the horizon so distant
+    // terrain melts into the sky. Re-callable -- hex themes repaint it.
+    buildSky(zenith, horizon) {
+        const c255 = (a) => 'rgb(' + ((a[0] * 255) | 0) + ',' + ((a[1] * 255) | 0) + ',' + ((a[2] * 255) | 0) + ')';
+        if (!this.skyDome) {
+            const dome = BABYLON.MeshBuilder.CreateSphere('skyDome',
+                { diameter: 1000, segments: 16, sideOrientation: BABYLON.Mesh.BACKSIDE }, this.scene);
+            dome.infiniteDistance = true;   // rides with the camera -- never reached
+            dome.isPickable = false;
+            dome.checkCollisions = false;
+            dome.applyFog = false;          // the sky itself is not hazed
+            const mat = new BABYLON.StandardMaterial('skyMat', this.scene);
+            mat.backFaceCulling = false;
+            mat.disableLighting = true;     // pure emissive gradient, unlit
+            mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
+            mat.specularColor = new BABYLON.Color3(0, 0, 0);
+            const tex = new BABYLON.DynamicTexture('skyGrad',
+                { width: 512, height: 256 }, this.scene, false);
+            tex.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;   // no gradient seam at the poles
+            tex.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;    // clouds wrap around the dome
+            mat.emissiveTexture = tex;
+            dome.material = mat;
+            this.skyDome = dome; this.skyTex = tex;
+        }
+        const W = 512, H = 256;
+        const ctx = this.skyTex.getContext();
+        const g = ctx.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, c255(zenith));     // top of the texture = overhead
+        g.addColorStop(1, c255(horizon));    // bottom = eye-level horizon
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+        // Soft toy clouds: a few fixed puff clusters in the upper-middle band,
+        // white fading to transparent so they sit on the gradient. Fixed
+        // positions keep the sky stable across reloads.
+        const puffs = [
+            [60, 120, 40], [95, 110, 30], [128, 126, 26],
+            [230, 150, 34], [262, 140, 26], [292, 156, 28],
+            [400, 128, 36], [434, 120, 28], [175, 170, 24], [472, 165, 26],
+            [340, 185, 26], [40, 185, 22],
+        ];
+        puffs.forEach(([x, y, r]) => {
+            const rg = ctx.createRadialGradient(x, y, 0, x, y, r);
+            rg.addColorStop(0, 'rgba(255,255,255,0.95)');
+            rg.addColorStop(0.55, 'rgba(255,255,255,0.6)');
+            rg.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = rg;
+            ctx.fillRect(x - r, y - r, r * 2, r * 2);
+        });
+        this.skyTex.update(false);
+        this.scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
+        this.scene.fogColor = new BABYLON.Color3(horizon[0], horizon[1], horizon[2]);
+        this.scene.fogDensity = 0.011;
+        this.scene.clearColor = new BABYLON.Color4(horizon[0], horizon[1], horizon[2], 1);
+        // Re-capture the repainted sky into the environment cube so PBR
+        // reflections track the theme (the probe renders once per request).
+        if (this._skyProbe) {
+            this._skyProbe.cubeTexture.refreshRate = BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+        }
+    }
+
     // Build a procedural texture from a prim tex spec ({id, ...tuning}).
     // All are rendered ONCE (refreshRate 0) so they cost nothing per frame --
     // important under software rendering. Returns null for unknown ids.
@@ -4315,11 +4409,17 @@ class App {
     // shared terrain atlas (one material, so it stays instancing-safe).
     applyHexTheme() {
         const hx = this.hexById(this.activeHexDisc) || HEX_DISCS[0];
-        if (this.scene) {
-            if (!this._defaultClearColor) this._defaultClearColor = this.scene.clearColor.clone();
-            this.scene.clearColor = hx.sky
-                ? new BABYLON.Color4(hx.sky[0], hx.sky[1], hx.sky[2], 1)
-                : this._defaultClearColor.clone();
+        if (this.scene && this.skyDome) {
+            // classic (sky:null) keeps the default sunny DI gradient; a themed
+            // sky becomes the zenith and a lightened mix of it the horizon, so
+            // every theme still gets depth + haze instead of a flat backdrop.
+            if (hx.sky) {
+                const zen = hx.sky;
+                const hor = [0.5 + zen[0] * 0.5, 0.5 + zen[1] * 0.5, 0.5 + zen[2] * 0.5];
+                this.buildSky(zen, hor);
+            } else {
+                this.buildSky([0.32, 0.58, 0.87], [0.82, 0.91, 0.98]);
+            }
         }
         const mat = this.terrainAtlasMaterial();
         mat.diffuseColor = new BABYLON.Color3(hx.tint[0], hx.tint[1], hx.tint[2]);
