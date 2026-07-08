@@ -140,6 +140,9 @@ class GameHarness {
         });
         const context = await this.browser.newContext({ viewport: this.viewport });
         this.page = await context.newPage();
+        // Menus in the shipped game navigate by arrow keys only; the digit
+        // hotkeys the test suites drive menus with live behind this flag.
+        await this.page.addInitScript(() => { window.__iisTestDigits = true; });
         this.page.on('console', (msg) => {
             this.consoleLogs.push(`${msg.type()}: ${msg.text()}`);
         });
