@@ -1426,9 +1426,18 @@ class App {
         if(this.menu.state != MENU_HUD) {
             // DI-style navigation: arrows move the gold highlight, Enter
             // activates, Esc (above) backs out. No number hotkeys.
+            if(this.menu.grid) {
+                // Grid menus (store/collection/gallery) navigate in 2D.
+                if(this.keyPressed('ARROWLEFT'))  this.gridMove(-1);
+                if(this.keyPressed('ARROWRIGHT')) this.gridMove(1);
+                if(this.keyPressed('ARROWUP'))    this.gridMove(-this.menu.grid.cols);
+                if(this.keyPressed('ARROWDOWN'))  this.gridMove(this.menu.grid.cols);
+                if(this.keyPressed('ENTER'))      this.gridActivate();
+            } else {
             if(this.keyPressed('ARROWUP'))   this.menuMove(-1);
             if(this.keyPressed('ARROWDOWN')) this.menuMove(1);
             if(this.keyPressed('ENTER'))     this.menuActivate();
+            }
             // Harness compatibility: the test suites drive menus by digit
             // keys. That path stays available ONLY under the automation flag
             // the harness injects -- players never see or use it.
@@ -1564,6 +1573,16 @@ class App {
             } else if(menuItem === 8) {
                 app.menu.gearPrevState = app.menu.prevState || MENU_MAIN;
                 app.menu.state = MENU_GEAR;
+            } else if(menuItem >= 10) {
+                // Grid figures answer on 10+i: the full roster INCLUDING the
+                // campaign heroes (the old 1..4 range collided wick/warden
+                // with the sidekick numbers below).
+                const fig = FIGURES[menuItem - 10];
+                if(fig) {
+                    if(app.ownsFigure(fig.id)) app.selectFigure(fig.id);
+                    else app.buyFigure(fig.id);
+                    app.menu.renderedState = -1;   // re-render with new state
+                }
             } else if(menuItem >= 5 && menuItem <= 4 + SIDEKICKS.length) {
                 const sk = SIDEKICKS[menuItem - 5];
                 if(sk) {
@@ -1824,6 +1843,7 @@ class App {
         this.menu.panel = null;
         this.menu.buttons = [];
         this.menu.sel = 0;
+        this.menu.grid = null;
     }
 
     // ---- arrow-key menu navigation (DI-style) --------------------------------
@@ -1894,8 +1914,17 @@ class App {
 
                 this.MenuItem({
                     type: 'button',
+                    name: 'btnSlot',
+                    text: 'Progression Slot  (slot ' + (this.saveSlot || 1) + ' active)',
+                    handler: () => {
+                        app.triggerMenuItem(MENU_MAIN, 7);
+                    }
+                });
+
+                this.MenuItem({
+                    type: 'button',
                     name: 'btnNew',
-                    text: '1. New Game',
+                    text: 'New Game',
                     handler: () => {
                         app.triggerMenuItem(MENU_MAIN, 1);
                     }
@@ -1904,7 +1933,7 @@ class App {
                 this.MenuItem({
                     type: 'button',
                     name: 'btnLoad',
-                    text: '2. Load Game',
+                    text: 'Load Game',
                     handler: () => {
                         app.triggerMenuItem(MENU_MAIN, 2);
                     }
@@ -1912,8 +1941,15 @@ class App {
 
                 this.MenuItem({
                     type: 'button',
+                    name: 'btnShare',
+                    text: 'Share Worlds',
+                    handler: () => { app.triggerMenuItem(MENU_MAIN, 6); }
+                });
+
+                this.MenuItem({
+                    type: 'button',
                     name: 'btnCollection',
-                    text: '3. Collection',
+                    text: 'Collection',
                     handler: () => {
                         app.triggerMenuItem(MENU_MAIN, 3);
                     }
@@ -1921,8 +1957,15 @@ class App {
 
                 this.MenuItem({
                     type: 'button',
+                    name: 'btnNet',
+                    text: 'Online Co-op' + (this.net && !this.net.closed ? '  ◉ LINKED' : ''),
+                    handler: () => { app.triggerMenuItem(MENU_MAIN, 8); }
+                });
+
+                this.MenuItem({
+                    type: 'button',
                     name: 'btnAbout',
-                    text: '4. About',
+                    text: 'About',
                     handler: () => {
                         app.triggerMenuItem(MENU_MAIN, 4);
                     }
@@ -1931,31 +1974,10 @@ class App {
                 this.MenuItem({
                     type: 'button',
                     name: 'btnQuit',
-                    text: '5. Quit',
+                    text: 'Quit',
                     handler: () => {
                         app.triggerMenuItem(MENU_MAIN, 5);
                     }
-                });
-
-                this.MenuItem({
-                    type: 'button',
-                    name: 'btnShare',
-                    text: '6. Share Worlds',
-                    handler: () => { app.triggerMenuItem(MENU_MAIN, 6); }
-                });
-                this.MenuItem({
-                    type: 'button',
-                    name: 'btnSlot',
-                    text: '7. Progression Slot  (slot ' + (this.saveSlot || 1) + ' active)',
-                    handler: () => {
-                        app.triggerMenuItem(MENU_MAIN, 7);
-                    }
-                });
-                this.MenuItem({
-                    type: 'button',
-                    name: 'btnNet',
-                    text: '8. Online Co-op' + (this.net && !this.net.closed ? '  ◉ LINKED' : ''),
-                    handler: () => { app.triggerMenuItem(MENU_MAIN, 8); }
                 });
                 break;
             case MENU_DIALOG: {
@@ -2108,17 +2130,8 @@ class App {
 
                 this.MenuItem({
                     type: 'button',
-                    name: 'btnLoad',
-                    text: '5. Quit to Main Menu',
-                    handler: () => {
-                        app.triggerMenuItem(MENU_PAUSE, 5);
-                    }
-                });
-
-                this.MenuItem({
-                    type: 'button',
                     name: 'btnShop',
-                    text: '6. Shop',
+                    text: 'Shop',
                     handler: () => {
                         app.triggerMenuItem(MENU_PAUSE, 6);
                     }
@@ -2126,17 +2139,8 @@ class App {
 
                 this.MenuItem({
                     type: 'button',
-                    name: 'btnWiring',
-                    text: '7. Wiring',
-                    handler: () => {
-                        app.triggerMenuItem(MENU_PAUSE, 7);
-                    }
-                });
-
-                this.MenuItem({
-                    type: 'button',
                     name: 'btnCollection',
-                    text: '8. Collection',
+                    text: 'Collection',
                     handler: () => {
                         app.triggerMenuItem(MENU_PAUSE, 8);
                     }
@@ -2145,9 +2149,18 @@ class App {
                 this.MenuItem({
                     type: 'button',
                     name: 'btnSkills',
-                    text: '9. Skills' + (this.skillPointsUnspent() > 0 ? '   ● ' + this.skillPointsUnspent() + ' point' + (this.skillPointsUnspent() === 1 ? '' : 's') : ''),
+                    text: 'Skills' + (this.skillPointsUnspent() > 0 ? '   ● ' + this.skillPointsUnspent() + ' point' + (this.skillPointsUnspent() === 1 ? '' : 's') : ''),
                     handler: () => {
                         app.triggerMenuItem(MENU_PAUSE, 9);
+                    }
+                });
+
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnWiring',
+                    text: 'Wiring',
+                    handler: () => {
+                        app.triggerMenuItem(MENU_PAUSE, 7);
                     }
                 });
 
@@ -2160,71 +2173,51 @@ class App {
                     }
                 });
 
+                this.MenuItem({
+                    type: 'button',
+                    name: 'btnQuitMain',
+                    text: 'Quit to Main Menu',
+                    handler: () => {
+                        app.triggerMenuItem(MENU_PAUSE, 5);
+                    }
+                });
+
                 break;
-            case MENU_SHOP:
-                this.MenuRect();
-
-                this.MenuItem({
-                    type: 'text',
-                    name: 'shopTitle',
-                    text: 'SHOP',
-                    fontSize: 24,
-                    accent: true,
-                });
-                this.MenuItem({
-                    type: 'text',
-                    name: 'shopBalance',
-                    text: 'Pixels: ' + this.pixels,
-                    fontSize: 16,
-                    color: '#ff9bce',
-                });
-
+            case MENU_SHOP: {
+                // DI Toy-Store layout: a grid of thumbnail tiles + detail pane.
+                // Item IDs stay stable (objects 1..N, packs after) so the digit
+                // test path and buy logic are untouched.
                 const shopItems = this.premiumObjects();
-                if(shopItems.length === 0) {
-                    this.MenuItem({ type: 'text', name: 'shopEmpty', text: 'Nothing for sale right now.' });
-                } else {
-                    shopItems.forEach((it, i) => {
-                        this.MenuItem({
-                            type: 'button',
-                            name: 'btnShopItem_' + i,
-                            text: (i + 1) + '. ' + this.prettyName(it.name) +
-                                (it.owned ? '   ✓ Owned' : '   ' + it.price + ' px'),
-                            handler: () => { app.triggerMenuItem(MENU_SHOP, i + 1); }
-                        });
+                const gridItems = [];
+                shopItems.forEach((it, i) => {
+                    gridItems.push({
+                        label: this.prettyName(it.name),
+                        desc: (this.objectCategory ? this.objectCategory(it.name) + ' object. ' : '') +
+                              'A buildable toy for your sandbox worlds.',
+                        status: it.owned ? '✓ Owned' : it.price + ' px',
+                        statusColor: it.owned ? HUD_PLAY_ACCENT : MENU_SEL_BG,
+                        glyph: '▣',
+                        thumbWo: this.findWorldObject(it.name),
+                        handler: () => { app.triggerMenuItem(MENU_SHOP, i + 1); },
                     });
-                }
-
-                // Packs sit BELOW the objects and number after them, so the
-                // object item indices (which tests and muscle memory rely on)
-                // never shift as packs come and go.
-                this.MenuItem({
-                    type: 'text',
-                    name: 'shopPacksHdr',
-                    text: '— PACKS —',
-                    fontSize: 14,
-                    color: '#9fb3c8',
                 });
                 PACKS.forEach((pack, i) => {
                     const n = shopItems.length + i + 1;
                     const owned = this.packOwned(pack.id);
                     const saving = this.packValue(pack.id) - pack.price;
-                    this.MenuItem({
-                        type: 'button',
-                        name: 'btnShopPack_' + pack.id,
-                        text: n + '. ' + pack.name + ' — ' + pack.desc +
-                            (owned ? '   ✓ Owned'
-                                   : '   ' + pack.price + ' px' + (saving > 0 ? ' (save ' + saving + ')' : '')),
-                        handler: () => { app.triggerMenuItem(MENU_SHOP, n); }
+                    gridItems.push({
+                        label: pack.name,
+                        desc: pack.desc + (saving > 0 && !owned ? '  (save ' + saving + ' px)' : ''),
+                        status: owned ? '✓ Owned' : pack.price + ' px',
+                        statusColor: owned ? HUD_PLAY_ACCENT : MENU_SEL_BG,
+                        glyph: '🗀',
+                        handler: () => { app.triggerMenuItem(MENU_SHOP, n); },
                     });
                 });
-
-                this.MenuItem({
-                    type: 'button',
-                    name: 'btnShopBack',
-                    text: '0. Back',
-                    handler: () => { app.triggerMenuItem(MENU_SHOP, 0); }
-                });
+                this.MenuGrid({ title: 'TOY STORE', items: gridItems });
+                this._bakeGridThumbs();
                 break;
+            }
             case MENU_OBJ_PARAMS: {
                 const inst = this.paramTarget;
                 this.MenuRect();
@@ -2325,71 +2318,59 @@ class App {
                 // build through the menu system here.
                 break;
             case MENU_COLLECTION: {
-                this.MenuRect();
-                this.MenuItem({
-                    type: 'text',
-                    name: 'colTitle',
-                    text: 'COLLECTION',
-                    fontSize: 22,
-                    accent: true,
-                });
-                this.MenuItem({
-                    type: 'text',
-                    name: 'colBalance',
-                    text: 'Pixels: ' + this.pixels,
-                    fontSize: 15,
-                    color: '#ff9bce',
-                });
+                // DI figure-collection layout: a grid of character portraits,
+                // Enter selects a character to PLAY AS (or buys it). Portraits
+                // are pre-rendered by tools/generate-previews.js into
+                // assets/previews/figures/<id>.png (glyph fallback if absent).
+                const gridItems = [];
                 FIGURES.forEach((fig, i) => {
                     const owned = this.ownsFigure(fig.id);
                     const active = this.activeFigure === fig.id;
-                    const status = active ? '★ PLAYING' : (owned ? 'Owned' : fig.price + ' px');
-                    this.MenuItem({
-                        type: 'button',
-                        name: 'btnFig_' + fig.id,
-                        text: (i + 1) + '. ' + fig.name + '  ·  LV ' + this.figureLevelOf(fig.id) +
-                              '  ·  ' + fig.desc + '   [' + status + ']',
-                        handler: () => { app.triggerMenuItem(MENU_COLLECTION, i + 1); }
+                    const status = active ? '★ PLAYING'
+                        : owned ? 'LV ' + this.figureLevelOf(fig.id) + '  ·  Select to play'
+                        : (fig.price != null ? fig.price + ' px'
+                                             : 'Unlocks with its Play Set');
+                    gridItems.push({
+                        label: fig.name,
+                        desc: fig.desc + '.  Special: ' + fig.specialName +
+                              '.  Combo: ' + fig.combo.comboName + '.',
+                        status,
+                        statusColor: active ? HUD_PLAY_ACCENT : (owned ? '#9fc4ea' : MENU_SEL_BG),
+                        img: 'assets/previews/figures/' + fig.id + '.png',
+                        glyph: '♟',
+                        // Figures answer on 10+ so campaign heroes (wick, warden)
+                        // never collide with the sidekick range at 5..7.
+                        handler: () => { app.triggerMenuItem(MENU_COLLECTION, 10 + i); },
                     });
-                });
-                this.MenuItem({
-                    type: 'text',
-                    name: 'skHdr',
-                    text: '— SIDEKICKS —',
-                    fontSize: 14,
-                    color: '#9fb3c8',
                 });
                 SIDEKICKS.forEach((sk, i) => {
-                    const n = 5 + i;
                     const owned = this.ownsSidekick(sk.id);
                     const active = this.activeSidekick === sk.id;
-                    const status = active ? '★ FOLLOWING · LV ' + this.sidekickLevelOf(sk.id)
-                                          : (owned ? 'Owned · LV ' + this.sidekickLevelOf(sk.id) : sk.price + ' px');
-                    this.MenuItem({
-                        type: 'button',
-                        name: 'btnSk_' + sk.id,
-                        text: n + '. ' + sk.name + ' — ' + sk.desc + '   [' + status + ']',
-                        handler: () => { app.triggerMenuItem(MENU_COLLECTION, n); }
+                    gridItems.push({
+                        label: sk.name,
+                        desc: sk.desc + '.  A hover-follower that levels up beside you.',
+                        status: active ? '★ FOLLOWING · LV ' + this.sidekickLevelOf(sk.id)
+                            : (owned ? 'LV ' + this.sidekickLevelOf(sk.id) + '  ·  Select to follow' : sk.price + ' px'),
+                        statusColor: active ? HUD_PLAY_ACCENT : (owned ? '#9fc4ea' : MENU_SEL_BG),
+                        glyph: '✦',
+                        handler: () => { app.triggerMenuItem(MENU_COLLECTION, 5 + i); },
                     });
                 });
-                this.MenuItem({
-                    type: 'button',
-                    name: 'btnSkCare',
-                    text: '8. Sidekick Care  (' + (this.sidekickFood || 0) + ' food · feed + wardrobe)',
-                    handler: () => { app.triggerMenuItem(MENU_COLLECTION, 8); }
+                gridItems.push({
+                    label: 'Sidekick Care',
+                    desc: 'Feed your sidekick and dress it from the wardrobe.',
+                    status: (this.sidekickFood || 0) + ' food',
+                    glyph: '🍎',
+                    handler: () => { app.triggerMenuItem(MENU_COLLECTION, 8); },
                 });
-                this.MenuItem({
-                    type: 'button',
-                    name: 'btnColDiscs',
-                    text: '9. Power Discs  (' + this.equippedDiscs.length + '/' + DISC_SLOTS + ' equipped)',
-                    handler: () => { app.triggerMenuItem(MENU_COLLECTION, 9); }
+                gridItems.push({
+                    label: 'Power Discs',
+                    desc: 'Passive buff tokens. Two different discs stack.',
+                    status: this.equippedDiscs.length + '/' + DISC_SLOTS + ' equipped',
+                    glyph: '◉',
+                    handler: () => { app.triggerMenuItem(MENU_COLLECTION, 9); },
                 });
-                this.MenuItem({
-                    type: 'button',
-                    name: 'btnColBack',
-                    text: '0. Back',
-                    handler: () => { app.triggerMenuItem(MENU_COLLECTION, 0); }
-                });
+                this.MenuGrid({ title: 'COLLECTION', items: gridItems });
                 break;
             }
             case MENU_DISCS: {
@@ -2508,75 +2489,50 @@ class App {
                 break;
             }
             case MENU_SHARE: {
-                this.MenuRect();
-                this.MenuItem({
-                    type: 'text',
-                    name: 'shareTitle',
-                    text: 'SHARE WORLDS',
-                    fontSize: 22,
-                    accent: true,
+                // DI-style world gallery: LEVEL tiles with cached preview
+                // images (tools/generate-previews.js bakes them into
+                // assets/previews/worlds/<file>.png), plus export/import and
+                // the favourite-mode toggle as utility tiles. IDs unchanged.
+                const gridItems = [];
+                gridItems.push({
+                    label: 'Export World',
+                    desc: 'Save the current world as a .json file — send it to friends.',
+                    status: 'Utility', statusColor: '#9fc4ea', glyph: '⇩',
+                    handler: () => { app.triggerMenuItem(MENU_SHARE, 1); },
                 });
-                this.MenuItem({
-                    type: 'text',
-                    name: 'shareHint',
-                    text: 'Worlds travel as .json files — send them to friends.',
-                    fontSize: 14,
-                    color: '#9fb3c8',
+                gridItems.push({
+                    label: 'Import World',
+                    desc: 'Load a world from a .json file.',
+                    status: 'Utility', statusColor: '#9fc4ea', glyph: '⇪',
+                    handler: () => { app.triggerMenuItem(MENU_SHARE, 2); },
                 });
-                this.MenuItem({
-                    type: 'button',
-                    name: 'btnShareExport',
-                    text: '1. Export the current world to a file',
-                    handler: () => { app.triggerMenuItem(MENU_SHARE, 1); }
+                gridItems.push({
+                    label: 'Favourite Mode',
+                    desc: 'While ON, picking a world stars/unstars it instead of loading.',
+                    status: this._galleryFavMode ? '★ ON' : '☆ off',
+                    statusColor: this._galleryFavMode ? MENU_SEL_BG : '#9fc4ea',
+                    glyph: this._galleryFavMode ? '★' : '☆',
+                    handler: () => { app.triggerMenuItem(MENU_SHARE, 80); },
                 });
-                this.MenuItem({
-                    type: 'button',
-                    name: 'btnShareImport',
-                    text: '2. Import a world file',
-                    handler: () => { app.triggerMenuItem(MENU_SHARE, 2); }
-                });
-                this.MenuItem({
-                    type: 'text',
-                    name: 'galleryHdr',
-                    text: '— GALLERY —',
-                    fontSize: 14,
-                    color: '#9fb3c8',
-                });
-                if(!this.gallery) {
-                    this.MenuItem({ type: 'text', name: 'galleryLoading', text: 'Loading gallery…', fontSize: 14 });
-                } else if(this.gallery.length === 0) {
-                    this.MenuItem({ type: 'text', name: 'galleryEmpty', text: 'No gallery worlds found.', fontSize: 14 });
-                } else {
-                    // A click-only toggle (item 80): in favourite mode, a
-                    // gallery pick stars/unstars that world instead of loading it.
-                    this.MenuItem({
-                        type: 'button',
-                        name: 'btnFavMode',
-                        text: (this._galleryFavMode ? '★ Favourite mode: ON — pick a world to star/unstar'
-                                                    : '☆ Favourite mode: off (tap to star worlds)'),
-                        handler: () => { app.triggerMenuItem(MENU_SHARE, 80); }
-                    });
-                    // Featured-first, then favourites, then the rest.
+                if(this.gallery) {
                     this.orderedGallery().forEach((g, i) => {
                         const n = 3 + i;
                         const owned = this.playsetOwned(g);
                         const star = this.isFavorite(g.file) ? '★ ' : '';
-                        this.MenuItem({
-                            type: 'button',
-                            name: 'btnGallery_' + i,
-                            text: n + '. ' + (owned ? '' : '🔒 ') + star +
-                                (i === 0 && this.featuredWorld() === g ? '★ FEATURED · ' : '') +
-                                g.name + ' — ' + (owned ? g.desc : g.price + ' px to unlock'),
-                            handler: () => { app.triggerMenuItem(MENU_SHARE, n); }
+                        const featured = (i === 0 && this.featuredWorld() === g);
+                        gridItems.push({
+                            label: star + g.name,
+                            desc: (featured ? '★ FEATURED today.  ' : '') + g.desc,
+                            status: owned ? (g.price ? '✓ Owned Play Set' : 'Free world')
+                                          : '🔒 ' + g.price + ' px to unlock',
+                            statusColor: owned ? HUD_PLAY_ACCENT : MENU_SEL_BG,
+                            img: 'assets/previews/worlds/' + g.file.replace(/\.json$/, '') + '.png',
+                            glyph: '🌍',
+                            handler: () => { app.triggerMenuItem(MENU_SHARE, n); },
                         });
                     });
                 }
-                this.MenuItem({
-                    type: 'button',
-                    name: 'btnShareBack',
-                    text: '0. Back',
-                    handler: () => { app.triggerMenuItem(MENU_SHARE, 0); }
-                });
+                this.MenuGrid({ title: 'WORLD GALLERY', items: gridItems });
                 break;
             }
             case MENU_SKILLS: {
@@ -5209,6 +5165,259 @@ class App {
             row.addControl(mkStep("▶", opts.onNext));   // ▶
             stack.addControl(row);
             break;
+        }
+    }
+
+    // ---- DI-style grid menu ---------------------------------------------------
+    // The Toy-Store / Collection layout from Disney Infinity: a left panel with
+    // a titled header + currency, a grid of square thumbnail tiles, and a right
+    // detail pane showing the selected item large with name/description/status.
+    // Arrow keys move in 2D, Enter activates, Esc backs out (menu item 0).
+    //   opts: { title, items, cols }
+    //   item: { label, desc, status, statusColor, img (url), glyph, handler }
+    MenuGrid(opts) {
+        const A = BABYLON.GUI.Control;
+        const app = this;
+        const cols = opts.cols || 5;
+        const TILE = 92, GAP = 8;
+
+        // Left panel: header + tile grid.
+        const panel = new BABYLON.GUI.Rectangle("gridPanel");
+        panel.width = (cols * (TILE + GAP) + 40) + "px";
+        panel.adaptHeightToChildren = true;
+        panel.cornerRadius = 14;
+        panel.thickness = 2;
+        panel.color = HUD_ACCENT;
+        panel.background = "rgba(12,18,30,0.94)";
+        panel.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        panel.verticalAlignment = A.VERTICAL_ALIGNMENT_CENTER;
+        panel.left = "70px";
+        this.gui.addControl(panel);
+        this.menu.controls.push(panel);
+
+        const stack = new BABYLON.GUI.StackPanel("gridStack");
+        stack.isVertical = true;
+        stack.spacing = 8;
+        stack.paddingTop = "18px";
+        stack.paddingBottom = "18px";
+        panel.addControl(stack);
+
+        // Header strip: gold notch, title, pixel balance on the right.
+        const head = new BABYLON.GUI.Rectangle("gridHead");
+        head.width = (cols * (TILE + GAP)) + "px";
+        head.height = "40px";
+        head.thickness = 0;
+        head.background = "rgba(46,86,128,0.65)";
+        head.cornerRadius = 7;
+        const notch = new BABYLON.GUI.Rectangle("gridHeadNotch");
+        notch.width = "10px"; notch.height = "40px"; notch.thickness = 0;
+        notch.background = MENU_SEL_BG;
+        notch.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        head.addControl(notch);
+        const ht = new BABYLON.GUI.TextBlock();
+        ht.text = opts.title || '';
+        ht.color = "#eaf2ff"; ht.fontSize = 17; ht.fontStyle = "bold";
+        ht.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_LEFT;
+        ht.paddingLeft = "24px";
+        head.addControl(ht);
+        const bal = new BABYLON.GUI.TextBlock();
+        bal.text = '✦ ' + this.pixels;
+        bal.color = MENU_SEL_BG; bal.fontSize = 16; bal.fontStyle = "bold";
+        bal.textHorizontalAlignment = A.HORIZONTAL_ALIGNMENT_RIGHT;
+        bal.paddingRight = "14px";
+        head.addControl(bal);
+        stack.addControl(head);
+
+        // The tile grid rows.
+        const items = opts.items || [];
+        const tiles = [];
+        for (let r = 0; r * cols < items.length; r++) {
+            const row = new BABYLON.GUI.StackPanel("gridRow" + r);
+            row.isVertical = false;
+            row.height = (TILE + GAP) + "px";
+            row.width = (cols * (TILE + GAP)) + "px";
+            for (let c = 0; c < cols; c++) {
+                const idx = r * cols + c;
+                if (idx >= items.length) break;
+                const it = items[idx];
+                const tile = new BABYLON.GUI.Rectangle("tile_" + idx);
+                tile.width = TILE + "px"; tile.height = TILE + "px";
+                tile.thickness = 2;
+                tile.cornerRadius = 10;
+                tile.color = "rgba(110,150,200,0.55)";
+                tile.background = "rgba(30,52,84,0.85)";
+                // A little breathing room between tiles.
+                tile.paddingRight = GAP + "px"; tile.paddingBottom = GAP + "px";
+                const glyph = new BABYLON.GUI.TextBlock();
+                glyph.text = it.glyph || '◆';
+                glyph.fontSize = 34;
+                glyph.color = "#9fc4ea";
+                tile.addControl(glyph);
+                const img = new BABYLON.GUI.Image("tileImg_" + idx, "");
+                img.stretch = BABYLON.GUI.Image.STRETCH_UNIFORM;
+                img.isVisible = false;
+                tile.addControl(img);
+                const entry = { it, tile, img, glyph, idx };
+                tiles.push(entry);
+                tile.isPointerBlocker = true;
+                tile.onPointerEnterObservable.add(() => app.setGridSelection(idx, true));
+                tile.onPointerUpObservable.add(() => {
+                    app.setGridSelection(idx, true);
+                    app.gridActivate();
+                });
+                if (it.img) this._loadGridImage(entry, it.img);
+                row.addControl(tile);
+            }
+            stack.addControl(row);
+        }
+
+        // Right detail pane.
+        const det = new BABYLON.GUI.Rectangle("gridDetail");
+        det.width = "330px";
+        det.adaptHeightToChildren = true;
+        det.cornerRadius = 14;
+        det.thickness = 2;
+        det.color = HUD_ACCENT;
+        det.background = "rgba(12,18,30,0.94)";
+        det.horizontalAlignment = A.HORIZONTAL_ALIGNMENT_RIGHT;
+        det.verticalAlignment = A.VERTICAL_ALIGNMENT_CENTER;
+        det.left = "-70px";
+        this.gui.addControl(det);
+        this.menu.controls.push(det);
+        const dstack = new BABYLON.GUI.StackPanel("gridDetailStack");
+        dstack.isVertical = true;
+        dstack.spacing = 8;
+        dstack.paddingTop = "18px"; dstack.paddingBottom = "18px";
+        det.addControl(dstack);
+        const dImgWrap = new BABYLON.GUI.Rectangle("gridDetailImgWrap");
+        dImgWrap.width = "260px"; dImgWrap.height = "190px";
+        dImgWrap.thickness = 2; dImgWrap.cornerRadius = 10;
+        dImgWrap.color = "rgba(110,150,200,0.55)";
+        dImgWrap.background = "rgba(30,52,84,0.85)";
+        const dGlyph = new BABYLON.GUI.TextBlock();
+        dGlyph.fontSize = 64; dGlyph.color = "#9fc4ea";
+        dImgWrap.addControl(dGlyph);
+        const dImg = new BABYLON.GUI.Image("gridDetailImg", "");
+        dImg.stretch = BABYLON.GUI.Image.STRETCH_UNIFORM;
+        dImg.isVisible = false;
+        dImgWrap.addControl(dImg);
+        dstack.addControl(dImgWrap);
+        const dName = new BABYLON.GUI.TextBlock("gridDetailName");
+        dName.fontSize = 19; dName.fontStyle = "bold"; dName.color = "#eaf2ff";
+        dName.height = "30px";
+        dstack.addControl(dName);
+        const dDesc = new BABYLON.GUI.TextBlock("gridDetailDesc");
+        dDesc.fontSize = 14; dDesc.color = "#cdd9e8";
+        dDesc.textWrapping = true;
+        dDesc.width = "290px"; dDesc.height = "72px";
+        dstack.addControl(dDesc);
+        const dStatus = new BABYLON.GUI.TextBlock("gridDetailStatus");
+        dStatus.fontSize = 16; dStatus.fontStyle = "bold";
+        dStatus.height = "26px";
+        dstack.addControl(dStatus);
+
+        const hint = new BABYLON.GUI.TextBlock("gridFootHint");
+        hint.text = "← ↑ ↓ →  Navigate      ⏎  Select      Esc  Back";
+        hint.color = "#9fb3c8";
+        hint.fontSize = 14;
+        hint.height = "26px";
+        hint.verticalAlignment = A.VERTICAL_ALIGNMENT_BOTTOM;
+        hint.top = "-14px";
+        this.gui.addControl(hint);
+        this.menu.controls.push(hint);
+
+        this.menu.grid = { items, tiles, cols,
+            detail: { img: dImg, glyph: dGlyph, name: dName, desc: dDesc, status: dStatus } };
+        this.setGridSelection(0, true);
+    }
+
+    // Probe an image URL through a DOM Image first: Babylon GUI has no
+    // graceful missing-image state, so tiles keep their glyph until the
+    // preview actually loads (missing previews just stay glyphs).
+    _loadGridImage(entry, url) {
+        const grid = this.menu.grid;
+        const probe = new Image();
+        probe.onload = () => {
+            entry.it._imgOk = true;
+            if (entry.img.isDisposed && entry.img.isDisposed()) return;
+            entry.img.source = url;
+            entry.img.isVisible = true;
+            entry.glyph.isVisible = false;
+            // Refresh the detail pane if this item is currently selected.
+            if (this.menu.grid && this.menu.grid.tiles[this.menu.grid.selIdx || 0] === entry) {
+                this.setGridSelection(this.menu.grid.selIdx || 0, true);
+            }
+        };
+        probe.src = url;
+    }
+
+    setGridSelection(i, silent) {
+        const g = this.menu.grid;
+        if (!g || !g.tiles.length) return;
+        const n = Math.max(0, Math.min(g.tiles.length - 1, i));
+        if (n !== g.selIdx && !silent) this.sound.play('menu-move');
+        g.selIdx = n;
+        g.tiles.forEach((t, idx) => {
+            const sel = idx === n;
+            t.tile.color = sel ? MENU_SEL_BG : "rgba(110,150,200,0.55)";
+            t.tile.thickness = sel ? 3 : 2;
+            t.tile.background = sel ? "rgba(64,96,138,0.95)" : "rgba(30,52,84,0.85)";
+        });
+        const it = g.items[n], d = g.detail;
+        d.name.text = it.label || '';
+        d.desc.text = it.desc || '';
+        d.status.text = it.status || '';
+        d.status.color = it.statusColor || MENU_SEL_BG;
+        if (it._imgOk || (it.img && it.img.indexOf('data:') === 0)) {
+            d.img.source = it.img;
+            d.img.isVisible = true;
+            d.glyph.isVisible = false;
+        } else {
+            d.img.isVisible = false;
+            d.glyph.isVisible = true;
+            d.glyph.text = it.glyph || '◆';
+        }
+    }
+
+    gridMove(delta) {
+        const g = this.menu.grid;
+        if (!g) return;
+        this.setGridSelection((g.selIdx || 0) + delta);
+    }
+
+    gridActivate() {
+        const g = this.menu.grid;
+        if (!g) return;
+        const it = g.items[g.selIdx || 0];
+        if (it && typeof it.handler === 'function') {
+            this.sound.play('menu-select');
+            it.handler();
+        }
+    }
+
+    // Bake runtime RTT thumbnails into grid items that reference a WorldObject
+    // (shop tiles). Sequential like the object bar, and aborts silently if the
+    // player leaves the menu mid-bake.
+    async _bakeGridThumbs() {
+        const grid = this.menu.grid;
+        if (!grid) return;
+        for (const entry of grid.tiles) {
+            if (this.menu.grid !== grid) return;   // menu changed
+            const wo = entry.it.thumbWo;
+            if (!wo) continue;
+            if (!wo.thumbUrl) {
+                try { wo.thumbUrl = await this.thumbRenderer.generate(wo.mesh); }
+                catch (e) { continue; }
+            }
+            if (this.menu.grid !== grid) return;
+            if (wo.thumbUrl) {
+                entry.it.img = wo.thumbUrl;
+                entry.it._imgOk = true;
+                entry.img.source = wo.thumbUrl;
+                entry.img.isVisible = true;
+                entry.glyph.isVisible = false;
+                if (grid.selIdx === entry.idx) this.setGridSelection(entry.idx, true);
+            }
         }
     }
 }
